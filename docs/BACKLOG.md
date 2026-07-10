@@ -18,3 +18,4 @@
 - **Custom domain** — attach monomix.stefanhoth.com to the production Worker (hosting is Cloudflare Workers from day 1, see ADR 0004).
 - **Non-Latin scripts research** — monogram-style fonts likely exist for Devanagari, CJK, Arabic on non-Western platforms; investigate sources and licensing.
 - **Cloudflare API token rotation** — the `CLOUDFLARE_API_TOKEN` repo secret expires 2027-01-01; rotate before then or CI deploys will start failing.
+- **Re-enable `required_deployments` on the main ruleset** — live-disabled for now because a brand-new ruleset can't require a "preview" deployment status that has never succeeded yet (blocks the very first PR). [.github/ruleset/main-branch-protection.json](.github/ruleset/main-branch-protection.json) still declares it as the target state. Once one PR has cleanly gone through preview-deploy + E2E, re-enable the rule live via the GitHub UI/API to match the checked-in file.

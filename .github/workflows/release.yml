@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy production
+    name: Deploy Worker
     runs-on: ubuntu-latest
     outputs:
       calver_tag: ${{ steps.tag.outputs.tag }}
