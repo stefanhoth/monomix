@@ -19,3 +19,4 @@ dist-ssr/
 playwright-report/
 test-results/
 coverage/
+.playwright-cli/
