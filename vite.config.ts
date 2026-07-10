@@ -31,7 +31,7 @@ export default defineConfig({
       workbox: {
         // Every design/frame font is precached so the app works fully offline
         // immediately after install, not just for previously visited routes.
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,ttf}"],
       },
     }),
   ],
