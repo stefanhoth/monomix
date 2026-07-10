@@ -1,0 +1,46 @@
+{
+  "name": "monomix",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "lint": "oxlint --deny-warnings . && prettier --check . && npm run check",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "deploy": "wrangler deploy",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,js,svelte}": [
+      "oxlint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@sveltejs/vite-plugin-svelte": "7.2.0",
+    "@tsconfig/svelte": "5.0.8",
+    "husky": "9.1.7",
+    "jsdom": "29.1.1",
+    "lint-staged": "17.0.8",
+    "oxlint": "1.73.0",
+    "prettier": "3.9.5",
+    "prettier-plugin-svelte": "4.1.1",
+    "svelte": "5.56.4",
+    "svelte-check": "4.7.2",
+    "typescript": "5.9.3",
+    "vite": "8.1.4",
+    "vite-plugin-pwa": "1.3.0",
+    "vitest": "4.1.10",
+    "wrangler": "4.110.0"
+  }
+}
