@@ -13,8 +13,8 @@ permissions:
   deployments: write
 
 jobs:
-  deploy:
-    name: Deploy Worker
+  tag-release:
+    name: Tag release (CalVer)
     runs-on: ubuntu-latest
     outputs:
       calver_tag: ${{ steps.tag.outputs.tag }}
@@ -23,10 +23,6 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
       - name: Compute CalVer tag
         id: tag
         run: |
@@ -38,31 +34,10 @@ jobs:
             VERSION="${BASE}.${COUNTER}"
           done
           echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
-      - run: npm ci
-      - run: npm run build
-        env:
-          APP_VERSION: ${{ steps.tag.outputs.tag }}
-      - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
-
-  tag-release:
-    name: Tag release (CalVer)
-    needs: deploy
-    runs-on: ubuntu-latest
-    env:
-      CALVER_TAG: ${{ needs.deploy.outputs.calver_tag }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-        with:
-          persist-credentials: false
-          fetch-depth: 0
       - name: Tag and create GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CALVER_TAG: ${{ steps.tag.outputs.tag }}
         run: |
           LAST_TAG=$(git tag --sort=version:refname | grep -E '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$' | tail -1)
           if [ -n "$LAST_TAG" ]; then
@@ -75,4 +50,28 @@ jobs:
           gh release create "${CALVER_TAG}" \
             --title "${CALVER_TAG}" \
             --notes "$NOTES" \
+            --target "${{ github.sha }}" \
             --latest
+
+  deploy:
+    name: Deploy Worker
+    needs: tag-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          APP_VERSION: ${{ needs.tag-release.outputs.calver_tag }}
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
