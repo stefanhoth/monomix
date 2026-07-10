@@ -109,6 +109,12 @@
       "skillPath": "skills/personal/obsidian-vault/SKILL.md",
       "computedHash": "960437c7c2febc15cf9d49964f0c8bd889d90a56e81b6eaa33f3ac5b594291c3"
     },
+    "playwright-cli": {
+      "source": "microsoft/playwright-cli",
+      "sourceType": "github",
+      "skillPath": "skills/playwright-cli/SKILL.md",
+      "computedHash": "f602822b51bcb6d033749c60731b8f1e80f308222fcb2e4af551905a817c6e08"
+    },
     "prototype": {
       "source": "mattpocock/skills",
       "sourceType": "github",
