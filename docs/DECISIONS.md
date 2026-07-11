@@ -13,6 +13,75 @@ or product but don't warrant a full [ADR](adr/).
 
 ## 2026-07-11
 
+- **Projects go behind a storage-adapter interface (`ProjectStore`), with a
+  fake in-memory implementation used by unit tests.** `src/lib/project-store.ts`
+  defines `list`/`get`/`put`/`delete`/`getLastEdited`; `project-store-memory.ts`
+  is the fake, `project-store-indexeddb.ts` is production. Unit tests
+  (autosave debounce, "new Project inherits settings") depend only on the
+  interface, so they run in Vitest/jsdom without touching real IndexedDB.
+  (Issue #14)
+- **The IndexedDB adapter uses the `idb` package (MIT, Jake Archibald)
+  instead of hand-rolled raw IndexedDB.** It's ~1.2 kB gzipped and wraps the
+  callback-based IndexedDB API in Promises, removing a whole class of
+  transaction/callback bugs for a negligible bundle cost — worth it for
+  something as easy to get subtly wrong as raw IndexedDB. (Issue #14)
+- **"New Project inherits last settings" reads from whichever settings are
+  live in memory, not a fresh IndexedDB round-trip.** `handleNewProject` in
+  App.svelte flushes any pending autosave first, then calls
+  `createNewProject(store)` (which queries `getLastEdited()`) — so it's
+  always the truly-latest edit, not a stale pre-debounce snapshot. The pure
+  `createProject(settings)` half (used elsewhere too) is unit-tested
+  separately from the storage-backed `createNewProject` half. (Issue #14)
+- **A Project's name defaults to its letters (e.g. "MX"), not "Untitled."**
+  The recent-projects list is otherwise a wall of identical "Untitled"
+  tiles until a user manually renames every one — defaulting to the letters
+  gives each tile a legible, distinct label for free. Renaming is still
+  explicit and doesn't auto-follow later letter edits (CONTEXT.md's Project
+  is one persisted _configuration_; only its content changes when letters
+  do, not its label). (Issue #14)
+- **Recent-project thumbnails reuse `composeMonogram` directly — no new
+  rendering path.** `ProjectsPanel.svelte` looks up each Project's Design
+  and calls the same pure engine function DesignGallery/FrameGallery already
+  call, keeping the engine as the single source of truth for what a
+  monogram looks like. (Issue #14)
+- **Switching the active Project (`switchToProject`) is deliberately
+  synchronous, with no `await` before its state reassignments.** An earlier
+  version awaited fetching the target Project before switching, which
+  opened a race: an edit made during that fetch would autosave against the
+  _outgoing_ Project's id instead of the new one (caught by the
+  recent-projects E2E test, not by inspection). `switchToProject` now fires
+  `autosave.flush()` without awaiting it (its pending-write capture is
+  synchronous even though the write itself isn't) and reassigns
+  `activeProjectMeta` and all editor fields in the same synchronous tick;
+  `handleSelectProject` reads the target Project from the already-loaded
+  `projects` list instead of re-fetching it, so there's no async gap to
+  race at all. (Issue #14)
+- **Deleting a Project from the recent-projects list has no confirmation
+  step.** Consistent with the rest of the editor's implicit-autosave,
+  no-dead-ends UX (Design Principle 3) — the app already never asks "are
+  you sure?" for any other change. Revisit if user feedback says accidental
+  deletes are a real problem. (Issue #14)
+- **`handleDeleteProject` now awaits any in-flight autosave write before
+  calling `store.delete(id)`, not just `cancelPending()`'s unfired-timer
+  case.** `cancelPending()` can only stop a debounced write that hasn't
+  fired yet; once the timer fires, `flush()` captures and clears the
+  pending Project synchronously but the `store.put()` itself is still
+  async, so a delete racing that window could land before the put and get
+  resurrected by it — the same class of race `switchToProject` was fixed
+  for above, just on the delete path instead. `AutosaveController` gained
+  `settleInFlight()` to close it deterministically: `handleDeleteProject`
+  calls `cancelPending()` then `await settleInFlight()` before
+  `store.delete(id)`, guaranteeing the delete is the last write for that
+  id. (Issue #14, PR #31 review)
+- **Onboarding's "first run?" gate now keys off real Project existence, not
+  just the localStorage flag (backfilling #13).** #13 shipped a bare
+  `localStorage` "onboarded" flag as a placeholder, with an explicit
+  `TODO(#14)` to widen it once Projects persist. #14 makes that real:
+  App.svelte now feeds `isFirstRun` with
+  `onboardingComplete || hasAnyProject`, where `hasAnyProject` reflects
+  whether any Project exists in IndexedDB — so onboarding never shows again
+  once a Project exists, even if the localStorage flag is later cleared.
+  `isFirstRun`'s own signature is unchanged, as originally designed. (Issue #14)
 - **Frame Gap uses a range slider, not a number input.** Issue #12's title said
   "gap slider," and a continuous slider gives live feedback while dragging
   (Design Principle 3) for a spatial parameter. A numeric `<output>` readout sits
