@@ -28,6 +28,45 @@ describe("composeMonogram", () => {
     expect(withoutOption).not.toContain("rect");
   });
 
+  it("applies the letters color to the glyph group", () => {
+    const svg = composeMonogram("A", font, { lettersColor: "#ff0000" });
+    expect(svg).toContain('<g fill="#ff0000">');
+  });
+
+  it("defaults letters color to currentColor", () => {
+    const svg = composeMonogram("A", font);
+    expect(svg).toContain('<g fill="currentColor">');
+  });
+
+  it("draws a background rect first when a background color is given", () => {
+    const svg = composeMonogram("A", font, { background: "#00ff00" });
+    expect(svg).toContain('<rect width="1000" height="1000" fill="#00ff00"/>');
+    expect(svg.indexOf("<rect")).toBeLessThan(svg.indexOf("<path"));
+  });
+
+  it("omits the background rect by default (transparent)", () => {
+    const svg = composeMonogram("A", font);
+    expect(svg).not.toContain("<rect");
+  });
+
+  it("omits the background rect when explicitly set to transparent", () => {
+    const svg = composeMonogram("A", font, { background: "transparent" });
+    expect(svg).not.toContain("<rect");
+  });
+
+  it("falls back to safe defaults instead of crashing or injecting malformed colors", () => {
+    const svg = composeMonogram("A", font, {
+      lettersColor: 'red" onload="alert(1)',
+      background: "javascript:alert(1)",
+      frame: { id: "circle", color: "</svg><script>alert(1)</script>" },
+    });
+    expect(svg).toContain('<g fill="currentColor">');
+    expect(svg).not.toContain("<rect");
+    expect(svg).toContain('stroke="currentColor"');
+    expect(svg).not.toContain("<script");
+    expect(svg).not.toContain("onload");
+  });
+
   it("is a pure function: matches its regression snapshot", () => {
     // File snapshot (not inline) — the full SVG path data is too long to
     // read comfortably inline in the test source.
