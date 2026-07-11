@@ -8,11 +8,13 @@
   import { exportPng, exportJpg } from "./lib/export/raster";
   import { triggerDownload } from "./lib/export/download";
   import { DEFAULT_EXPORT_SIZE } from "./lib/export/options";
+  import { sanitizeLettersInput } from "./lib/letters-input";
 
   // TEMP default font until the Design gallery (issue #11) picks one.
   const defaultFont = FONTS.find((f) => f.id === "archivo-black")!;
 
   let letters = $state("MX");
+  let lettersHint: string | null = $state(null);
   let font: Font | undefined = $state(undefined);
   let exportSize = $state(DEFAULT_EXPORT_SIZE);
   let preview = $derived(
@@ -22,6 +24,22 @@
   onMount(async () => {
     font = await loadFont(defaultFont.url);
   });
+
+  // No native maxlength: it counts raw keystrokes, not valid ones, so once
+  // 3 valid letters already fill the field, the browser would block the
+  // 4th keystroke *before* oninput ever fires — swallowing an invalid
+  // character with no hint shown at all. sanitizeLettersInput() already
+  // enforces the 3-letter cap itself.
+  function handleLettersInput(
+    event: Event & { currentTarget: HTMLInputElement },
+  ) {
+    const result = sanitizeLettersInput(event.currentTarget.value);
+    letters = result.letters;
+    lettersHint = result.hint;
+    // Keep the DOM in sync immediately — a rejected character (e.g. an
+    // umlaut) must never render, not even for a frame.
+    event.currentTarget.value = result.letters;
+  }
 
   async function handleExport(format: "svg" | "png" | "jpg" | "pdf") {
     if (!preview) return;
@@ -54,8 +72,11 @@
 
   <label>
     Letters
-    <input bind:value={letters} maxlength="3" />
+    <input value={letters} oninput={handleLettersInput} />
   </label>
+  {#if lettersHint}
+    <p class="hint" role="alert">{lettersHint}</p>
+  {/if}
 
   <div class="preview">
     {#if preview}
@@ -95,8 +116,20 @@
       sans-serif;
   }
 
+  @media (max-width: 30rem) {
+    main {
+      margin: 1.5rem auto;
+    }
+  }
+
   .tagline {
     color: light-dark(#555, #aaa);
+  }
+
+  .hint {
+    color: light-dark(#b3261e, #ffb4ab);
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0;
   }
 
   .preview {
@@ -116,6 +149,7 @@
 
   .export-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-top: 1rem;
   }
