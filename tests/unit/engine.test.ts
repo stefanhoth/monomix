@@ -14,17 +14,18 @@ describe("composeMonogram", () => {
     expect((svg.match(/<path /g) ?? []).length).toBe(2);
   });
 
-  it("wraps the letters in a clipPath when clipPathD is given", () => {
-    const svg = composeMonogram("A", font, {
-      clipPathD: "M0 0 L1000 0 L1000 1000 Z",
-    });
-    expect(svg).toContain('<clipPath id="mm-clip">');
-    expect(svg).toContain('clip-path="url(#mm-clip)"');
+  it("draws the frame before the letters when a frame is given", () => {
+    const svg = composeMonogram("A", font, { frame: { id: "circle" } });
+    expect(svg).toContain("<circle");
+    expect(svg.indexOf("<circle")).toBeLessThan(svg.indexOf("<path"));
   });
 
-  it("omits the clipPath entirely when no clip is given", () => {
-    const svg = composeMonogram("A", font);
-    expect(svg).not.toContain("clipPath");
+  it("produces the letter composition unchanged when no frame is given", () => {
+    const withoutOption = composeMonogram("A", font);
+    const withNoFrameId = composeMonogram("A", font, { frame: { id: "none" } });
+    expect(withoutOption).toBe(withNoFrameId);
+    expect(withoutOption).not.toContain("circle");
+    expect(withoutOption).not.toContain("rect");
   });
 
   it("is a pure function: matches its regression snapshot", () => {

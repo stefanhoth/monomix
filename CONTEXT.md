@@ -13,7 +13,7 @@ A font paired with an Arrangement, algorithmically composing the letters (ADR 00
 _Avoid_: Style, template, model
 
 **Arrangement**:
-How a Design positions its letters relative to each other (e.g. horizontal, stacked). Distinct from Frame, which shapes/clips the composed result from the outside rather than arranging the letters themselves.
+How a Design positions its letters relative to each other (e.g. horizontal, stacked). Distinct from Frame, which draws a decorative ring around the composed result from the outside rather than arranging the letters themselves.
 
 **Letter Count**:
 How many letters the Monogram consists of: 1, 2, or 3. The design gallery is filtered by the current Letter Count.
@@ -22,11 +22,11 @@ How many letters the Monogram consists of: 1, 2, or 3. The design gallery is fil
 The 1–3 characters of the Monogram. Restricted to A–Z (input is uppercased); umlauts and other characters are rejected with a transliteration hint rather than silently replaced.
 
 **Frame**:
-A decorative border placed around the lettering, independent of the Design. Has its own color and a configurable gap to the letters.
+A decorative border placed around the lettering, independent of the Design. Has its own color and a configurable gap. In v1 a Frame is positioned relative to the fixed canvas, not the letters' actual rendered size — see Frame Gap.
 _Avoid_: Border, ring
 
 **Frame Gap**:
-The spacing between the lettering and the surrounding Frame.
+How far the Frame's outer boundary sits from the canvas edge. Named for what it conceptually controls — breathing room between the lettering and the Frame — but v1 measures it against the fixed canvas rather than the letters' real bounding box, since Frames don't yet coordinate with letter sizing (docs/BACKLOG.md: "Frame-aware letter sizing").
 
 **Project**:
 One persisted Monogram configuration (letters, Design, Frame, colors, gap). The app lists recent Projects, and a new Project starts from the most recently used settings.
