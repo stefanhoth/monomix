@@ -1,5 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { skipOnboarding } from "./helpers/onboarding";
+
+test.beforeEach(async ({ page }) => {
+  // Every test in this file exercises the editor's export flow directly,
+  // not onboarding (see onboarding.spec.ts) — simulate a returning user so
+  // the first-run initials prompt (issue #13) never intercepts page.goto("/").
+  await skipOnboarding(page);
+});
 
 const FORMATS = [
   { button: "Export SVG", extension: "svg" },
