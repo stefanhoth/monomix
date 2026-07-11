@@ -1,8 +1,22 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import type { Font } from "opentype.js";
   import { composeMonogram } from "./engine";
+  import { FONTS } from "./engine/fonts";
+  import { loadFont } from "./lib/font-loader";
+
+  // TEMP default font until the Design gallery (issue #11) picks one.
+  const defaultFont = FONTS.find((f) => f.id === "archivo-black")!;
 
   let letters = $state("MX");
-  let preview = $derived(composeMonogram(letters));
+  let font: Font | undefined = $state(undefined);
+  let preview = $derived(
+    font && letters.length > 0 ? composeMonogram(letters, font) : "",
+  );
+
+  onMount(async () => {
+    font = await loadFont(defaultFont.url);
+  });
 </script>
 
 <main>
@@ -14,7 +28,11 @@
     <input bind:value={letters} maxlength="3" />
   </label>
 
-  <pre class="preview">{preview}</pre>
+  <div class="preview">
+    {#if preview}
+      {@html preview}
+    {/if}
+  </div>
 </main>
 
 <style>
@@ -37,5 +55,13 @@
     padding: 1rem;
     border-radius: 0.5rem;
     background: light-dark(#f2f2f2, #1c1c1e);
+    color: light-dark(#111, #eee);
+  }
+
+  .preview :global(svg) {
+    display: block;
+    width: 100%;
+    max-width: 20rem;
+    margin: 0 auto;
   }
 </style>
