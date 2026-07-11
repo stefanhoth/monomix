@@ -11,3 +11,4 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 - You can now export your monogram as SVG, PNG, JPG, or PDF.
 - The letters field now catches non-A-Z characters (like umlauts) and shows a helpful hint instead of silently changing what you typed. The layout also adapts to narrow/mobile screens.
 - A design gallery now shows every available style with your own letters live, filtered to the ones that fit your current initials. Pick one and the main preview updates with a smooth transition. Frame and color controls are still to come.
+- A Frame gallery lets you add a decorative border (circle, square, diamond, dotted, or dashed) around your monogram, with "No Frame" as the default, plus a gap control for how much breathing room it leaves. Separate color pickers for the letters, the Frame, and the background — background is transparent by default, shown as a checkerboard so you can tell it apart from white.

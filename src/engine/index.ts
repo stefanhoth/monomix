@@ -17,6 +17,7 @@ export { FONTS, type FontEntry, type FontStyle } from "./fonts";
 export {
   FRAMES,
   NO_FRAME_ID,
+  DEFAULT_GAP,
   composeFrame,
   type Frame,
   type FrameShapeKind,
