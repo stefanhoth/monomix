@@ -1,4 +1,5 @@
 import { VIEWBOX_SIZE } from "./layout";
+import { sanitizeColor } from "./color";
 
 /**
  * Frames are independent decorative rings around the letters (CONTEXT.md),
@@ -57,7 +58,7 @@ export function composeFrame(
 
   const gap = options.gap ?? DEFAULT_GAP;
   const strokeWidth = options.strokeWidth ?? DEFAULT_STROKE_WIDTH;
-  const color = options.color ?? "currentColor";
+  const color = sanitizeColor(options.color, "currentColor");
 
   // Radius/half-extent of the stroke centerline. Clamped so an extreme gap
   // never produces a negative (invalid) radius.
