@@ -4,8 +4,6 @@ import type { Arrangement } from "./layout";
 /** How many letters a Monogram consists of (CONTEXT.md: Letter Count). */
 export type LetterCount = 1 | 2 | 3;
 
-const ALL_LETTER_COUNTS: LetterCount[] = [1, 2, 3];
-
 export interface Design {
   id: string;
   name: string;
@@ -18,16 +16,28 @@ interface ArrangementVariant {
   suffix: string;
   arrangement: Arrangement;
   label: string;
+  supports: LetterCount[];
 }
 
-// Every font is offered in both arrangements — the underlying composition
-// engine (layoutLetters) is letter-count-agnostic, so there's no technical
-// reason to restrict any combination. Genuinely distinct composition styles
-// (circle, diamond, interlocked glyphs) are deliberately out of scope for
-// v1 — see docs/BACKLOG.md.
+// Every font is offered in both arrangements, except "stacked" has no
+// "middle" to stack when there's only one letter — it's mathematically
+// identical to "classic" at Letter Count 1 (a single row), which would
+// make the gallery show two pixel-identical tiles under different names.
+// Genuinely distinct composition styles (circle, diamond, interlocked
+// glyphs) are deliberately out of scope for v1 — see docs/BACKLOG.md.
 const ARRANGEMENTS: ArrangementVariant[] = [
-  { suffix: "classic", arrangement: "horizontal", label: "Classic" },
-  { suffix: "stacked", arrangement: "stacked", label: "Stacked" },
+  {
+    suffix: "classic",
+    arrangement: "horizontal",
+    label: "Classic",
+    supports: [1, 2, 3],
+  },
+  {
+    suffix: "stacked",
+    arrangement: "stacked",
+    label: "Stacked",
+    supports: [2, 3],
+  },
 ];
 
 function designsForFont(font: FontEntry): Design[] {
@@ -36,7 +46,7 @@ function designsForFont(font: FontEntry): Design[] {
     name: `${font.family} ${variant.label}`,
     fontId: font.id,
     arrangement: variant.arrangement,
-    supports: ALL_LETTER_COUNTS,
+    supports: variant.supports,
   }));
 }
 
