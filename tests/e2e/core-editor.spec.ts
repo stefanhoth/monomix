@@ -1,11 +1,14 @@
 import { test, expect } from "@playwright/test";
 
-test("typing letters updates the live preview (the core journey)", async ({
+test("typing letters, picking a Frame, adjusting the gap, and changing colors all update the live preview (the core journey)", async ({
   page,
 }) => {
   await page.goto("/");
+  // Svelte's out-transition applies `inert` to the outgoing keyed .preview
+  // block during the crossfade, so a plain ".preview svg" locator can catch
+  // a stale copy mid-transition.
   const lettersInput = page.getByLabel("Letters");
-  const preview = page.locator(".preview svg");
+  const preview = page.locator(".preview:not([inert]) svg");
 
   await expect(preview).toBeVisible();
   const initialPaths = await preview.locator("path").count();
@@ -14,6 +17,32 @@ test("typing letters updates the live preview (the core journey)", async ({
   await lettersInput.fill("ABC");
   await expect(lettersInput).toHaveValue("ABC");
   await expect(preview.locator("path")).toHaveCount(3);
+
+  // "No Frame" is the default: no stroked shape behind the letters yet.
+  await expect(preview.locator("circle")).toHaveCount(0);
+
+  const frameGallery = page.getByRole("listbox", { name: "Frames" });
+  const circleFrame = frameGallery.getByRole("option", {
+    name: "Circle",
+    exact: true,
+  });
+  await expect(circleFrame).toHaveAttribute("aria-selected", "false");
+
+  await circleFrame.click();
+  await expect(circleFrame).toHaveAttribute("aria-selected", "true");
+  await expect(preview.locator("circle")).toHaveCount(1);
+
+  const initialRadius = await preview.locator("circle").getAttribute("r");
+  await page.getByLabel("Frame Gap").fill("120");
+  await expect
+    .poll(async () => preview.locator("circle").getAttribute("r"))
+    .not.toBe(initialRadius);
+
+  await page.getByLabel("Letter Color").fill("#ff0000");
+  await expect(preview.locator("g")).toHaveAttribute("fill", "#ff0000");
+
+  await page.getByLabel("Frame Color").fill("#00ff00");
+  await expect(preview.locator("circle")).toHaveAttribute("stroke", "#00ff00");
 });
 
 test("input is capped at 3 characters and uppercased automatically", async ({
@@ -78,43 +107,6 @@ test("layout adapts to a narrow mobile viewport without horizontal overflow", as
   await expect(page.getByRole("heading", { name: "MonoMix" })).toBeVisible();
   await expect(page.getByLabel("Letters")).toBeVisible();
   await expect(page.getByRole("button", { name: "Export SVG" })).toBeVisible();
-});
-
-test("picking a Frame, adjusting the gap, and changing a color all update the live preview", async ({
-  page,
-}) => {
-  await page.goto("/");
-  // Svelte's out-transition applies `inert` to the outgoing keyed .preview
-  // block during the crossfade, so a plain ".preview svg" locator can catch
-  // a stale copy mid-transition.
-  const preview = page.locator(".preview:not([inert]) svg");
-  await expect(preview).toBeVisible();
-
-  // "No Frame" is the default: no stroked shape behind the letters yet.
-  await expect(preview.locator("circle")).toHaveCount(0);
-
-  const frameGallery = page.getByRole("listbox", { name: "Frames" });
-  const circleFrame = frameGallery.getByRole("option", {
-    name: "Circle",
-    exact: true,
-  });
-  await expect(circleFrame).toHaveAttribute("aria-selected", "false");
-
-  await circleFrame.click();
-  await expect(circleFrame).toHaveAttribute("aria-selected", "true");
-  await expect(preview.locator("circle")).toHaveCount(1);
-
-  const initialRadius = await preview.locator("circle").getAttribute("r");
-  await page.getByLabel("Frame Gap").fill("120");
-  await expect
-    .poll(async () => preview.locator("circle").getAttribute("r"))
-    .not.toBe(initialRadius);
-
-  await page.getByLabel("Letter Color").fill("#ff0000");
-  await expect(preview.locator("g")).toHaveAttribute("fill", "#ff0000");
-
-  await page.getByLabel("Frame Color").fill("#00ff00");
-  await expect(preview.locator("circle")).toHaveAttribute("stroke", "#00ff00");
 });
 
 test("the background defaults to a transparent checkerboard and switches to an opaque fill", async ({

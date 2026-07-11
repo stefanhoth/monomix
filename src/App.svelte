@@ -17,7 +17,12 @@
   import { triggerDownload } from "./lib/export/download";
   import { DEFAULT_EXPORT_SIZE } from "./lib/export/options";
   import { sanitizeLettersInput } from "./lib/letters-input";
-  import { resolveFrameGap, DEFAULT_FRAME_GAP } from "./lib/frame-gap";
+  import {
+    resolveFrameGap,
+    DEFAULT_FRAME_GAP,
+    MIN_GAP,
+    MAX_GAP,
+  } from "./lib/frame-gap";
   import {
     filterDesignsByLetterCount,
     resolveSelectedDesignId,
@@ -215,10 +220,19 @@
     onSelect={(id) => (selectedFrameId = id)}
   />
 
-  <label>
-    Frame Gap
-    <input type="number" min="0" max="300" bind:value={frameGap} />
-  </label>
+  <div class="gap-control">
+    <label>
+      Frame Gap
+      <input
+        type="range"
+        min={MIN_GAP}
+        max={MAX_GAP}
+        step="5"
+        bind:value={frameGap}
+      />
+    </label>
+    <output class="gap-value">{frameGap}</output>
+  </div>
 
   <div class="color-controls">
     <label>
@@ -319,6 +333,25 @@
     width: 100%;
     max-width: 20rem;
     margin: 0 auto;
+  }
+
+  .gap-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .gap-control label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+
+  .gap-value {
+    font-variant-numeric: tabular-nums;
+    min-width: 2.5rem;
+    text-align: right;
   }
 
   .color-controls {

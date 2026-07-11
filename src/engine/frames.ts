@@ -29,7 +29,7 @@ export const FRAMES: Frame[] = [
   { id: "dashed-circle", name: "Dashed Circle", shape: "dashed-circle" },
 ];
 
-const DEFAULT_GAP = 40;
+export const DEFAULT_GAP = 40;
 const DEFAULT_STROKE_WIDTH = 20;
 const CENTER = VIEWBOX_SIZE / 2;
 

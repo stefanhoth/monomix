@@ -1,9 +1,11 @@
-const MIN_GAP = 0;
-const MAX_GAP = 300;
-/** Matches the engine's own implicit default (src/engine/frames.ts) so
+import { DEFAULT_GAP } from "../engine";
+
+export const MIN_GAP = 0;
+export const MAX_GAP = 300;
+/** Sourced from the engine's own default (src/engine/frames.ts) so
  * switching a Frame on doesn't visually jump before the user ever touches
  * the gap control. */
-export const DEFAULT_FRAME_GAP = 40;
+export const DEFAULT_FRAME_GAP = DEFAULT_GAP;
 
 /**
  * Clamps a requested Frame Gap (CONTEXT.md) to a non-negative, sane range
