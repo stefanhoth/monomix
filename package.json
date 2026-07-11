@@ -47,6 +47,8 @@
     "wrangler": "4.110.0"
   },
   "dependencies": {
-    "opentype.js": "2.0.0"
+    "jspdf": "4.2.1",
+    "opentype.js": "2.0.0",
+    "svg2pdf.js": "2.7.0"
   }
 }
