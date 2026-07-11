@@ -25,6 +25,11 @@
     font = await loadFont(defaultFont.url);
   });
 
+  // No native maxlength: it counts raw keystrokes, not valid ones, so once
+  // 3 valid letters already fill the field, the browser would block the
+  // 4th keystroke *before* oninput ever fires — swallowing an invalid
+  // character with no hint shown at all. sanitizeLettersInput() already
+  // enforces the 3-letter cap itself.
   function handleLettersInput(
     event: Event & { currentTarget: HTMLInputElement },
   ) {
@@ -67,7 +72,7 @@
 
   <label>
     Letters
-    <input value={letters} oninput={handleLettersInput} maxlength="3" />
+    <input value={letters} oninput={handleLettersInput} />
   </label>
   {#if lettersHint}
     <p class="hint" role="alert">{lettersHint}</p>
