@@ -27,7 +27,9 @@ describe("composeMonogram", () => {
     expect(svg).not.toContain("clipPath");
   });
 
-  it("is a pure function: identical input produces identical output", () => {
-    expect(composeMonogram("MX", font)).toBe(composeMonogram("MX", font));
+  it("is a pure function: matches its regression snapshot", () => {
+    // File snapshot (not inline) — the full SVG path data is too long to
+    // read comfortably inline in the test source.
+    expect(composeMonogram("MX", font)).toMatchSnapshot();
   });
 });

@@ -17,8 +17,8 @@ describe("layoutLetters", () => {
     }
   });
 
-  it("never overflows the viewBox width, for a narrow and a wide letter", () => {
-    for (const letters of ["I", "W", "IWI", "WIW"]) {
+  it("never overflows the viewBox width, for narrow/wide letters at every letter count", () => {
+    for (const letters of ["I", "W", "IW", "WI", "IWI", "WIW"]) {
       const layout = layoutLetters(letters, font);
       const [first] = layout.letters;
       const last = layout.letters.at(-1);
@@ -40,28 +40,24 @@ describe("layoutLetters", () => {
     expect(two.fontSize).toBeGreaterThan(three.fontSize);
   });
 
-  it("applies centerEmphasis only to the middle letter of a 3-letter monogram", () => {
-    const plainMiddle = layoutLetters("ABC", font).letters[1];
-    const emphasizedMiddle = layoutLetters("ABC", font, { centerEmphasis: 1.5 })
-      .letters[1];
-    if (!plainMiddle || !emphasizedMiddle)
-      throw new Error("expected a middle letter");
-    expect(emphasizedMiddle.fontSize).toBeGreaterThan(plainMiddle.fontSize);
-
-    // no "middle" letter in a 2-letter monogram — emphasis must be a no-op
-    const [twoA, twoB] = layoutLetters("AB", font, {
-      centerEmphasis: 1.5,
-    }).letters;
-    const [plainA, plainB] = layoutLetters("AB", font).letters;
-    if (!twoA || !twoB || !plainA || !plainB)
-      throw new Error("expected two positioned letters");
-    expect(twoA.fontSize).toBeCloseTo(plainA.fontSize, 5);
-    expect(twoB.fontSize).toBeCloseTo(plainB.fontSize, 5);
-  });
-
-  it("is a pure function: identical input produces identical output", () => {
-    const a = layoutLetters("MX", font);
-    const b = layoutLetters("MX", font);
-    expect(a).toEqual(b);
+  it("is a pure function: matches its regression snapshot", () => {
+    expect(layoutLetters("MX", font)).toMatchInlineSnapshot(`
+      {
+        "letters": [
+          {
+            "fontSize": 487.8048780487805,
+            "letter": "M",
+            "x": 79.99999999999994,
+            "y": 662.9268292682927,
+          },
+          {
+            "fontSize": 487.8048780487805,
+            "letter": "X",
+            "x": 540.4878048780488,
+            "y": 662.9268292682927,
+          },
+        ],
+      }
+    `);
   });
 });

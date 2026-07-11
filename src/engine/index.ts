@@ -8,6 +8,5 @@ export {
   layoutLetters,
   VIEWBOX_SIZE,
   type Layout,
-  type LayoutOptions,
   type PositionedLetter,
 } from "./layout";
