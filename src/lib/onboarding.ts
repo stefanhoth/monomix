@@ -11,10 +11,12 @@
  * degrades gracefully instead of crashing the app — treated as
  * not-yet-onboarded on read, silently ignored on write.
  *
- * TODO(#14): once IndexedDB Project persistence lands, "first run?" should
- * really mean "no Project exists yet." Replace or extend this module to
- * source that (e.g. querying the project store) — isFirstRun()'s signature
- * won't need to change, only what feeds `onboardingComplete`.
+ * Issue #14 widened "first run?" to also mean "no Project exists yet" —
+ * App.svelte ORs this flag together with "does any Project exist"
+ * (src/lib/project-store.ts's `getLastEdited`) before calling isFirstRun(),
+ * so onboarding never shows again once a Project exists, even if this
+ * localStorage flag itself gets cleared. This module's role is unchanged:
+ * it's still just the localStorage half of that OR.
  */
 const STORAGE_KEY = "monomix:onboarded";
 
