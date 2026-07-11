@@ -2,7 +2,7 @@
 
 Browser-local, PWA-ready monogram maker. No server — everything runs client-side.
 
-Read [CONTEXT.md](CONTEXT.md) for the domain glossary, [docs/adr/](docs/adr/) for architecture decisions (check `status:` frontmatter — superseded ADRs are kept for history, not followed), [docs/DESIGN-PRINCIPLES.md](docs/DESIGN-PRINCIPLES.md) for the UX bar, and [docs/BACKLOG.md](docs/BACKLOG.md) before proposing something — it might already be deferred or explicitly rejected.
+Read [CONTEXT.md](CONTEXT.md) for the domain glossary, [docs/adr/](docs/adr/) for architecture decisions (check `status:` frontmatter — superseded ADRs are kept for history, not followed), [docs/DESIGN-PRINCIPLES.md](docs/DESIGN-PRINCIPLES.md) for the UX bar, and [docs/BACKLOG.md](docs/BACKLOG.md) before proposing something — it might already be deferred or explicitly rejected. Smaller-but-made calls that don't warrant an ADR are logged in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Commands
 
