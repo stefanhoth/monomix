@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { Font } from "opentype.js";
-  import { composeMonogram, loadFont } from "./engine";
+  import { composeMonogram } from "./engine";
   import { FONTS } from "./engine/fonts";
+  import { loadFont } from "./lib/font-loader";
 
   // TEMP default font until the Design gallery (issue #11) picks one.
   const defaultFont = FONTS.find((f) => f.id === "archivo-black")!;

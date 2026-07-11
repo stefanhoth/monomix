@@ -11,4 +11,3 @@ export {
   type LayoutOptions,
   type PositionedLetter,
 } from "./layout";
-export { loadFont } from "./font-loader";
