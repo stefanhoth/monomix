@@ -7,6 +7,10 @@ export { composeMonogram, type ComposeOptions } from "./render";
 export {
   layoutLetters,
   VIEWBOX_SIZE,
+  type Arrangement,
   type Layout,
+  type LayoutOptions,
   type PositionedLetter,
 } from "./layout";
+export { DESIGNS, type Design, type LetterCount } from "./designs";
+export { FONTS, type FontEntry, type FontStyle } from "./fonts";

@@ -4,6 +4,10 @@ import type { Font } from "opentype.js";
 export const VIEWBOX_SIZE = 1000;
 
 const PADDING_RATIO = 0.08;
+/** Gap between rows in a "stacked" arrangement, as a fraction of row height. */
+const ROW_GAP_RATIO = 0.08;
+
+export type Arrangement = "horizontal" | "stacked";
 
 export interface PositionedLetter {
   letter: string;
@@ -19,18 +23,34 @@ export interface Layout {
   letters: PositionedLetter[];
 }
 
+export interface LayoutOptions {
+  /** How the letters are arranged relative to each other. Defaults to "horizontal". */
+  arrangement?: Arrangement;
+}
+
 /**
  * Positions 1-3 letters of `font` within a VIEWBOX_SIZE x VIEWBOX_SIZE square,
  * centered and scaled to fill the available space (minus padding) without
  * overflowing either dimension. Pure function of its inputs — no DOM, no
  * globals (CLAUDE.md).
  */
-export function layoutLetters(letters: string, font: Font): Layout {
+export function layoutLetters(
+  letters: string,
+  font: Font,
+  options: LayoutOptions = {},
+): Layout {
   const chars = [...letters];
   if (chars.length < 1 || chars.length > 3) {
     throw new Error(`layoutLetters expects 1-3 letters, got ${chars.length}`);
   }
 
+  return options.arrangement === "stacked"
+    ? layoutStacked(chars, font)
+    : layoutHorizontal(chars, font);
+}
+
+/** Letters side by side on one baseline, sharing the available width. */
+function layoutHorizontal(chars: string[], font: Font): Layout {
   const available = VIEWBOX_SIZE * (1 - PADDING_RATIO * 2);
 
   // Pass 1, at a reference font size: measure total width and height.
@@ -69,6 +89,44 @@ export function layoutLetters(letters: string, font: Font): Layout {
     };
     cursorX += advances[i] ?? 0;
     return entry;
+  });
+
+  return { letters: positioned };
+}
+
+/** One letter per row, each centered horizontally, stacked top to bottom. */
+function layoutStacked(chars: string[], font: Font): Layout {
+  const available = VIEWBOX_SIZE * (1 - PADDING_RATIO * 2);
+  const n = chars.length;
+
+  // Pass 1, at a reference font size: measure the widest letter and total stack height.
+  const reference = VIEWBOX_SIZE;
+  const referenceWidth = Math.max(
+    ...chars.map((ch) => font.getAdvanceWidth(ch, reference)),
+  );
+  const rowHeightRef =
+    ((font.ascender - font.descender) / font.unitsPerEm) * reference;
+  const referenceHeight = rowHeightRef * (n + (n - 1) * ROW_GAP_RATIO);
+
+  // Fit whichever dimension is tighter — never overflow the canvas.
+  const scale = Math.min(
+    available / referenceWidth,
+    available / referenceHeight,
+  );
+  const fontSize = reference * scale;
+
+  const rowHeight =
+    ((font.ascender - font.descender) / font.unitsPerEm) * fontSize;
+  const rowGap = rowHeight * ROW_GAP_RATIO;
+  const ascenderHeight = (font.ascender / font.unitsPerEm) * fontSize;
+  const totalStackHeight = rowHeight * n + rowGap * (n - 1);
+  const topY = (VIEWBOX_SIZE - totalStackHeight) / 2;
+
+  const positioned: PositionedLetter[] = chars.map((letter, i) => {
+    const width = font.getAdvanceWidth(letter, fontSize);
+    const x = (VIEWBOX_SIZE - width) / 2;
+    const y = topY + i * (rowHeight + rowGap) + ascenderHeight;
+    return { letter, x, y, fontSize };
   });
 
   return { letters: positioned };

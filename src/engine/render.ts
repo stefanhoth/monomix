@@ -1,8 +1,8 @@
 import type { Font } from "opentype.js";
-import { layoutLetters, VIEWBOX_SIZE } from "./layout";
+import { layoutLetters, VIEWBOX_SIZE, type LayoutOptions } from "./layout";
 import { pathCommandsToSvgData } from "./svg-path";
 
-export interface ComposeOptions {
+export interface ComposeOptions extends LayoutOptions {
   /** SVG path `d` data to clip the composed letters into (a Frame shape). No clip when omitted. */
   clipPathD?: string;
 }
@@ -18,7 +18,7 @@ export function composeMonogram(
   font: Font,
   options: ComposeOptions = {},
 ): string {
-  const layout = layoutLetters(letters, font);
+  const layout = layoutLetters(letters, font, options);
 
   const paths = layout.letters
     .map((positioned) => {

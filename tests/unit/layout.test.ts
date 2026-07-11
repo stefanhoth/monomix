@@ -61,3 +61,50 @@ describe("layoutLetters", () => {
     `);
   });
 });
+
+describe("layoutLetters (stacked arrangement)", () => {
+  it("positions one letter per row, top to bottom", () => {
+    const layout = layoutLetters("ABC", font, { arrangement: "stacked" });
+    expect(layout.letters.map((l) => l.letter)).toEqual(["A", "B", "C"]);
+    const [a, b, c] = layout.letters;
+    if (!a || !b || !c) throw new Error("expected three positioned letters");
+    expect(a.y).toBeLessThan(b.y);
+    expect(b.y).toBeLessThan(c.y);
+  });
+
+  it("centers each row horizontally instead of sharing one baseline", () => {
+    const layout = layoutLetters("IW", font, { arrangement: "stacked" });
+    const [i, w] = layout.letters;
+    if (!i || !w) throw new Error("expected two positioned letters");
+    // Different letters, same font size -> different widths -> different
+    // centered x, unlike horizontal where they share a common baseline y.
+    expect(i.y).not.toBe(w.y);
+  });
+
+  it("never overflows the viewBox width or height, for narrow/wide letters at every letter count", () => {
+    for (const letters of ["I", "W", "IW", "WI", "IWI", "WIW"]) {
+      const layout = layoutLetters(letters, font, { arrangement: "stacked" });
+      for (const positioned of layout.letters) {
+        const width = font.getAdvanceWidth(
+          positioned.letter,
+          positioned.fontSize,
+        );
+        expect(positioned.x).toBeGreaterThanOrEqual(0);
+        expect(positioned.x + width).toBeLessThanOrEqual(VIEWBOX_SIZE);
+        expect(positioned.y).toBeGreaterThanOrEqual(0);
+        expect(positioned.y).toBeLessThanOrEqual(VIEWBOX_SIZE);
+      }
+    }
+  });
+
+  it("shrinks per-letter font size as letter count grows", () => {
+    const [one] = layoutLetters("A", font, { arrangement: "stacked" }).letters;
+    const [two] = layoutLetters("AA", font, { arrangement: "stacked" }).letters;
+    const [three] = layoutLetters("AAA", font, {
+      arrangement: "stacked",
+    }).letters;
+    if (!one || !two || !three) throw new Error("expected a positioned letter");
+    expect(one.fontSize).toBeGreaterThan(two.fontSize);
+    expect(two.fontSize).toBeGreaterThan(three.fontSize);
+  });
+});
