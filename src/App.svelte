@@ -27,8 +27,14 @@
     filterDesignsByLetterCount,
     resolveSelectedDesignId,
   } from "./lib/gallery";
+  import { isFirstRun } from "./lib/first-run";
+  import {
+    hasCompletedOnboarding,
+    markOnboardingComplete,
+  } from "./lib/onboarding";
   import DesignGallery from "./components/DesignGallery.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
+  import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
 
   let letters = $state("MX");
   let lettersHint: string | null = $state(null);
@@ -63,6 +69,14 @@
   // back and forth.
   let transparentBackground = $state(true);
   let backgroundColor = $state("#ffffff");
+
+  // Onboarding (issue #13): a pure predicate (isFirstRun) decides whether
+  // to show the initials prompt instead of the editor. It's fed today by a
+  // bare localStorage flag (src/lib/onboarding.ts) — #14 (IndexedDB
+  // Projects) will widen what feeds `onboardingComplete` to also cover
+  // "does any Project exist?" without isFirstRun() itself changing.
+  let onboardingComplete = $state(untrack(() => hasCompletedOnboarding()));
+  let showOnboarding = $derived(isFirstRun({ onboardingComplete }));
 
   let letterCount = $derived(
     Math.min(Math.max(letters.length, 1), 3) as LetterCount,
@@ -136,6 +150,27 @@
     return () => query.removeEventListener("change", handleChange);
   });
 
+  // Shared by both onboarding exits (submit and skip): sets the real
+  // letters immediately (bypassing the 200ms gallery debounce below, so the
+  // reveal shows the user's actual letters from the first frame, not a
+  // stale default) and marks onboarding complete so it never shows again.
+  function completeOnboarding(nextLetters: string) {
+    letters = nextLetters;
+    debouncedLetters = nextLetters;
+    markOnboardingComplete();
+    onboardingComplete = true;
+  }
+
+  function handleOnboardingSubmit(submittedLetters: string) {
+    completeOnboarding(submittedLetters);
+  }
+
+  // Skip / "just browsing" (issue #13 AC): defaults to a pleasant
+  // placeholder rather than dead-ending on an empty monogram.
+  function handleOnboardingSkip() {
+    completeOnboarding("ABC");
+  }
+
   // No native maxlength: it counts raw keystrokes, not valid ones, so once
   // 3 valid letters already fill the field, the browser would block the
   // 4th keystroke *before* oninput ever fires — swallowing an invalid
@@ -177,106 +212,114 @@
   }
 </script>
 
-<main>
-  <h1>MonoMix</h1>
-  <p class="tagline">Mix your monogram and take it with you.</p>
+{#if showOnboarding}
+  <OnboardingPrompt
+    onSubmit={handleOnboardingSubmit}
+    onSkip={handleOnboardingSkip}
+  />
+{:else}
+  <main>
+    <h1>MonoMix</h1>
+    <p class="tagline">Mix your monogram and take it with you.</p>
 
-  <label>
-    Letters
-    <input value={letters} oninput={handleLettersInput} />
-  </label>
-  {#if lettersHint}
-    <p class="hint" role="alert">{lettersHint}</p>
-  {/if}
+    <label>
+      Letters
+      <input value={letters} oninput={handleLettersInput} />
+    </label>
+    {#if lettersHint}
+      <p class="hint" role="alert">{lettersHint}</p>
+    {/if}
 
-  {#key resolvedDesignId}
-    <div
-      class="preview"
-      transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
-    >
-      {#if preview}
-        {@html preview}
-      {/if}
+    {#key resolvedDesignId}
+      <div
+        class="preview"
+        transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
+      >
+        {#if preview}
+          {@html preview}
+        {/if}
+      </div>
+    {/key}
+
+    <DesignGallery
+      designs={availableDesigns}
+      letters={debouncedLetters}
+      {fonts}
+      selectedId={resolvedDesignId}
+      onSelect={(id) => (selectedDesignId = id)}
+      {reducedMotion}
+    />
+
+    <FrameGallery
+      frames={FRAMES}
+      letters={debouncedLetters}
+      font={resolvedFont}
+      arrangement={resolvedDesign?.arrangement}
+      gap={resolvedFrameGap}
+      {lettersColor}
+      {frameColor}
+      selectedId={selectedFrameId}
+      onSelect={(id) => (selectedFrameId = id)}
+    />
+
+    <div class="gap-control">
+      <label>
+        Frame Gap
+        <input
+          type="range"
+          min={MIN_GAP}
+          max={MAX_GAP}
+          step="5"
+          bind:value={frameGap}
+        />
+      </label>
+      <output class="gap-value">{frameGap}</output>
     </div>
-  {/key}
 
-  <DesignGallery
-    designs={availableDesigns}
-    letters={debouncedLetters}
-    {fonts}
-    selectedId={resolvedDesignId}
-    onSelect={(id) => (selectedDesignId = id)}
-  />
+    <div class="color-controls">
+      <label>
+        Letter Color
+        <input type="color" bind:value={lettersColor} />
+      </label>
+      <label>
+        Frame Color
+        <input type="color" bind:value={frameColor} />
+      </label>
+      <label class:disabled={transparentBackground}>
+        Background Color
+        <input
+          type="color"
+          bind:value={backgroundColor}
+          disabled={transparentBackground}
+        />
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" bind:checked={transparentBackground} />
+        Transparent background
+      </label>
+    </div>
 
-  <FrameGallery
-    frames={FRAMES}
-    letters={debouncedLetters}
-    font={resolvedFont}
-    arrangement={resolvedDesign?.arrangement}
-    gap={resolvedFrameGap}
-    {lettersColor}
-    {frameColor}
-    selectedId={selectedFrameId}
-    onSelect={(id) => (selectedFrameId = id)}
-  />
-
-  <div class="gap-control">
     <label>
-      Frame Gap
-      <input
-        type="range"
-        min={MIN_GAP}
-        max={MAX_GAP}
-        step="5"
-        bind:value={frameGap}
-      />
+      PNG/JPG size (px)
+      <input type="number" min="128" max="4096" bind:value={exportSize} />
     </label>
-    <output class="gap-value">{frameGap}</output>
-  </div>
 
-  <div class="color-controls">
-    <label>
-      Letter Color
-      <input type="color" bind:value={lettersColor} />
-    </label>
-    <label>
-      Frame Color
-      <input type="color" bind:value={frameColor} />
-    </label>
-    <label class:disabled={transparentBackground}>
-      Background Color
-      <input
-        type="color"
-        bind:value={backgroundColor}
-        disabled={transparentBackground}
-      />
-    </label>
-    <label class="checkbox-label">
-      <input type="checkbox" bind:checked={transparentBackground} />
-      Transparent background
-    </label>
-  </div>
-
-  <label>
-    PNG/JPG size (px)
-    <input type="number" min="128" max="4096" bind:value={exportSize} />
-  </label>
-
-  <div class="export-actions">
-    <button onclick={() => handleExport("svg")} disabled={!preview}>
-      Export SVG
-    </button>
-    <button onclick={() => handleExport("png")} disabled={!preview}>
-      Export PNG
-    </button>
-    <button onclick={() => handleExport("jpg")} disabled={!preview}>
-      Export JPG
-    </button>
-    <button onclick={() => handleExport("pdf")} disabled={!preview}>
-      Export PDF
-    </button>
-  </div>
-</main>
+    <div class="export-actions">
+      <button onclick={() => handleExport("svg")} disabled={!preview}>
+        Export SVG
+      </button>
+      <button onclick={() => handleExport("png")} disabled={!preview}>
+        Export PNG
+      </button>
+      <button onclick={() => handleExport("jpg")} disabled={!preview}>
+        Export JPG
+      </button>
+      <button onclick={() => handleExport("pdf")} disabled={!preview}>
+        Export PDF
+      </button>
+    </div>
+  </main>
+{/if}
 
 <style>
   main {

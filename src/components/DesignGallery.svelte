@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Font } from "opentype.js";
+  import { fly } from "svelte/transition";
   import type { Design } from "../engine";
   import { composeMonogram } from "../engine";
 
@@ -9,17 +10,30 @@
     fonts,
     selectedId,
     onSelect,
+    reducedMotion = false,
   }: {
     designs: Design[];
     letters: string;
     fonts: Map<string, Font>;
     selectedId: string;
     onSelect: (id: string) => void;
+    // Staggered reveal (issue #13: first-run onboarding transition). Svelte
+    // only plays `in:` transitions when a block is inserted by a *later*
+    // reactive update, not on the very first page render — so this fires
+    // when the gallery mounts fresh right after the onboarding prompt is
+    // replaced by the editor, but never for a returning user whose editor
+    // is already showing on first render. Also plays (harmlessly) whenever
+    // a tile newly enters because the Letter Count changed.
+    reducedMotion?: boolean;
   } = $props();
+
+  // Capped so a large catalog doesn't drag the reveal out indefinitely.
+  const STAGGER_STEP_MS = 30;
+  const MAX_STAGGER_STEPS = 10;
 </script>
 
 <div class="gallery" role="listbox" aria-label="Designs">
-  {#each designs as design (design.id)}
+  {#each designs as design, i (design.id)}
     {@const font = fonts.get(design.fontId)}
     {@const selected = design.id === selectedId}
     <button
@@ -29,6 +43,13 @@
       role="option"
       aria-selected={selected}
       onclick={() => onSelect(design.id)}
+      in:fly={{
+        y: reducedMotion ? 0 : 10,
+        duration: reducedMotion ? 0 : 200,
+        delay: reducedMotion
+          ? 0
+          : Math.min(i, MAX_STAGGER_STEPS) * STAGGER_STEP_MS,
+      }}
     >
       <span class="tile-preview">
         {#if font && letters.length > 0}
