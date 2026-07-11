@@ -61,6 +61,18 @@ or product but don't warrant a full [ADR](adr/).
   no-dead-ends UX (Design Principle 3) — the app already never asks "are
   you sure?" for any other change. Revisit if user feedback says accidental
   deletes are a real problem. (Issue #14)
+- **`handleDeleteProject` now awaits any in-flight autosave write before
+  calling `store.delete(id)`, not just `cancelPending()`'s unfired-timer
+  case.** `cancelPending()` can only stop a debounced write that hasn't
+  fired yet; once the timer fires, `flush()` captures and clears the
+  pending Project synchronously but the `store.put()` itself is still
+  async, so a delete racing that window could land before the put and get
+  resurrected by it — the same class of race `switchToProject` was fixed
+  for above, just on the delete path instead. `AutosaveController` gained
+  `settleInFlight()` to close it deterministically: `handleDeleteProject`
+  calls `cancelPending()` then `await settleInFlight()` before
+  `store.delete(id)`, guaranteeing the delete is the last write for that
+  id. (Issue #14, PR #31 review)
 - **Onboarding's "first run?" gate now keys off real Project existence, not
   just the localStorage flag (backfilling #13).** #13 shipped a bare
   `localStorage` "onboarded" flag as a placeholder, with an explicit

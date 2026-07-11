@@ -22,6 +22,13 @@ export interface AutosaveController {
    * Project was just deleted, so a stale debounced write must not
    * resurrect it. The controller stays usable afterwards. */
   cancelPending(): void;
+  /** Resolves once a write currently in flight (the debounce timer already
+   * fired and `store.put()` has been called, so `cancelPending()` was too
+   * late to stop it) has settled. No-op (resolves immediately) if nothing
+   * is in flight. Call together with `cancelPending()` before deleting the
+   * active Project, so no write for its id can land after the delete and
+   * resurrect it. */
+  settleInFlight(): Promise<void>;
 }
 
 /**
@@ -38,6 +45,22 @@ export function createAutosaveController(
   const delayMs = options.delayMs ?? 400;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending: Project | undefined;
+  // Tracks the currently in-flight store.put() (if any) so settleInFlight()
+  // can wait it out — closing the window where cancelPending() is too late
+  // (the debounce timer already fired) but the write hasn't landed yet.
+  let inFlight: Promise<void> | undefined;
+
+  function write(project: Project): Promise<void> {
+    const promise = (async () => {
+      await store.put(project);
+      options.onSaved?.(project);
+    })();
+    const clearIfCurrent = () => {
+      if (inFlight === promise) inFlight = undefined;
+    };
+    promise.then(clearIfCurrent, clearIfCurrent);
+    return promise;
+  }
 
   async function flush(): Promise<void> {
     if (timer !== undefined) {
@@ -46,9 +69,10 @@ export function createAutosaveController(
     }
     const project = pending;
     pending = undefined;
-    if (!project) return;
-    await store.put(project);
-    options.onSaved?.(project);
+    if (project) {
+      inFlight = write(project);
+    }
+    await inFlight;
   }
 
   return {
@@ -66,6 +90,9 @@ export function createAutosaveController(
         timer = undefined;
       }
       pending = undefined;
+    },
+    async settleInFlight() {
+      await inFlight;
     },
   };
 }

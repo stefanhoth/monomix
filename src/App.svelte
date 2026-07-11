@@ -371,11 +371,18 @@
   }
 
   async function handleDeleteProject(id: string) {
+    if (activeProjectMeta?.id === id) {
+      // Discard any pending debounced write for the Project we're about to
+      // delete, and wait out a write already in flight (the debounce timer
+      // fired but store.put() hasn't resolved yet — cancelPending() alone
+      // can't stop it) — otherwise it could land after delete() below and
+      // resurrect the Project. This must happen *before* store.delete(id)
+      // so the delete is guaranteed to be the last write for this id.
+      autosave.cancelPending();
+      await autosave.settleInFlight();
+    }
     await projectStore.delete(id);
     if (activeProjectMeta?.id === id) {
-      // Discard any pending debounced write for the Project we just
-      // deleted — otherwise it could resurrect a moment later.
-      autosave.cancelPending();
       const fallback = await projectStore.getLastEdited();
       if (fallback) {
         switchToProject(fallback);
