@@ -45,3 +45,25 @@ for (const { button, extension } of FORMATS) {
     }
   });
 }
+
+test("PNG export respects a chosen size (AC: 'at a chosen size')", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const sizeInput = page.getByLabel("PNG/JPG size (px)");
+  await sizeInput.fill("256");
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export PNG" }).click(),
+  ]);
+
+  const path = await download.path();
+  const bytes = await readFile(path!);
+  // PNG IHDR chunk: width is the 4 bytes right after the 8-byte signature
+  // + 4-byte chunk length + 4-byte "IHDR" tag, big-endian.
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  expect(width).toBe(256);
+  expect(height).toBe(256);
+});

@@ -45,10 +45,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/canvg")) return "jspdf-unused-canvg";
-          if (id.includes("node_modules/html2canvas"))
+          // Trailing slash: matches only the package itself, not a
+          // same-prefix package like a hypothetical "canvg-fork".
+          if (id.includes("node_modules/canvg/")) return "jspdf-unused-canvg";
+          if (id.includes("node_modules/html2canvas/"))
             return "jspdf-unused-html2canvas";
-          if (id.includes("node_modules/dompurify"))
+          if (id.includes("node_modules/dompurify/"))
             return "jspdf-unused-dompurify";
         },
       },
