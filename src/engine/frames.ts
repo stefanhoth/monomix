@@ -63,10 +63,12 @@ export function composeFrame(
   // never produces a negative (invalid) radius.
   const r = Math.max(VIEWBOX_SIZE / 2 - gap - strokeWidth / 2, 0);
   const attrs = `fill="none" stroke="${color}" stroke-width="${strokeWidth}"`;
+  const circle = (extra = "") =>
+    `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs}${extra}/>`;
 
   switch (frame.shape) {
     case "circle":
-      return `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs}/>`;
+      return circle();
     case "square":
       return `<rect x="${CENTER - r}" y="${CENTER - r}" width="${r * 2}" height="${r * 2}" ${attrs}/>`;
     case "diamond": {
@@ -74,8 +76,8 @@ export function composeFrame(
       return `<path d="${d}" ${attrs}/>`;
     }
     case "dotted-circle":
-      return `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs} stroke-dasharray="2 14" stroke-linecap="round"/>`;
+      return circle(' stroke-dasharray="2 14" stroke-linecap="round"');
     case "dashed-circle":
-      return `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs} stroke-dasharray="50 24"/>`;
+      return circle(' stroke-dasharray="50 24"');
   }
 }
