@@ -5,6 +5,12 @@
  * (isFirstRun), which stays storage-agnostic and unit-tested without
  * touching `window`.
  *
+ * This runs on the app startup path (it decides first-run before the UI
+ * renders), so reads/writes are guarded: a throwing localStorage (Safari
+ * private mode, storage-blocked/enterprise contexts, some webviews)
+ * degrades gracefully instead of crashing the app — treated as
+ * not-yet-onboarded on read, silently ignored on write.
+ *
  * TODO(#14): once IndexedDB Project persistence lands, "first run?" should
  * really mean "no Project exists yet." Replace or extend this module to
  * source that (e.g. querying the project store) — isFirstRun()'s signature
@@ -13,9 +19,18 @@
 const STORAGE_KEY = "monomix:onboarded";
 
 export function hasCompletedOnboarding(): boolean {
-  return localStorage.getItem(STORAGE_KEY) === "true";
+  try {
+    return localStorage.getItem(STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 export function markOnboardingComplete(): void {
-  localStorage.setItem(STORAGE_KEY, "true");
+  try {
+    localStorage.setItem(STORAGE_KEY, "true");
+  } catch {
+    // Storage unavailable (private mode, blocked storage, etc.) — don't
+    // block the user from proceeding; it just won't persist this session.
+  }
 }
