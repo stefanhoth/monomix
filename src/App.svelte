@@ -1,28 +1,96 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
+  import { SvelteMap } from "svelte/reactivity";
+  import { scale } from "svelte/transition";
   import type { Font } from "opentype.js";
-  import { composeMonogram } from "./engine";
-  import { FONTS } from "./engine/fonts";
+  import { composeMonogram, DESIGNS, FONTS, type LetterCount } from "./engine";
   import { loadFont } from "./lib/font-loader";
   import { exportSvg } from "./lib/export/svg";
   import { exportPng, exportJpg } from "./lib/export/raster";
   import { triggerDownload } from "./lib/export/download";
   import { DEFAULT_EXPORT_SIZE } from "./lib/export/options";
   import { sanitizeLettersInput } from "./lib/letters-input";
-
-  // TEMP default font until the Design gallery (issue #11) picks one.
-  const defaultFont = FONTS.find((f) => f.id === "archivo-black")!;
+  import {
+    filterDesignsByLetterCount,
+    resolveSelectedDesignId,
+  } from "./lib/gallery";
+  import DesignGallery from "./components/DesignGallery.svelte";
 
   let letters = $state("MX");
   let lettersHint: string | null = $state(null);
-  let font: Font | undefined = $state(undefined);
+  // Debounced separately from `letters` — the main preview reflects every
+  // keystroke instantly (Design Principle 3), but re-composing all ~30+
+  // gallery tiles on every keystroke is wasted work while still typing.
+  let debouncedLetters = $state(untrack(() => letters));
+  // SvelteMap so tiles can populate progressively as each font finishes
+  // loading, without replacing the whole Map (and its reactive subscribers)
+  // on every single arrival.
+  const fonts = new SvelteMap<string, Font>();
   let exportSize = $state(DEFAULT_EXPORT_SIZE);
+  // The user's explicit choice, if any — undefined until they pick a tile.
+  // Never written to reactively; see resolvedDesignId below.
+  let selectedDesignId: string | undefined = $state(undefined);
+  let reducedMotion = $state(false);
+
+  let letterCount = $derived(
+    Math.min(Math.max(letters.length, 1), 3) as LetterCount,
+  );
+  let availableDesigns = $derived(
+    filterDesignsByLetterCount(DESIGNS, letterCount),
+  );
+  // Keeps the current selection if it still supports this Letter Count,
+  // else falls back — purely derived, so there's no effect writing back
+  // into the state it reads (no risk of a reactive loop).
+  let resolvedDesignId = $derived(
+    resolveSelectedDesignId(selectedDesignId, availableDesigns),
+  );
+  let resolvedDesign = $derived(
+    availableDesigns.find((d) => d.id === resolvedDesignId),
+  );
+  let resolvedFont = $derived(
+    resolvedDesign && fonts.get(resolvedDesign.fontId),
+  );
   let preview = $derived(
-    font && letters.length > 0 ? composeMonogram(letters, font) : "",
+    resolvedFont && resolvedDesign && letters.length > 0
+      ? composeMonogram(letters, resolvedFont, {
+          arrangement: resolvedDesign.arrangement,
+        })
+      : "",
   );
 
   onMount(async () => {
-    font = await loadFont(defaultFont.url);
+    // Load the font the initial preview actually needs first, so it's
+    // never blocked on the other 16 gallery fonts (Design Principle 2:
+    // fast first result). The rest load in the background and populate
+    // the gallery progressively as each one arrives.
+    const primaryId = untrack(() => resolvedDesign)?.fontId;
+    const primary = FONTS.find((f) => f.id === primaryId);
+    const rest = FONTS.filter((f) => f.id !== primaryId);
+
+    if (primary) {
+      fonts.set(primary.id, await loadFont(primary.url));
+    }
+    for (const f of rest) {
+      loadFont(f.url).then((font) => fonts.set(f.id, font));
+    }
+  });
+
+  $effect(() => {
+    const current = letters;
+    const timer = setTimeout(() => {
+      debouncedLetters = current;
+    }, 200);
+    return () => clearTimeout(timer);
+  });
+
+  $effect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reducedMotion = query.matches;
+    const handleChange = (event: MediaQueryListEvent) => {
+      reducedMotion = event.matches;
+    };
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
   });
 
   // No native maxlength: it counts raw keystrokes, not valid ones, so once
@@ -78,11 +146,24 @@
     <p class="hint" role="alert">{lettersHint}</p>
   {/if}
 
-  <div class="preview">
-    {#if preview}
-      {@html preview}
-    {/if}
-  </div>
+  {#key resolvedDesignId}
+    <div
+      class="preview"
+      transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
+    >
+      {#if preview}
+        {@html preview}
+      {/if}
+    </div>
+  {/key}
+
+  <DesignGallery
+    designs={availableDesigns}
+    letters={debouncedLetters}
+    {fonts}
+    selectedId={resolvedDesignId}
+    onSelect={(id) => (selectedDesignId = id)}
+  />
 
   <label>
     PNG/JPG size (px)
