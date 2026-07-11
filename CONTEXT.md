@@ -9,8 +9,11 @@ The complete composed artwork: letters rendered in a Design, optionally surround
 _Avoid_: Logo, emblem
 
 **Design**:
-The letterform style that shapes the letters themselves (e.g. circle, vine, diamond). Backed by a monogram font. A Design declares which Letter Counts it supports; it is not bound to exactly one.
+A font paired with an Arrangement, algorithmically composing the letters (ADR 0006) — there is no dedicated monogram font, so this pairing is what gives each Design its character. A Design declares which Letter Counts it supports; it is not bound to exactly one.
 _Avoid_: Style, template, model
+
+**Arrangement**:
+How a Design positions its letters relative to each other (e.g. horizontal, stacked). Distinct from Frame, which shapes/clips the composed result from the outside rather than arranging the letters themselves.
 
 **Letter Count**:
 How many letters the Monogram consists of: 1, 2, or 3. The design gallery is filtered by the current Letter Count.

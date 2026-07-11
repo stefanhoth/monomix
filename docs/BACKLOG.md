@@ -18,3 +18,4 @@
 - **Custom domain** — attach monomix.stefanhoth.com to the production Worker (hosting is Cloudflare Workers from day 1, see ADR 0004).
 - **Non-Latin scripts research** — monogram-style fonts likely exist for Devanagari, CJK, Arabic on non-Western platforms; investigate sources and licensing.
 - **Cloudflare API token rotation** — the `CLOUDFLARE_API_TOKEN` repo secret expires 2027-01-01; rotate before then or CI deploys will start failing.
+- **Genuinely distinct composition styles** (circle-arranged letters, diamond, interlocked/overlapping glyphs) — v1's Design catalog (#6) only varies font × Arrangement (horizontal/stacked); true circular or interlocking letter composition needs real path geometry (arranging glyphs along an arc, boolean overlap handling) beyond simple positioning and is a bigger effort than the letter-count-agnostic engine currently does.
