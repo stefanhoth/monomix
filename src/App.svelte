@@ -1,28 +1,71 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
+  import { scale } from "svelte/transition";
   import type { Font } from "opentype.js";
-  import { composeMonogram } from "./engine";
-  import { FONTS } from "./engine/fonts";
+  import { composeMonogram, DESIGNS, FONTS, type LetterCount } from "./engine";
   import { loadFont } from "./lib/font-loader";
   import { exportSvg } from "./lib/export/svg";
   import { exportPng, exportJpg } from "./lib/export/raster";
   import { triggerDownload } from "./lib/export/download";
   import { DEFAULT_EXPORT_SIZE } from "./lib/export/options";
   import { sanitizeLettersInput } from "./lib/letters-input";
-
-  // TEMP default font until the Design gallery (issue #11) picks one.
-  const defaultFont = FONTS.find((f) => f.id === "archivo-black")!;
+  import {
+    filterDesignsByLetterCount,
+    resolveSelectedDesignId,
+  } from "./lib/gallery";
+  import DesignGallery from "./components/DesignGallery.svelte";
 
   let letters = $state("MX");
   let lettersHint: string | null = $state(null);
-  let font: Font | undefined = $state(undefined);
+  // Debounced separately from `letters` — the main preview reflects every
+  // keystroke instantly (Design Principle 3), but re-composing all ~30+
+  // gallery tiles on every keystroke is wasted work while still typing.
+  let debouncedLetters = $state(untrack(() => letters));
+  let fonts: Map<string, Font> = $state(new Map());
   let exportSize = $state(DEFAULT_EXPORT_SIZE);
+  // The user's explicit choice, if any — undefined until they pick a tile.
+  // Never written to reactively; see resolvedDesignId below.
+  let selectedDesignId: string | undefined = $state(undefined);
+
+  let letterCount = $derived(
+    Math.min(Math.max(letters.length, 1), 3) as LetterCount,
+  );
+  let availableDesigns = $derived(
+    filterDesignsByLetterCount(DESIGNS, letterCount),
+  );
+  // Keeps the current selection if it still supports this Letter Count,
+  // else falls back — purely derived, so there's no effect writing back
+  // into the state it reads (no risk of a reactive loop).
+  let resolvedDesignId = $derived(
+    resolveSelectedDesignId(selectedDesignId, availableDesigns),
+  );
+  let resolvedDesign = $derived(
+    availableDesigns.find((d) => d.id === resolvedDesignId),
+  );
+  let resolvedFont = $derived(
+    resolvedDesign && fonts.get(resolvedDesign.fontId),
+  );
   let preview = $derived(
-    font && letters.length > 0 ? composeMonogram(letters, font) : "",
+    resolvedFont && resolvedDesign && letters.length > 0
+      ? composeMonogram(letters, resolvedFont, {
+          arrangement: resolvedDesign.arrangement,
+        })
+      : "",
   );
 
   onMount(async () => {
-    font = await loadFont(defaultFont.url);
+    const loaded = await Promise.all(
+      FONTS.map(async (f) => [f.id, await loadFont(f.url)] as const),
+    );
+    fonts = new Map(loaded);
+  });
+
+  $effect(() => {
+    const current = letters;
+    const timer = setTimeout(() => {
+      debouncedLetters = current;
+    }, 200);
+    return () => clearTimeout(timer);
   });
 
   // No native maxlength: it counts raw keystrokes, not valid ones, so once
@@ -78,11 +121,21 @@
     <p class="hint" role="alert">{lettersHint}</p>
   {/if}
 
-  <div class="preview">
-    {#if preview}
-      {@html preview}
-    {/if}
-  </div>
+  {#key resolvedDesignId}
+    <div class="preview" transition:scale={{ start: 0.98, duration: 200 }}>
+      {#if preview}
+        {@html preview}
+      {/if}
+    </div>
+  {/key}
+
+  <DesignGallery
+    designs={availableDesigns}
+    letters={debouncedLetters}
+    {fonts}
+    selectedId={resolvedDesignId}
+    onSelect={(id) => (selectedDesignId = id)}
+  />
 
   <label>
     PNG/JPG size (px)
