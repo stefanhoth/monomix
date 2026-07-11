@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { skipOnboarding } from "./helpers/onboarding";
 
 test("selecting a different Design in the gallery updates the main preview", async ({
   page,
 }) => {
+  await skipOnboarding(page);
   await page.goto("/");
 
   const gallery = page.getByRole("listbox", { name: "Designs" });

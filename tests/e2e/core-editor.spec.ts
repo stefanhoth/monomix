@@ -1,4 +1,12 @@
 import { test, expect } from "@playwright/test";
+import { skipOnboarding } from "./helpers/onboarding";
+
+test.beforeEach(async ({ page }) => {
+  // Every test in this file exercises the editor directly, not onboarding
+  // (see onboarding.spec.ts for that) — simulate a returning user so the
+  // first-run initials prompt (issue #13) never intercepts page.goto("/").
+  await skipOnboarding(page);
+});
 
 test("typing letters, picking a Frame, adjusting the gap, and changing colors all update the live preview (the core journey)", async ({
   page,
