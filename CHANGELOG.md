@@ -9,3 +9,4 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 ### Added
 
 - A basic live preview now renders your letters as an actual monogram (using a placeholder default font) instead of plain text. The full design/color/frame editor is still to come.
+- You can now export your monogram as SVG, PNG, JPG, or PDF.
