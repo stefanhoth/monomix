@@ -54,16 +54,25 @@ jobs:
             for (const deployment of prDeployments) {
               core.info(`Deactivating deployment ${deployment.id} for PR #${prNumber}`);
 
-              await github.rest.repos.createDeploymentStatus({
-                owner,
-                repo,
-                deployment_id: deployment.id,
-                state: "inactive",
-                environment: "preview",
-              });
+              // Best-effort: don't abort the loop if a particular deployment's
+              // status can't be updated (e.g. transient API error), since that
+              // would leave the PR's remaining deployments uncleaned too.
+              try {
+                await github.rest.repos.createDeploymentStatus({
+                  owner,
+                  repo,
+                  deployment_id: deployment.id,
+                  state: "inactive",
+                  environment: "preview",
+                });
+              } catch (error) {
+                core.warning(
+                  `Could not deactivate deployment ${deployment.id}: ${error.message}`,
+                );
+              }
 
               // Deleting requires every status to be inactive first, which the
-              // call above just ensured. Best-effort: don't fail the job if a
+              // call above just attempted. Best-effort: don't fail the job if a
               // particular deployment can't be deleted (e.g. already gone).
               try {
                 await github.rest.repos.deleteDeployment({
