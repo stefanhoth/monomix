@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { fitScale, scaleLayout, fitLayoutToFrame } from "../../src/engine/fit";
+import {
+  fitScale,
+  fitCircleScale,
+  scaleLayout,
+  fitLayoutToFrame,
+} from "../../src/engine/fit";
 import { VIEWBOX_SIZE, type Layout } from "../../src/engine/layout";
 import { frameInnerExtent } from "../../src/engine/frames";
 
@@ -80,6 +85,66 @@ describe("fitScale", () => {
 
   it("a degenerate zero-size block doesn't divide by zero", () => {
     expect(fitScale(0, 0, 200, "circle")).toBe(1);
+  });
+});
+
+describe("fitCircleScale (issue #37: fitting an already-warped, circular Shape block into a Frame)", () => {
+  it("square and circle Frames give a disc the same scale — its boundary already IS the extremal shape a Euclidean disc is measured against in both norms", () => {
+    expect(fitCircleScale(100, 200, "square")).toBeCloseTo(2);
+    expect(fitCircleScale(100, 200, "circle")).toBeCloseTo(2);
+    expect(fitCircleScale(100, 200, "dotted-circle")).toBeCloseTo(2);
+    expect(fitCircleScale(100, 200, "dashed-circle")).toBeCloseTo(2);
+  });
+
+  it("at that scale, the disc's radius exactly reaches `extent` for square/circle Frames", () => {
+    const scale = fitCircleScale(100, 200, "circle");
+    expect(100 * scale).toBeCloseTo(200);
+  });
+
+  it("a diamond Frame is stricter than a circle/square Frame at the same extent — its closest boundary point to center sits at 45 degrees, not on an axis", () => {
+    const diamondScale = fitCircleScale(100, 200, "diamond");
+    const circleScale = fitCircleScale(100, 200, "circle");
+    expect(diamondScale).toBeLessThan(circleScale);
+    expect(diamondScale).toBeCloseTo(200 / (100 * Math.SQRT2));
+  });
+
+  it("regression: does NOT reuse fitScale's rectangular-corner formula (which would wrongly shrink a circle Frame's fit to ~70.7% and a diamond Frame's to 50%)", () => {
+    // Before the fix, composeShapedLetters called
+    // fitScale(2*radius, 2*radius, extent, shape) — treating the disc as if
+    // it were a square block whose CORNERS must reach the boundary. That
+    // under-fits both the circle and diamond norms versus the correct
+    // "a disc's own boundary is what matters" formula asserted above.
+    const radius = 100;
+    const extent = 200;
+    const buggyCircleScale = fitScale(radius * 2, radius * 2, extent, "circle");
+    const buggyDiamondScale = fitScale(
+      radius * 2,
+      radius * 2,
+      extent,
+      "diamond",
+    );
+    expect(fitCircleScale(radius, extent, "circle")).toBeGreaterThan(
+      buggyCircleScale,
+    );
+    expect(fitCircleScale(radius, extent, "diamond")).toBeGreaterThan(
+      buggyDiamondScale,
+    );
+  });
+
+  it("a shrinking extent (larger gap) always produces a smaller scale", () => {
+    expect(fitCircleScale(100, 100, "circle")).toBeLessThan(
+      fitCircleScale(100, 200, "circle"),
+    );
+  });
+
+  it("an extent of 0 scales the disc to nothing, not NaN or negative", () => {
+    for (const shape of ["square", "circle", "diamond"] as const) {
+      expect(fitCircleScale(100, 0, shape)).toBe(0);
+    }
+  });
+
+  it("a degenerate zero-radius disc doesn't divide by zero", () => {
+    expect(fitCircleScale(0, 200, "circle")).toBe(1);
   });
 });
 

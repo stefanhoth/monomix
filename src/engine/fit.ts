@@ -56,6 +56,32 @@ export function fitScale(
 }
 
 /**
+ * The uniform scale factor that resizes a Euclidean disc of `radius` so it
+ * exactly reaches (or, for a smaller `extent`, stays within) a Frame
+ * shape's half-extent. Deliberately separate from `fitScale`: that function
+ * assumes a rectangular block whose CORNERS are its farthest points from
+ * center, but a disc is equidistant from its center in every direction, so
+ * the binding constraint is each norm's worst-case value over the Euclidean
+ * unit circle — 1 for square (L∞) and circle (L2), since a disc's boundary
+ * already coincides with a circle's and just touches a square's flat edges
+ * at its own radius, but sqrt(2) for diamond (L1), whose closest boundary
+ * point to center sits at 45°, not on an axis. Used by the Shape warp stage
+ * (src/engine/shape.ts, ADR 0007) once letters have been pressed into a
+ * circle: the warped block's own bounding box is a square, not the letters'
+ * actual (round) silhouette, so `fitScale`'s rectangular-corner assumption
+ * doesn't apply to it.
+ */
+export function fitCircleScale(
+  radius: number,
+  extent: number,
+  shape: FrameShapeKind,
+): number {
+  if (radius === 0) return 1;
+  const worstCaseNorm = shape === "diamond" ? Math.SQRT2 : 1;
+  return extent / (radius * worstCaseNorm);
+}
+
+/**
  * Scales every letter's position and font size by `scale`, about the canvas
  * center — the block stays centered, only its size changes.
  */
@@ -79,6 +105,30 @@ export interface FitFrameOptions {
   strokeWidth?: number;
 }
 
+export interface FrameFitTarget {
+  shape: FrameShapeKind;
+  extent: number;
+}
+
+/**
+ * Resolves a Frame id + Frame Gap into the geometric norm/half-extent its
+ * inner boundary represents (issue #36) — null for "No Frame" or an
+ * unrecognized id. The single source of truth both `fitLayoutToFrame` below
+ * and the Shape warp stage (src/engine/render.ts, ADR 0007) fit against, so
+ * the two don't drift by each re-deriving the extent formula themselves.
+ */
+export function frameFitExtent(frame: FitFrameOptions): FrameFitTarget | null {
+  const shape = frameShapeFor(frame.id);
+  if (!shape) {
+    return null;
+  }
+  const gap = frame.gap ?? DEFAULT_GAP;
+  return {
+    shape,
+    extent: Math.max(frameInnerExtent(frame.strokeWidth) - gap, 0),
+  };
+}
+
 /**
  * Scales `layout` as a unit so it fits `frame`'s fixed Shape at the given
  * Frame Gap. A no-op for "No Frame" or an unknown frame id.
@@ -87,12 +137,15 @@ export function fitLayoutToFrame(
   layout: Layout,
   frame: FitFrameOptions,
 ): Layout {
-  const shape = frameShapeFor(frame.id);
-  if (!shape) {
+  const target = frameFitExtent(frame);
+  if (!target) {
     return layout;
   }
-  const gap = frame.gap ?? DEFAULT_GAP;
-  const extent = Math.max(frameInnerExtent(frame.strokeWidth) - gap, 0);
-  const scale = fitScale(layout.blockWidth, layout.blockHeight, extent, shape);
+  const scale = fitScale(
+    layout.blockWidth,
+    layout.blockHeight,
+    target.extent,
+    target.shape,
+  );
   return scaleLayout(layout, scale);
 }

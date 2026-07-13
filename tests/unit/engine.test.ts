@@ -191,7 +191,37 @@ describe("composeMonogram (Shape warp, issue #37, ADR 0007)", () => {
     }
   });
 
-  it("is a pure function: shaped output matches its regression snapshot", () => {
-    expect(composeMonogram("MX", font, { shape: "circle" })).toMatchSnapshot();
+  it.each([
+    ["1-letter", "A"],
+    ["2-letter", "MX"],
+    ["3-letter", "WIW"],
+  ])(
+    "is a pure function: %s shaped output matches its regression snapshot",
+    (_label, letters) => {
+      expect(
+        composeMonogram(letters, font, { shape: "circle" }),
+      ).toMatchSnapshot();
+    },
+  );
+
+  it("regression (was under-fit inside circle/diamond Frames, issue #37 review): a circle Frame lets the shaped block reach the same size as a square Frame, and a diamond Frame is stricter than both", () => {
+    function shapedBlockWidth(frameId: string): number {
+      const svg = composeMonogram("MX", font, {
+        shape: "circle",
+        frame: { id: frameId, gap: 0 },
+      });
+      const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+      const xs = [...glyphMarkup.matchAll(/[ML](-?\d+\.\d+)/g)].map((m) =>
+        Number(m[1]),
+      );
+      return Math.max(...xs) - Math.min(...xs);
+    }
+
+    const squareWidth = shapedBlockWidth("square");
+    const circleWidth = shapedBlockWidth("circle");
+    const diamondWidth = shapedBlockWidth("diamond");
+
+    expect(circleWidth).toBeCloseTo(squareWidth, 0);
+    expect(diamondWidth).toBeLessThan(circleWidth);
   });
 });

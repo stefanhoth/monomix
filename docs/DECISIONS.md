@@ -27,18 +27,23 @@ or product but don't warrant a full [ADR](adr/).
   become curved once warped) — output is always flattened to `M`/`L`/`Z`, since a
   formerly-straight segment re-expressed as a bezier after a non-linear warp isn't
   meaningful. (Issue #37, ADR 0007)
-- **The Shape warp's own "fit to the canvas or Frame" step reuses `fit.ts`'s
-  `fitScale` rather than a bespoke shaped-layout scale.** Once warped, a letter
-  block's bounding box is itself a circle of known radius — scaling _that_
-  against a Frame's extent/norm (or, with no Frame, the same padded half-extent
-  unshaped Designs already fit into) is exactly the same "scale a block's bounding
-  box to reach an extent under a given norm" problem issue #36 solved, so
-  `composeShapedLetters` (`src/engine/render.ts`) computes the target extent/norm
-  and calls the existing `fitScale`/`scalePathCommands` instead of introducing a
-  second fitting formula. This is also what makes "combined with any Frame, the
-  shaped lettering fits per the Frame-fitting rules from #36" (issue #37 AC) true
-  by construction rather than by a separate implementation that has to be kept in
-  sync. (Issue #37)
+- **The Shape warp's "fit to the canvas or Frame" step gets its own
+  `fitCircleScale` (`src/engine/fit.ts`), not a reuse of `fitScale`.** An
+  initial pass reused `fitScale(2r, 2r, extent, shape)` directly, on the
+  reasoning that a warped block's bounding box is a square of half-extent
+  `r` — but `fitScale` assumes a rectangular block whose _corners_ are its
+  farthest points from center, and a warped-into-a-circle block's actual
+  content is a disc, not a rectangle, so its corners are empty space, not
+  ink. That mismatch silently under-fit the circle Shape inside a circle
+  Frame to ~70.7% of the available space and inside a diamond Frame to 50%
+  (caught in review, `docs/adr/0007`'s "combine with any Frame and it still
+  fits perfectly" wasn't actually true). `fitCircleScale(radius, extent,
+shape)` instead uses each norm's worst-case value over the Euclidean unit
+  circle (1 for square/circle, `√2` for diamond) — the two functions do
+  share `fit.ts`'s Frame-extent resolution (`frameFitExtent`, extracted from
+  `fitLayoutToFrame` in the same pass so both callers derive the extent/norm
+  from one place), just not the scale formula itself, since a disc and a
+  rectangle are fit against a norm boundary differently. (Issue #37)
 - **Every font in the catalog gets a "Circle" Design (horizontal arrangement
   only), not a hand-curated subset.** ADR 0007 anticipated curating which fonts
   "survive" a Shape; visually spot-checking one font per style category (serif,

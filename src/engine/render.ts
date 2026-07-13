@@ -1,22 +1,20 @@
-import type { Font } from "opentype.js";
+import type { Font, PathCommand } from "opentype.js";
 import {
   layoutLetters,
   VIEWBOX_SIZE,
   PADDING_RATIO,
   type Layout,
   type LayoutOptions,
+  type PositionedLetter,
 } from "./layout";
 import { pathCommandsToSvgData } from "./svg-path";
+import { composeFrame, NO_FRAME_ID, type FrameOptions } from "./frames";
 import {
-  composeFrame,
-  NO_FRAME_ID,
-  DEFAULT_GAP,
-  frameShapeFor,
-  frameInnerExtent,
-  type FrameOptions,
-  type FrameShapeKind,
-} from "./frames";
-import { fitLayoutToFrame, fitScale } from "./fit";
+  fitLayoutToFrame,
+  fitCircleScale,
+  frameFitExtent,
+  type FrameFitTarget,
+} from "./fit";
 import { sanitizeColor } from "./color";
 import {
   warpPathCommands,
@@ -48,35 +46,37 @@ export interface ComposeOptions extends LayoutOptions {
   background?: string;
 }
 
+/** A positioned letter's raw glyph outline, in absolute viewBox coordinates. */
+function glyphPathCommands(
+  font: Font,
+  positioned: PositionedLetter,
+): PathCommand[] {
+  const glyph = font.charToGlyph(positioned.letter);
+  return glyph.getPath(positioned.x, positioned.y, positioned.fontSize)
+    .commands;
+}
+
 /**
  * The extent/norm a shaped Design's warped block is fitted against: the
- * selected Frame's own fitting rule (issue #36) when there is one, else the
- * same padded canvas area unshaped Designs fit into by construction.
+ * selected Frame's own fitting rule (issue #36, `fit.ts`'s `frameFitExtent`)
+ * when there is one, else the same padded canvas area unshaped Designs fit
+ * into by construction.
  */
-function shapeFitTarget(frame: ComposeOptions["frame"]): {
-  extent: number;
-  normShape: FrameShapeKind;
-} {
-  if (frame && frame.id !== NO_FRAME_ID) {
-    const frameShape = frameShapeFor(frame.id);
-    if (frameShape) {
-      const gap = frame.gap ?? DEFAULT_GAP;
-      return {
-        extent: Math.max(frameInnerExtent(frame.strokeWidth) - gap, 0),
-        normShape: frameShape,
-      };
-    }
-  }
-  return { extent: DEFAULT_SHAPE_EXTENT, normShape: "square" };
+function shapeFitTarget(frame: ComposeOptions["frame"]): FrameFitTarget {
+  const target =
+    frame && frame.id !== NO_FRAME_ID ? frameFitExtent(frame) : null;
+  return target ?? { extent: DEFAULT_SHAPE_EXTENT, shape: "square" };
 }
 
 /**
  * Renders the arranged letters warped into `shape` (ADR 0007): warps each
  * glyph's raw path into the Shape's silhouette relative to the whole letter
  * block, then scales the shaped result to fit the chosen Frame — or, with
- * no Frame, the same padded canvas area unshaped Designs fit into —
- * reusing fit.ts's `fitScale` rather than duplicating issue #36's fitting
- * rules.
+ * no Frame, the same padded canvas area unshaped Designs fit into. Uses
+ * `fitCircleScale`, not `fitScale`: once warped, the letters' silhouette is
+ * itself a disc, not a rectangle, so the block's own bounding-box corners
+ * (what `fitScale` fits) are no longer where the shaped content actually
+ * extends to.
  */
 function composeShapedLetters(
   layout: Layout,
@@ -90,15 +90,13 @@ function composeShapedLetters(
     halfWidth: layout.blockWidth / 2,
     halfHeight: layout.blockHeight / 2,
   };
-  const warpedPaths = layout.letters.map((positioned) => {
-    const glyph = font.charToGlyph(positioned.letter);
-    const path = glyph.getPath(positioned.x, positioned.y, positioned.fontSize);
-    return warpPathCommands(path.commands, box, shape);
-  });
+  const warpedPaths = layout.letters.map((positioned) =>
+    warpPathCommands(glyphPathCommands(font, positioned), box, shape),
+  );
 
   const shapedRadius = Math.max(box.halfWidth, box.halfHeight);
-  const { extent, normShape } = shapeFitTarget(frame);
-  const scale = fitScale(shapedRadius * 2, shapedRadius * 2, extent, normShape);
+  const { extent, shape: fitShape } = shapeFitTarget(frame);
+  const scale = fitCircleScale(shapedRadius, extent, fitShape);
 
   return warpedPaths
     .map((commands) => {
@@ -129,15 +127,10 @@ export function composeMonogram(
         ? fitLayoutToFrame(baseLayout, options.frame)
         : baseLayout;
     paths = layout.letters
-      .map((positioned) => {
-        const glyph = font.charToGlyph(positioned.letter);
-        const path = glyph.getPath(
-          positioned.x,
-          positioned.y,
-          positioned.fontSize,
-        );
-        return `<path d="${pathCommandsToSvgData(path.commands)}"/>`;
-      })
+      .map(
+        (positioned) =>
+          `<path d="${pathCommandsToSvgData(glyphPathCommands(font, positioned))}"/>`,
+      )
       .join("");
   } else {
     paths = composeShapedLetters(baseLayout, font, shape, options.frame);
