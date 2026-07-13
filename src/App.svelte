@@ -45,11 +45,18 @@
   import { createAutosaveController } from "./lib/autosave";
   import { formatLettersHint } from "./lib/i18n/format-letters-hint";
   import { getLocale, t } from "./lib/i18n/store.svelte";
+  import {
+    CHANGELOG_ENTRIES,
+    hasUnseenEntries,
+    latestEntryId,
+  } from "./lib/changelog";
+  import { getLastSeenEntryId, markEntrySeen } from "./lib/changelog-storage";
   import DesignGallery from "./components/DesignGallery.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
   import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
   import ProjectsPanel from "./components/ProjectsPanel.svelte";
   import LocaleSwitcher from "./components/LocaleSwitcher.svelte";
+  import WhatsNewPanel from "./components/WhatsNewPanel.svelte";
 
   let letters = $state("MX");
   let lettersHintInfo: LettersHint | null = $state(null);
@@ -89,6 +96,31 @@
   let backgroundColor = $state("#ffffff");
 
   let onboardingComplete = $state(untrack(() => hasCompletedOnboarding()));
+
+  // What's new panel (issue #17, ADR 0005): lastSeenChangelogId starts from
+  // storage and only updates when the panel is opened (see openWhatsNew) —
+  // hasUnseenChangelog is purely derived from it, so the badge disappears
+  // the instant the panel opens rather than waiting on a storage round-trip.
+  let whatsNewOpen = $state(false);
+  let lastSeenChangelogId: string | null = $state(
+    untrack(() => getLastSeenEntryId()),
+  );
+  let hasUnseenChangelog = $derived(
+    hasUnseenEntries(CHANGELOG_ENTRIES, lastSeenChangelogId),
+  );
+
+  function openWhatsNew() {
+    whatsNewOpen = true;
+    const latest = latestEntryId(CHANGELOG_ENTRIES);
+    if (latest) {
+      markEntrySeen(latest);
+      lastSeenChangelogId = latest;
+    }
+  }
+
+  function closeWhatsNew() {
+    whatsNewOpen = false;
+  }
 
   // Projects (issue #14): implicit, Canva/Figma-style autosave — every
   // editor change debounce-saves to the active Project, no save button.
@@ -470,7 +502,16 @@
   <main>
     <div class="top-bar">
       <h1>MonoMix</h1>
-      <LocaleSwitcher />
+      <div class="top-bar-actions">
+        <button type="button" class="whatsnew-trigger" onclick={openWhatsNew}>
+          {t("whatsnew.buttonLabel")}
+          {#if hasUnseenChangelog}
+            <span class="badge" aria-hidden="true"></span>
+            <span class="sr-only">{t("whatsnew.unseenIndicator")}</span>
+          {/if}
+        </button>
+        <LocaleSwitcher />
+      </div>
     </div>
     <p class="tagline">{t("app.tagline")}</p>
 
@@ -581,6 +622,7 @@
       onNewProject={() => void handleNewProject()}
     />
   </main>
+  <WhatsNewPanel open={whatsNewOpen} onClose={closeWhatsNew} {reducedMotion} />
 {/if}
 
 <style>
@@ -609,6 +651,46 @@
 
   .top-bar h1 {
     margin: 0;
+  }
+
+  .top-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .whatsnew-trigger {
+    position: relative;
+    font: inherit;
+    font-size: 0.875rem;
+    background: none;
+    border: none;
+    padding: 0;
+    color: light-dark(#555, #aaa);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .badge {
+    position: absolute;
+    top: -0.15rem;
+    right: -0.6rem;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: light-dark(#0b57d0, #a8c7fa);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .tagline {

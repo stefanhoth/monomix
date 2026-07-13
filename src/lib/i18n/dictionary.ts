@@ -63,6 +63,10 @@ export const dictionary = {
   },
   "onboarding.skip": { en: "Just browsing", de: "Nur stöbern" },
   "locale.switchLabel": { en: "Language", de: "Sprache" },
+  "whatsnew.buttonLabel": { en: "What's new", de: "Neuigkeiten" },
+  "whatsnew.unseenIndicator": { en: "(new)", de: "(neu)" },
+  "whatsnew.heading": { en: "What's new", de: "Neuigkeiten" },
+  "whatsnew.close": { en: "Close", de: "Schließen" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dictionary;
