@@ -1,8 +1,20 @@
 <script lang="ts">
   import type { Font } from "opentype.js";
   import type { Arrangement, Frame } from "../engine";
-  import { composeMonogram } from "../engine";
+  import { composeMonogram, NO_FRAME_ID } from "../engine";
   import { t } from "../lib/i18n/store.svelte";
+  import type { DictKey } from "../lib/i18n/dictionary";
+
+  // Frame names are plain common nouns ("Circle", "Square", ...), unlike
+  // Design names (font-family + variant composites) — see docs/DECISIONS.md.
+  const FRAME_NAME_KEYS: Record<string, DictKey> = {
+    [NO_FRAME_ID]: "frame.none",
+    circle: "frame.circle",
+    square: "frame.square",
+    diamond: "frame.diamond",
+    "dotted-circle": "frame.dotted-circle",
+    "dashed-circle": "frame.dashed-circle",
+  };
 
   let {
     frames,
@@ -30,6 +42,7 @@
 <div class="gallery" role="listbox" aria-label={t("gallery.framesLabel")}>
   {#each frames as frame (frame.id)}
     {@const selected = frame.id === selectedId}
+    {@const nameKey = FRAME_NAME_KEYS[frame.id]}
     <button
       type="button"
       class="tile"
@@ -47,7 +60,7 @@
           })}
         {/if}
       </span>
-      <span class="tile-name">{frame.name}</span>
+      <span class="tile-name">{nameKey ? t(nameKey) : frame.name}</span>
     </button>
   {/each}
 </div>

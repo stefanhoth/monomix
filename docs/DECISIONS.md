@@ -13,17 +13,22 @@ or product but don't warrant a full [ADR](adr/).
 
 ## 2026-07-13
 
-- **The DE/EN dictionary covers UI chrome (labels, buttons, headings,
-  hints) only — Design and Frame catalog names stay untranslated.**
-  `src/lib/i18n/dictionary.ts` has ~25 keys, matching the issue's "~40-60
-  strings" mini-dictionary budget. Design names are generated from font
-  family + variant label (e.g. "Cinzel Decorative Stacked") — font family
-  names are proper nouns that don't get translated in any product, and
-  partially translating just the variant half would read as broken, not
-  bilingual. Frame names (Circle, Square, Diamond, …) are catalog/content
-  data from the pure engine (CLAUDE.md: "Engine is a pure function"), not
-  app chrome — same category as Design names. Revisit only if user
-  feedback specifically asks for catalog-name translation. (Issue #15)
+- **The DE/EN dictionary covers UI chrome plus Frame names, but not
+  Design names.** `src/lib/i18n/dictionary.ts` has ~30 keys, within the
+  issue's "~40-60 strings" mini-dictionary budget. Design names are
+  generated from font family + variant label (e.g. "Cinzel Decorative
+  Stacked") — font family names are proper nouns that don't get
+  translated in any product, and partially translating just the variant
+  half would read as broken, not bilingual. Frame names (Circle, Square,
+  Diamond, …), by contrast, are plain common nouns that read to a user
+  exactly like ordinary UI copy, with obvious unambiguous DE equivalents
+  — an initial pass had lumped them in with Design names as "engine
+  catalog data" and skipped translating them too, which undershot AC #1
+  ("no hardcoded UI text"; caught in review). `FrameGallery.svelte` now
+  maps `frame.id` to a dictionary key (`FRAME_NAME_KEYS`) rather than
+  reading `frame.name` directly, so the pure `src/engine/frames.ts` stays
+  untouched and English-only (it's not UI-facing on its own) while the
+  UI layer renders the translated name. (Issue #15)
 - **`sanitizeLettersInput`'s rejection hint is structured data
   (`LettersHint`), not a finished English string.** The old
   `hint: string | null` baked English text straight into a function meant

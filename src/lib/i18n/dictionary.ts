@@ -1,9 +1,11 @@
 /**
  * Lightweight DE/EN mini-dictionary (issue #15) — no i18n framework, just a
  * flat key -> {en, de} map. Scope is the app's UI chrome (labels, buttons,
- * headings, hints); Design/Frame catalog names (src/engine/designs.ts,
- * frames.ts) are data, not UI chrome, and stay out of the dictionary — see
- * docs/DECISIONS.md.
+ * headings, hints) plus Frame names (plain common nouns like "Circle" that
+ * read as ordinary UI copy). Design names (src/engine/designs.ts) are
+ * generated font-family + variant composites — font family names are
+ * proper nouns that don't get translated — and stay out of the dictionary.
+ * See docs/DECISIONS.md.
  *
  * `as const satisfies` gives a compile-time guarantee that every key has
  * both locales; the runtime completeness test (tests/unit/i18n/dictionary.test.ts)
@@ -43,6 +45,12 @@ export const dictionary = {
   "export.pdf": { en: "Export PDF", de: "PDF exportieren" },
   "gallery.designsLabel": { en: "Designs", de: "Designs" },
   "gallery.framesLabel": { en: "Frames", de: "Rahmen" },
+  "frame.none": { en: "No Frame", de: "Kein Rahmen" },
+  "frame.circle": { en: "Circle", de: "Kreis" },
+  "frame.square": { en: "Square", de: "Quadrat" },
+  "frame.diamond": { en: "Diamond", de: "Raute" },
+  "frame.dotted-circle": { en: "Dotted Circle", de: "Gepunkteter Kreis" },
+  "frame.dashed-circle": { en: "Dashed Circle", de: "Gestrichelter Kreis" },
   "projects.heading": { en: "Projects", de: "Projekte" },
   "projects.new": { en: "New Project", de: "Neues Projekt" },
   "projects.rename": { en: "Rename", de: "Umbenennen" },
