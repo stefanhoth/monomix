@@ -24,4 +24,5 @@ Svelte + Vite + TypeScript (no SvelteKit — single client-only screen, no routi
 - **Fonts must be SIL OFL / CC0 / Apache-2.0 only.** See [ADR 0003](docs/adr/0003-ofl-only-fonts.md). Never add a "free for personal use" font.
 - **Commits/PR titles**: Conventional Commits with a scope, e.g. `feat(export): add PDF export`, `fix(gallery): debounce live preview`. PRs are squash-merged, so the PR title becomes the commit message on `main`.
 - **User-visible changes** get an entry in `CHANGELOG.md` under `[Unreleased]` (Keep a Changelog format). Pure dependency/infra PRs don't need one.
+- **For user-facing features**, also consider whether it warrants a curated entry in `src/lib/changelog.ts` (the in-app "What's new?" panel, [ADR 0005](docs/adr/0005-calver-releases-three-changelogs.md)). Unlike `CHANGELOG.md`, this one is deliberately moderated — not every entry qualifies, so this is a judgment call, not automatic.
 - Design principles in [docs/DESIGN-PRINCIPLES.md](docs/DESIGN-PRINCIPLES.md) are a review checklist, not just inspiration — e.g. path-morphing between designs is explicitly rejected (see BACKLOG.md), don't reintroduce it.
