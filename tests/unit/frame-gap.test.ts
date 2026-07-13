@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveFrameGap, DEFAULT_FRAME_GAP } from "../../src/lib/frame-gap";
+import {
+  resolveFrameGap,
+  DEFAULT_FRAME_GAP,
+  MAX_GAP,
+} from "../../src/lib/frame-gap";
 
 describe("resolveFrameGap", () => {
   it("returns the default when unset", () => {
@@ -15,7 +19,7 @@ describe("resolveFrameGap", () => {
   });
 
   it("clamps above the maximum", () => {
-    expect(resolveFrameGap(999999)).toBe(300);
+    expect(resolveFrameGap(999999)).toBe(MAX_GAP);
   });
 
   it("rounds non-integer gaps", () => {

@@ -21,6 +21,10 @@ export interface PositionedLetter {
 
 export interface Layout {
   letters: PositionedLetter[];
+  /** Bounding box of the rendered letter block, in viewBox units — lets the
+   * Frame-fit stage (src/engine/fit.ts) scale the whole block as a unit. */
+  blockWidth: number;
+  blockHeight: number;
 }
 
 export interface LayoutOptions {
@@ -116,7 +120,11 @@ function layoutHorizontal(chars: string[], font: Font): Layout {
     return entry;
   });
 
-  return { letters: positioned };
+  return {
+    letters: positioned,
+    blockWidth: actualWidth,
+    blockHeight: glyphHeight,
+  };
 }
 
 /** One letter per row, each centered horizontally, stacked top to bottom. */
@@ -152,12 +160,17 @@ function layoutStacked(chars: string[], font: Font): Layout {
   const totalStackHeight = rowHeight * n + rowGap * (n - 1);
   const topY = (VIEWBOX_SIZE - totalStackHeight) / 2;
 
+  const widths = chars.map((ch) => font.getAdvanceWidth(ch, fontSize));
   const positioned: PositionedLetter[] = chars.map((letter, i) => {
-    const width = font.getAdvanceWidth(letter, fontSize);
+    const width = widths[i] ?? 0;
     const x = (VIEWBOX_SIZE - width) / 2;
     const y = topY + i * (rowHeight + rowGap) + ascenderHeight;
     return { letter, x, y, fontSize };
   });
 
-  return { letters: positioned };
+  return {
+    letters: positioned,
+    blockWidth: Math.max(...widths),
+    blockHeight: totalStackHeight,
+  };
 }
