@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-07-14-circle-shape",
+    date: "2026-07-14",
+    en: 'Meet the classic circle monogram: every font now has a "Circle" design that presses your letters into a ring.',
+    de: 'Das klassische Kreis-Monogramm ist da: Jede Schriftart hat jetzt ein "Kreis"-Design, das deine Buchstaben in einen Ring presst.',
+  },
+  {
     id: "2026-07-13-whats-new",
     date: "2026-07-13",
     en: "This panel! A quick look at what's changed, with a badge here whenever there's something new.",

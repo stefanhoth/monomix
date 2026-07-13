@@ -188,6 +188,7 @@
     resolvedFont && resolvedDesign && letters.length > 0
       ? composeMonogram(letters, resolvedFont, {
           arrangement: resolvedDesign.arrangement,
+          shape: resolvedDesign.shape,
           frame: {
             id: selectedFrameId,
             gap: resolvedFrameGap,
@@ -548,6 +549,7 @@
       letters={debouncedLetters}
       font={resolvedFont}
       arrangement={resolvedDesign?.arrangement}
+      shape={resolvedDesign?.shape}
       gap={resolvedFrameGap}
       {lettersColor}
       {frameColor}

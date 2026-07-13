@@ -3,7 +3,9 @@ import type { Font } from "opentype.js";
 /** All composed monograms share this SVG viewBox size (square, in user units). */
 export const VIEWBOX_SIZE = 1000;
 
-const PADDING_RATIO = 0.08;
+/** Fraction of the viewBox each edge keeps clear of ink — also the padding
+ * the Shape warp stage's default (no-Frame) fit reuses (src/engine/render.ts). */
+export const PADDING_RATIO = 0.08;
 /** Gap between rows in a "stacked" arrangement, as a fraction of row height. */
 const ROW_GAP_RATIO = 0.08;
 

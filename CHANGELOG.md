@@ -16,6 +16,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 - Your work now saves itself automatically as you go — no save button, and reloading the page picks up right where you left off. A "Projects" panel lists your recent monograms with live thumbnails, ordered by when you last edited them, and lets you rename or delete any of them. Starting a "New Project" carries over your most recently used design, Frame, and colors instead of resetting to defaults.
 - MonoMix now speaks German as well as English. It defaults to your browser's language, with a switcher in the top corner if you'd rather pick manually — your choice is remembered on your next visit.
 - A "What's new" link in the top corner opens a panel with a curated, plain-language look at recent changes, grouped by month — a small dot shows up whenever there's something you haven't seen yet.
+- Every font now also comes in a "Circle" design that presses your letters into a classic circle monogram — the outer letters bow to follow the ring. Combine it with any Frame and it still fits perfectly.
 
 ### Changed
 

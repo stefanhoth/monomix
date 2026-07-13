@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Font } from "opentype.js";
-  import type { Arrangement, Frame } from "../engine";
+  import type { Arrangement, Frame, Shape } from "../engine";
   import { composeMonogram, NO_FRAME_ID } from "../engine";
   import { t } from "../lib/i18n/store.svelte";
   import type { DictKey } from "../lib/i18n/dictionary";
@@ -21,6 +21,7 @@
     letters,
     font,
     arrangement,
+    shape,
     gap,
     lettersColor,
     frameColor,
@@ -31,6 +32,7 @@
     letters: string;
     font: Font | undefined;
     arrangement: Arrangement | undefined;
+    shape: Shape | undefined;
     gap: number;
     lettersColor: string;
     frameColor: string;
@@ -55,6 +57,7 @@
         {#if font && letters.length > 0}
           {@html composeMonogram(letters, font, {
             arrangement,
+            shape,
             frame: { id: frame.id, gap, color: frameColor },
             lettersColor,
           })}

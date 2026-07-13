@@ -14,6 +14,7 @@ export {
 } from "./layout";
 export { DESIGNS, type Design, type LetterCount } from "./designs";
 export { FONTS, type FontEntry, type FontStyle } from "./fonts";
+export { type Shape } from "./shape";
 export {
   FRAMES,
   NO_FRAME_ID,

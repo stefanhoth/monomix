@@ -11,6 +11,44 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-07-14
+
+- **The circle Shape warp uses the Fernandez-Guasti "elliptical grid" square-to-disc
+  mapping, not an arc-text (rotate-along-a-circle) effect.** Given a letter block's
+  bounding box, `u²(1-v²/2) + v²(1-u²/2)` reduces to exactly 1 whenever `|u|=1` or
+  `|v|=1` — i.e. the _entire_ boundary of the box (not just its corners) lands
+  exactly on the target circle, which is what makes "the outer edges of the outer
+  letters follow the circle" (issue #37 AC) a property of the formula rather than
+  something tuned by hand. Letters stay upright and bow at their edges instead of
+  rotating individually, which reads as a legitimate circle-monogram press across
+  every font style tried (serif, bold sans, script, blackletter) rather than an
+  arc-text effect. `src/engine/shape.ts`'s `warpPathCommands` applies it per-point
+  after adaptively subdividing every path segment (including straight `L`s, which
+  become curved once warped) — output is always flattened to `M`/`L`/`Z`, since a
+  formerly-straight segment re-expressed as a bezier after a non-linear warp isn't
+  meaningful. (Issue #37, ADR 0007)
+- **The Shape warp's own "fit to the canvas or Frame" step reuses `fit.ts`'s
+  `fitScale` rather than a bespoke shaped-layout scale.** Once warped, a letter
+  block's bounding box is itself a circle of known radius — scaling _that_
+  against a Frame's extent/norm (or, with no Frame, the same padded half-extent
+  unshaped Designs already fit into) is exactly the same "scale a block's bounding
+  box to reach an extent under a given norm" problem issue #36 solved, so
+  `composeShapedLetters` (`src/engine/render.ts`) computes the target extent/norm
+  and calls the existing `fitScale`/`scalePathCommands` instead of introducing a
+  second fitting formula. This is also what makes "combined with any Frame, the
+  shaped lettering fits per the Frame-fitting rules from #36" (issue #37 AC) true
+  by construction rather than by a separate implementation that has to be kept in
+  sync. (Issue #37)
+- **Every font in the catalog gets a "Circle" Design (horizontal arrangement
+  only), not a hand-curated subset.** ADR 0007 anticipated curating which fonts
+  "survive" a Shape; visually spot-checking one font per style category (serif,
+  bold geometric sans, script, blackletter) in the running app showed the generic
+  envelope map reads as a clean circle press in every case, with no self-
+  intersections or broken counters — so shipping it broadly rather than picking a
+  handful upfront avoided an arbitrary, unverifiable cut. "Stacked" arrangement
+  doesn't get a Shape variant: a vertically stacked column pressed into a circle
+  has no reference circle-monogram equivalent. (Issue #37)
+
 ## 2026-07-13
 
 - **Frame fitting picks the geometric norm (Chebyshev/Euclidean/Manhattan)
