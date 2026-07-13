@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { sanitizeLettersInput } from "../lib/letters-input";
+  import { sanitizeLettersInput, type LettersHint } from "../lib/letters-input";
+  import { formatLettersHint } from "../lib/i18n/format-letters-hint";
+  import { getLocale, t } from "../lib/i18n/store.svelte";
+  import LocaleSwitcher from "./LocaleSwitcher.svelte";
 
   let {
     onSubmit,
@@ -10,14 +13,15 @@
   } = $props();
 
   let value = $state("");
-  let hint: string | null = $state(null);
+  let hintInfo: LettersHint | null = $state(null);
+  let hint = $derived(hintInfo && formatLettersHint(hintInfo, getLocale()));
 
   // Same sanitisation as the main editor's Letters field (A-Z only,
   // 3-letter cap, transliteration hints) — see src/lib/letters-input.ts.
   function handleInput(event: Event & { currentTarget: HTMLInputElement }) {
     const result = sanitizeLettersInput(event.currentTarget.value);
     value = result.letters;
-    hint = result.hint;
+    hintInfo = result.hint;
     event.currentTarget.value = result.letters;
   }
 
@@ -29,12 +33,15 @@
 </script>
 
 <main class="onboarding">
-  <h1>MonoMix</h1>
-  <p class="tagline">Mix your monogram and take it with you.</p>
+  <div class="top-bar">
+    <h1>MonoMix</h1>
+    <LocaleSwitcher />
+  </div>
+  <p class="tagline">{t("app.tagline")}</p>
 
   <form onsubmit={handleSubmit}>
     <label>
-      Your initials?
+      {t("onboarding.initialsLabel")}
       <input {value} oninput={handleInput} placeholder="ABC" />
     </label>
     {#if hint}
@@ -43,10 +50,10 @@
 
     <div class="actions">
       <button type="submit" disabled={value.length === 0}>
-        See my monogram
+        {t("onboarding.submit")}
       </button>
       <button type="button" class="skip" onclick={onSkip}>
-        Just browsing
+        {t("onboarding.skip")}
       </button>
     </div>
   </form>
@@ -67,6 +74,17 @@
     .onboarding {
       margin: 1.5rem auto;
     }
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .top-bar h1 {
+    margin: 0;
   }
 
   .tagline {

@@ -2,6 +2,7 @@
   import type { Font } from "opentype.js";
   import type { Arrangement, Frame } from "../engine";
   import { composeMonogram } from "../engine";
+  import { t } from "../lib/i18n/store.svelte";
 
   let {
     frames,
@@ -26,7 +27,7 @@
   } = $props();
 </script>
 
-<div class="gallery" role="listbox" aria-label="Frames">
+<div class="gallery" role="listbox" aria-label={t("gallery.framesLabel")}>
   {#each frames as frame (frame.id)}
     {@const selected = frame.id === selectedId}
     <button

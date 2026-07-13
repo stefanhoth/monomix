@@ -11,6 +11,39 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-07-13
+
+- **The DE/EN dictionary covers UI chrome (labels, buttons, headings,
+  hints) only — Design and Frame catalog names stay untranslated.**
+  `src/lib/i18n/dictionary.ts` has ~25 keys, matching the issue's "~40-60
+  strings" mini-dictionary budget. Design names are generated from font
+  family + variant label (e.g. "Cinzel Decorative Stacked") — font family
+  names are proper nouns that don't get translated in any product, and
+  partially translating just the variant half would read as broken, not
+  bilingual. Frame names (Circle, Square, Diamond, …) are catalog/content
+  data from the pure engine (CLAUDE.md: "Engine is a pure function"), not
+  app chrome — same category as Design names. Revisit only if user
+  feedback specifically asks for catalog-name translation. (Issue #15)
+- **`sanitizeLettersInput`'s rejection hint is structured data
+  (`LettersHint`), not a finished English string.** The old
+  `hint: string | null` baked English text straight into a function meant
+  to stay pure and translatable; it now returns
+  `{ kind: "generic" }` or `{ kind: "suggestion", invalid, suggestion }`,
+  and a separate pure `formatLettersHint(hint, locale)`
+  (`src/lib/i18n/format-letters-hint.ts`) renders it for display. Keeps
+  `letters-input.ts` decoupled from the dictionary while still making the
+  hint fully translatable. (Issue #15)
+- **Locale is a plain module-level `$state` singleton
+  (`src/lib/i18n/store.svelte.ts`), not a Svelte context or prop drilled
+  through the tree.** MonoMix is explicitly a single client-only screen
+  (CLAUDE.md) with no routing/context tree to thread a store through, so
+  every component just imports `getLocale`/`setLocale`/`t` directly — the
+  same "no framework, keep it lightweight" call the issue itself asked
+  for. Manual override persists via `localStorage` (`src/lib/i18n/storage.ts`),
+  mirroring `onboarding.ts`'s guarded try/catch read/write pattern; default
+  is the browser's `navigator.language`, resolved by the pure
+  `resolveBrowserLocale` (`src/lib/i18n/locale.ts`). (Issue #15)
+
 ## 2026-07-11
 
 - **Projects go behind a storage-adapter interface (`ProjectStore`), with a
