@@ -20,14 +20,17 @@ describe("sanitizeLettersInput", () => {
   it("rejects an umlaut and suggests its transliteration, without applying it", () => {
     const result = sanitizeLettersInput("mä");
     expect(result.letters).toBe("M");
-    expect(result.hint).toContain("AE");
-    expect(result.hint).not.toBeNull();
+    expect(result.hint).toEqual({
+      kind: "suggestion",
+      invalid: "ä",
+      suggestion: "AE",
+    });
   });
 
   it("rejects a character with no known transliteration using a generic hint", () => {
     const result = sanitizeLettersInput("m@");
     expect(result.letters).toBe("M");
-    expect(result.hint).toBe("Only A-Z letters are supported.");
+    expect(result.hint).toEqual({ kind: "generic" });
   });
 
   it("filters invalid characters before applying the 3-letter cap", () => {

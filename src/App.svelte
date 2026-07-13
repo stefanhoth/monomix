@@ -16,7 +16,7 @@
   import { exportPng, exportJpg } from "./lib/export/raster";
   import { triggerDownload } from "./lib/export/download";
   import { DEFAULT_EXPORT_SIZE } from "./lib/export/options";
-  import { sanitizeLettersInput } from "./lib/letters-input";
+  import { sanitizeLettersInput, type LettersHint } from "./lib/letters-input";
   import {
     resolveFrameGap,
     DEFAULT_FRAME_GAP,
@@ -43,13 +43,19 @@
   } from "./lib/project";
   import { createIndexedDbProjectStore } from "./lib/project-store-indexeddb";
   import { createAutosaveController } from "./lib/autosave";
+  import { formatLettersHint } from "./lib/i18n/format-letters-hint";
+  import { getLocale, t } from "./lib/i18n/store.svelte";
   import DesignGallery from "./components/DesignGallery.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
   import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
   import ProjectsPanel from "./components/ProjectsPanel.svelte";
+  import LocaleSwitcher from "./components/LocaleSwitcher.svelte";
 
   let letters = $state("MX");
-  let lettersHint: string | null = $state(null);
+  let lettersHintInfo: LettersHint | null = $state(null);
+  let lettersHint = $derived(
+    lettersHintInfo && formatLettersHint(lettersHintInfo, getLocale()),
+  );
   // Debounced separately from `letters` — the main preview reflects every
   // keystroke instantly (Design Principle 3), but re-composing all ~30+
   // gallery tiles on every keystroke is wasted work while still typing.
@@ -417,7 +423,7 @@
   ) {
     const result = sanitizeLettersInput(event.currentTarget.value);
     letters = result.letters;
-    lettersHint = result.hint;
+    lettersHintInfo = result.hint;
     // Keep the DOM in sync immediately — a rejected character (e.g. an
     // umlaut) must never render, not even for a frame.
     event.currentTarget.value = result.letters;
@@ -462,11 +468,14 @@
   />
 {:else}
   <main>
-    <h1>MonoMix</h1>
-    <p class="tagline">Mix your monogram and take it with you.</p>
+    <div class="top-bar">
+      <h1>MonoMix</h1>
+      <LocaleSwitcher />
+    </div>
+    <p class="tagline">{t("app.tagline")}</p>
 
     <label>
-      Letters
+      {t("letters.label")}
       <input value={letters} oninput={handleLettersInput} />
     </label>
     {#if lettersHint}
@@ -507,7 +516,7 @@
 
     <div class="gap-control">
       <label>
-        Frame Gap
+        {t("frameGap.label")}
         <input
           type="range"
           min={MIN_GAP}
@@ -521,15 +530,15 @@
 
     <div class="color-controls">
       <label>
-        Letter Color
+        {t("color.letters")}
         <input type="color" bind:value={lettersColor} />
       </label>
       <label>
-        Frame Color
+        {t("color.frame")}
         <input type="color" bind:value={frameColor} />
       </label>
       <label class:disabled={transparentBackground}>
-        Background Color
+        {t("color.background")}
         <input
           type="color"
           bind:value={backgroundColor}
@@ -538,27 +547,27 @@
       </label>
       <label class="checkbox-label">
         <input type="checkbox" bind:checked={transparentBackground} />
-        Transparent background
+        {t("color.transparent")}
       </label>
     </div>
 
     <label>
-      PNG/JPG size (px)
+      {t("export.sizeLabel")}
       <input type="number" min="128" max="4096" bind:value={exportSize} />
     </label>
 
     <div class="export-actions">
       <button onclick={() => handleExport("svg")} disabled={!preview}>
-        Export SVG
+        {t("export.svg")}
       </button>
       <button onclick={() => handleExport("png")} disabled={!preview}>
-        Export PNG
+        {t("export.png")}
       </button>
       <button onclick={() => handleExport("jpg")} disabled={!preview}>
-        Export JPG
+        {t("export.jpg")}
       </button>
       <button onclick={() => handleExport("pdf")} disabled={!preview}>
-        Export PDF
+        {t("export.pdf")}
       </button>
     </div>
 
@@ -589,6 +598,17 @@
     main {
       margin: 1.5rem auto;
     }
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .top-bar h1 {
+    margin: 0;
   }
 
   .tagline {

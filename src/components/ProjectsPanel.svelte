@@ -2,6 +2,7 @@
   import type { Font } from "opentype.js";
   import { DESIGNS, composeMonogram } from "../engine";
   import type { Project } from "../lib/project";
+  import { t } from "../lib/i18n/store.svelte";
 
   let {
     projects,
@@ -69,8 +70,8 @@
 
 <section class="projects-panel">
   <div class="projects-header">
-    <h2>Projects</h2>
-    <button type="button" onclick={onNewProject}>New Project</button>
+    <h2>{t("projects.heading")}</h2>
+    <button type="button" onclick={onNewProject}>{t("projects.new")}</button>
   </div>
 
   {#if projects.length > 0}
@@ -82,7 +83,7 @@
           {#if editingId === project.id}
             <input
               class="rename-input"
-              aria-label="Project name"
+              aria-label={t("projects.nameLabel")}
               value={editingValue}
               oninput={handleRenameInput}
               onkeydown={handleRenameKeydown}
@@ -115,10 +116,10 @@
             </button>
             <div class="project-actions">
               <button type="button" onclick={() => startRename(project)}>
-                Rename
+                {t("projects.rename")}
               </button>
               <button type="button" onclick={() => onDelete(project.id)}>
-                Delete
+                {t("projects.delete")}
               </button>
             </div>
           {/if}

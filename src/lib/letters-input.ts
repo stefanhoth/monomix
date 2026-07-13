@@ -41,11 +41,20 @@ const TRANSLITERATIONS: Record<string, string> = {
   ç: "C",
 };
 
+/**
+ * Structured, locale-agnostic description of why input was rejected — the
+ * final display string is produced by formatLettersHint (src/lib/i18n) so
+ * this stays pure and translatable rather than baking in English text.
+ */
+export type LettersHint =
+  | { kind: "generic" }
+  | { kind: "suggestion"; invalid: string; suggestion: string };
+
 export interface LettersInputResult {
   /** Always uppercase A-Z, capped at 3 characters — safe to feed straight into the engine. */
   letters: string;
   /** Set when at least one character was rejected; null when the input was already clean. */
-  hint: string | null;
+  hint: LettersHint | null;
 }
 
 const isAsciiLetter = (ch: string) => /^[a-zA-Z]$/.test(ch);
@@ -65,10 +74,14 @@ export function sanitizeLettersInput(raw: string): LettersInputResult {
   const suggestions = invalidChars
     .map((ch) => TRANSLITERATIONS[ch.toLowerCase()])
     .filter((s): s is string => !!s);
-  const hint =
+  const hint: LettersHint =
     suggestions.length > 0
-      ? `Only A-Z letters are supported. Try "${suggestions.join("")}" instead of "${invalidChars.join("")}".`
-      : `Only A-Z letters are supported.`;
+      ? {
+          kind: "suggestion",
+          invalid: invalidChars.join(""),
+          suggestion: suggestions.join(""),
+        }
+      : { kind: "generic" };
 
   return { letters: validChars.join(""), hint };
 }

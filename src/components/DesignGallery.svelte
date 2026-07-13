@@ -3,6 +3,7 @@
   import { fly } from "svelte/transition";
   import type { Design } from "../engine";
   import { composeMonogram } from "../engine";
+  import { t } from "../lib/i18n/store.svelte";
 
   let {
     designs,
@@ -32,7 +33,7 @@
   const MAX_STAGGER_STEPS = 10;
 </script>
 
-<div class="gallery" role="listbox" aria-label="Designs">
+<div class="gallery" role="listbox" aria-label={t("gallery.designsLabel")}>
   {#each designs as design, i (design.id)}
     {@const font = fonts.get(design.fontId)}
     {@const selected = design.id === selectedId}
