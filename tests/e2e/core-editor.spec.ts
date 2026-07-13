@@ -40,11 +40,21 @@ test("typing letters, picking a Frame, adjusting the gap, and changing colors al
   await expect(circleFrame).toHaveAttribute("aria-selected", "true");
   await expect(preview.locator("circle")).toHaveCount(1);
 
+  // The Frame sits at a fixed position (issue #36) — Frame Gap scales the
+  // lettering to fit inside it instead of moving the Frame itself.
   const initialRadius = await preview.locator("circle").getAttribute("r");
+  const initialPathData = await preview
+    .locator("path")
+    .first()
+    .getAttribute("d");
   await page.getByLabel("Frame Gap").fill("120");
+  await expect(preview.locator("circle")).toHaveAttribute(
+    "r",
+    initialRadius ?? "",
+  );
   await expect
-    .poll(async () => preview.locator("circle").getAttribute("r"))
-    .not.toBe(initialRadius);
+    .poll(async () => preview.locator("path").first().getAttribute("d"))
+    .not.toBe(initialPathData);
 
   await page.getByLabel("Letter Color").fill("#ff0000");
   await expect(preview.locator("g")).toHaveAttribute("fill", "#ff0000");

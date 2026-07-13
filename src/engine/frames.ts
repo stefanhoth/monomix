@@ -29,15 +29,38 @@ export const FRAMES: Frame[] = [
   { id: "dashed-circle", name: "Dashed Circle", shape: "dashed-circle" },
 ];
 
+/**
+ * Distance from the canvas edge to the Frame's outer boundary, in viewBox
+ * units. Fixed (issue #36) — unlike v1, a Frame no longer moves when Frame
+ * Gap changes; only the lettering scales inside it (see src/engine/fit.ts).
+ */
+export const FRAME_MARGIN = 40;
+export const DEFAULT_STROKE_WIDTH = 20;
+/** Default Frame Gap (CONTEXT.md): the inner breathing room, not a canvas margin. */
 export const DEFAULT_GAP = 40;
-const DEFAULT_STROKE_WIDTH = 20;
 const CENTER = VIEWBOX_SIZE / 2;
 
 export interface FrameOptions {
-  /** Distance from the canvas edge to the frame's outer boundary, in viewBox units. */
-  gap?: number;
   color?: string;
   strokeWidth?: number;
+}
+
+/** `frameId`'s Shape, or null for "No Frame" — used by the fit stage to pick
+ * which geometric norm the lettering must be fitted against. */
+export function frameShapeFor(frameId: string): FrameShapeKind | null {
+  return FRAMES.find((f) => f.id === frameId)?.shape ?? null;
+}
+
+/**
+ * Half-extent (in viewBox units, same units the fit stage's norms expect)
+ * available inside a Frame's inner stroke edge at Frame Gap 0 — the Frame's
+ * fixed outer position (FRAME_MARGIN) minus the ring's own stroke width.
+ * Clamped so a pathological custom strokeWidth can't go negative.
+ */
+export function frameInnerExtent(
+  strokeWidth: number = DEFAULT_STROKE_WIDTH,
+): number {
+  return Math.max(CENTER - FRAME_MARGIN - strokeWidth, 0);
 }
 
 /**
@@ -56,13 +79,13 @@ export function composeFrame(
     return "";
   }
 
-  const gap = options.gap ?? DEFAULT_GAP;
   const strokeWidth = options.strokeWidth ?? DEFAULT_STROKE_WIDTH;
   const color = sanitizeColor(options.color, "currentColor");
 
-  // Radius/half-extent of the stroke centerline. Clamped so an extreme gap
-  // never produces a negative (invalid) radius.
-  const r = Math.max(VIEWBOX_SIZE / 2 - gap - strokeWidth / 2, 0);
+  // Radius/half-extent of the stroke centerline, at its fixed position.
+  // Clamped so a pathological custom strokeWidth never produces a negative
+  // (invalid) radius.
+  const r = Math.max(CENTER - FRAME_MARGIN - strokeWidth / 2, 0);
   const attrs = `fill="none" stroke="${color}" stroke-width="${strokeWidth}"`;
   const circle = (extra = "") =>
     `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs}${extra}/>`;

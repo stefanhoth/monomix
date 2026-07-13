@@ -43,6 +43,8 @@ describe("layoutLetters", () => {
   it("is a pure function: matches its regression snapshot", () => {
     expect(layoutLetters("MX", font)).toMatchInlineSnapshot(`
       {
+        "blockHeight": 530.7317073170732,
+        "blockWidth": 840.0000000000001,
         "letters": [
           {
             "fontSize": 487.8048780487805,

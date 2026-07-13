@@ -1,12 +1,19 @@
 import type { Font } from "opentype.js";
 import { layoutLetters, VIEWBOX_SIZE, type LayoutOptions } from "./layout";
 import { pathCommandsToSvgData } from "./svg-path";
-import { composeFrame, type FrameOptions } from "./frames";
+import { composeFrame, NO_FRAME_ID, type FrameOptions } from "./frames";
+import { fitLayoutToFrame } from "./fit";
 import { sanitizeColor } from "./color";
 
 export interface ComposeOptions extends LayoutOptions {
   /** A Frame (CONTEXT.md) to draw around the letters. Omit for "No Frame". */
-  frame?: FrameOptions & { id: string };
+  frame?: FrameOptions & {
+    id: string;
+    /** Frame Gap (CONTEXT.md): breathing room between the lettering and the
+     * Frame's fixed inner boundary. 0 = lettering fills the boundary
+     * exactly; larger values scale the lettering down (issue #36). */
+    gap?: number;
+  };
   /** Letter fill color. Defaults to "currentColor". */
   lettersColor?: string;
   /** Background fill. Omit (or "transparent") for a transparent background — the default. */
@@ -24,7 +31,11 @@ export function composeMonogram(
   font: Font,
   options: ComposeOptions = {},
 ): string {
-  const layout = layoutLetters(letters, font, options);
+  const baseLayout = layoutLetters(letters, font, options);
+  const layout =
+    options.frame && options.frame.id !== NO_FRAME_ID
+      ? fitLayoutToFrame(baseLayout, options.frame)
+      : baseLayout;
 
   const paths = layout.letters
     .map((positioned) => {
@@ -41,7 +52,10 @@ export function composeMonogram(
   const lettersColor = sanitizeColor(options.lettersColor, "currentColor");
   const glyphGroup = `<g fill="${lettersColor}">${paths}</g>`;
   const frameMarkup = options.frame
-    ? composeFrame(options.frame.id, options.frame)
+    ? composeFrame(options.frame.id, {
+        color: options.frame.color,
+        strokeWidth: options.frame.strokeWidth,
+      })
     : "";
 
   const background = sanitizeColor(options.background, "transparent");

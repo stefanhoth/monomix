@@ -30,7 +30,7 @@ export const dictionary = {
     en: 'Only A-Z letters are supported. Try "{suggestion}" instead of "{invalid}".',
     de: 'Es werden nur die Buchstaben A-Z unterstützt. Verwende "{suggestion}" statt "{invalid}".',
   },
-  "frameGap.label": { en: "Frame Gap", de: "Rahmenabstand" },
+  "frameGap.label": { en: "Frame Gap", de: "Abstand" },
   "color.letters": { en: "Letter Color", de: "Buchstabenfarbe" },
   "color.frame": { en: "Frame Color", de: "Rahmenfarbe" },
   "color.background": { en: "Background Color", de: "Hintergrundfarbe" },

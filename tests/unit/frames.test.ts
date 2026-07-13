@@ -32,10 +32,10 @@ describe("composeFrame", () => {
   });
 
   it.each(SHAPED_FRAME_IDS)(
-    "%s produces valid, unfilled stroke geometry at a range of gaps",
+    "%s produces valid, unfilled stroke geometry at a range of stroke widths",
     (id) => {
-      for (const gap of [0, 40, 100, 300]) {
-        const svg = composeFrame(id, { gap });
+      for (const strokeWidth of [1, 20, 100, 300]) {
+        const svg = composeFrame(id, { strokeWidth });
         expect(svg.length).toBeGreaterThan(0);
         expect(svg).toContain('fill="none"');
         expect(svg).toContain("stroke=");
@@ -46,9 +46,16 @@ describe("composeFrame", () => {
     },
   );
 
-  it("clamps to a non-negative radius instead of producing invalid geometry for an extreme gap", () => {
-    const svg = composeFrame("circle", { gap: 10000 });
+  it("clamps to a non-negative radius instead of producing invalid geometry for an extreme stroke width", () => {
+    const svg = composeFrame("circle", { strokeWidth: 10000 });
     expect(svg).toContain('r="0"');
+  });
+
+  it("sits at a fixed position regardless of Frame Gap — gap is not one of its options", () => {
+    // Issue #36: the Frame no longer moves when Frame Gap changes, only the
+    // lettering scales inside it (src/engine/fit.ts), so composeFrame's own
+    // geometry is independent of any gap value.
+    expect(composeFrame("circle")).toBe(composeFrame("circle", {}));
   });
 
   it("respects a custom color and stroke width", () => {
@@ -58,8 +65,8 @@ describe("composeFrame", () => {
   });
 
   it("is a pure function: identical input produces identical output", () => {
-    expect(composeFrame("diamond", { gap: 50 })).toBe(
-      composeFrame("diamond", { gap: 50 }),
+    expect(composeFrame("diamond", { strokeWidth: 30 })).toBe(
+      composeFrame("diamond", { strokeWidth: 30 }),
     );
   });
 });

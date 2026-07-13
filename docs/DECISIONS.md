@@ -13,6 +13,36 @@ or product but don't warrant a full [ADR](adr/).
 
 ## 2026-07-13
 
+- **Frame fitting picks the geometric norm (Chebyshev/Euclidean/Manhattan)
+  matching each Frame's Shape, rather than one fitting formula for all
+  Frames.** A square's inner boundary is an L∞ ball, a circle's an L2 ball,
+  a diamond's an L1 ball — fitting the letter block's bounding box against
+  the wrong norm would either overflow the actual silhouette or waste
+  usable space. `src/engine/fit.ts`'s `fitScale(blockWidth, blockHeight,
+extent, shape)` picks the norm from `FrameShapeKind` and returns the exact
+  scale that makes the block's corners just reach `extent`; `frameInnerExtent`
+  (`src/engine/frames.ts`) derives that extent from the Frame's now-fixed
+  outer position minus its stroke width. This makes "0 = lettering fills the
+  Frame's inner boundary" a property of the formula, not a value tuned by
+  trial and error, and is deliberately the same "scale a layout as a unit"
+  shape the future Shape warp stage (ADR 0007) will build on. `fitLayoutToFrame`
+  (which resolves a Frame id + Frame Gap into a fitted `Layout`) lives in
+  `fit.ts` itself rather than `render.ts` — an initial pass had it in
+  `render.ts`, reaching into both `frames.ts` and `fit.ts` to do work that's
+  conceptually "given a frame and a gap, what's the scale," none of which is
+  `render.ts`'s own data (caught in review); `render.ts` now only orchestrates
+  the final SVG string. (Issue #36)
+- **Frame Gap split into two distinct constants that happen to share a
+  default value.** `FRAME_MARGIN` (`src/engine/frames.ts`) is the Frame's
+  fixed, non-user-controlled distance from the canvas edge; `DEFAULT_GAP`
+  is the Frame Gap slider's starting value. Pre-#36 these were the same
+  concept (gap moved the Frame); keeping them as separate named constants,
+  even though both are currently `40`, avoids silently coupling the Frame's
+  position to a UI default again. The slider's `MAX_GAP`
+  (`src/lib/frame-gap.ts`) is derived from `frameInnerExtent()` rather than
+  picked independently, so it can't drift out of sync with the engine's own
+  fitting geometry if `FRAME_MARGIN` or the stroke width ever changes.
+  (Issue #36)
 - **The DE/EN dictionary covers UI chrome plus Frame names, but not
   Design names.** `src/lib/i18n/dictionary.ts` has ~30 keys, within the
   issue's "~40-60 strings" mini-dictionary budget. Design names are

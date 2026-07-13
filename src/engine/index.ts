@@ -18,6 +18,7 @@ export {
   FRAMES,
   NO_FRAME_ID,
   DEFAULT_GAP,
+  frameInnerExtent,
   composeFrame,
   type Frame,
   type FrameShapeKind,
