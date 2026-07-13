@@ -9,11 +9,15 @@ The complete composed artwork: letters rendered in a Design, optionally surround
 _Avoid_: Logo, emblem
 
 **Design**:
-A font paired with an Arrangement, algorithmically composing the letters (ADR 0006) — there is no dedicated monogram font, so this pairing is what gives each Design its character. A Design declares which Letter Counts it supports; it is not bound to exactly one.
+A curated, fixed combination of font, Arrangement, and Shape, algorithmically composing the letters (ADR 0006, ADR 0007) — there is no dedicated monogram font, so this triple is what gives each Design its character. A Design declares which Letter Counts it supports; it is not bound to exactly one.
 _Avoid_: Style, template, model
 
 **Arrangement**:
-How a Design positions its letters relative to each other (e.g. horizontal, stacked). Distinct from Frame, which draws a decorative ring around the composed result from the outside rather than arranging the letters themselves.
+How a Design positions its letters relative to each other (e.g. horizontal, stacked). Distinct from Shape, which deforms the arranged result, and from Frame, which draws a decorative ring around it from the outside rather than arranging the letters themselves.
+
+**Shape**:
+The outer silhouette the arranged letters are pressed into (e.g. circle, diamond; "none" leaves them undeformed). Part of a Design, never chosen by the user on its own. Unlike a Frame, a Shape is not drawn — it exists only as the deformation of the letterforms themselves.
+_Avoid_: Silhouette, envelope, morph, form
 
 **Letter Count**:
 How many letters the Monogram consists of: 1, 2, or 3. The design gallery is filtered by the current Letter Count.
@@ -22,11 +26,11 @@ How many letters the Monogram consists of: 1, 2, or 3. The design gallery is fil
 The 1–3 characters of the Monogram. Restricted to A–Z (input is uppercased); umlauts and other characters are rejected with a transliteration hint rather than silently replaced.
 
 **Frame**:
-A decorative border placed around the lettering, independent of the Design. Has its own color and a configurable gap. In v1 a Frame is positioned relative to the fixed canvas, not the letters' actual rendered size — see Frame Gap.
+A decorative border placed around the lettering, independent of the Design — any Frame combines with any Design. A Frame sits at a fixed position on the canvas and has its own color; the lettering is scaled to fit inside it (see Frame Gap).
 _Avoid_: Border, ring
 
 **Frame Gap**:
-How far the Frame's outer boundary sits from the canvas edge. Named for what it conceptually controls — breathing room between the lettering and the Frame — but v1 measures it against the fixed canvas rather than the letters' real bounding box, since Frames don't yet coordinate with letter sizing (docs/BACKLOG.md: "Frame-aware letter sizing").
+The breathing room between the lettering and the Frame. The Frame's position is fixed; a larger gap scales the lettering down inside it (0 = the lettering fills the Frame). UI label: "Frame Gap" (EN) / "Abstand" (DE).
 
 **Project**:
 One persisted Monogram configuration (letters, Design, Frame, colors, gap). The app lists recent Projects, and a new Project starts from the most recently used settings.
