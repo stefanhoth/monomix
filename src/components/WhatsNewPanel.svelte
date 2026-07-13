@@ -31,18 +31,18 @@
     }).format(new Date(year, month - 1, 1));
   }
 
+  // Bound on window rather than the backdrop div — a click-to-dismiss
+  // backdrop isn't itself focusable, so a keydown handler on it would never
+  // fire for Escape.
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") onClose();
+    if (open && event.key === "Escape") onClose();
   }
 </script>
 
+<svelte:window onkeydown={handleKeydown} />
+
 {#if open}
-  <div
-    class="backdrop"
-    role="presentation"
-    onclick={onClose}
-    onkeydown={handleKeydown}
-  ></div>
+  <div class="backdrop" role="presentation" onclick={onClose}></div>
   <div
     class="whatsnew-panel"
     role="dialog"

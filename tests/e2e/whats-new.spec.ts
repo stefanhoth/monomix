@@ -17,6 +17,11 @@ test("opening the What's new panel clears the unseen badge, and it stays cleared
   await page.getByRole("button", { name: "Close" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 
+  await trigger.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+
   await page.reload();
   await expect(
     page.getByRole("button", { name: "What's new" }).locator(".badge"),
