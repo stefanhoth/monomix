@@ -141,3 +141,41 @@ export async function readPersistedField(
     { dbName: PROJECTS_DB_NAME, field },
   );
 }
+
+/**
+ * Reads every persisted Project directly from IndexedDB, bypassing the UI.
+ * Needed by the Remix specs (issue #48): the UI deliberately has no way to
+ * inspect a non-active Project's settings (remix-only — frozen snapshots),
+ * so proving "the source Project was left untouched" requires going to the
+ * storage itself.
+ */
+export async function readAllProjects(
+  page: Page,
+): Promise<Record<string, unknown>[]> {
+  return page.evaluate((dbName) => {
+    return new Promise<Record<string, unknown>[]>((resolve) => {
+      const openRequest = indexedDB.open(dbName);
+      openRequest.onerror = () => resolve([]);
+      openRequest.onsuccess = () => {
+        const db = openRequest.result;
+        if (!db.objectStoreNames.contains("projects")) {
+          db.close();
+          resolve([]);
+          return;
+        }
+        const getAllRequest = db
+          .transaction("projects", "readonly")
+          .objectStore("projects")
+          .getAll();
+        getAllRequest.onsuccess = () => {
+          resolve(getAllRequest.result as Record<string, unknown>[]);
+          db.close();
+        };
+        getAllRequest.onerror = () => {
+          resolve([]);
+          db.close();
+        };
+      };
+    });
+  }, PROJECTS_DB_NAME);
+}

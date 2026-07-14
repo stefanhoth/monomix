@@ -140,14 +140,13 @@ export function projectSettingsEqual(
 }
 
 /**
- * Builds a brand-new Project from `settings` (CONTEXT.md: "a new Project
- * starts from the most recently used settings"), defaulting to
- * DEFAULT_PROJECT_SETTINGS only when there's truly nothing to inherit from
- * (the very first Project ever). Pure — the caller decides what "most
- * recently used" means (see `createNewProject` below for the storage-backed
- * version). The name defaults to the letters themselves (e.g. "MX") rather
- * than a generic "Untitled", so a fresh recent-projects list is legible at a
- * glance without every tile saying the same thing.
+ * Builds a brand-new Project from `settings`. "Start blank" (issue #48)
+ * passes nothing and gets DEFAULT_PROJECT_SETTINGS — deliberately NOT the
+ * last-used settings; that inheritance (#14) was the unnamed precursor of
+ * Remix and got folded into `remixProject` below (docs/DECISIONS.md,
+ * 2026-07-14). The name defaults to the letters themselves (e.g. "MX")
+ * rather than a generic "Untitled", so the New surface's Remix tiles are
+ * legible at a glance without every tile saying the same thing.
  */
 export function createProject(
   settings: ProjectSettings = DEFAULT_PROJECT_SETTINGS,
@@ -163,15 +162,18 @@ export function createProject(
 }
 
 /**
- * Storage-backed "new Project inherits last settings" orchestration (issue
- * #14 test plan) — looks up the most recently edited Project (if any) and
- * seeds a new one from its settings. Takes the ProjectStore interface, not
- * a concrete adapter, so this is unit-testable against the in-memory fake
- * without real IndexedDB.
+ * Remix (CONTEXT.md, issue #48): a brand-new Project seeded from an
+ * existing Project's settings — fresh identity and timestamps, source left
+ * untouched. This is the only way to build on a past Project; non-active
+ * Projects are frozen snapshots and never re-opened for editing.
  */
-export async function createNewProject(store: {
-  getLastEdited(): Promise<Project | undefined>;
-}): Promise<Project> {
-  const lastEdited = await store.getLastEdited();
-  return createProject(lastEdited ?? DEFAULT_PROJECT_SETTINGS);
+export function remixProject(source: Project): Project {
+  const now = Date.now();
+  return {
+    ...toProjectSettings(source),
+    id: crypto.randomUUID(),
+    name: `${source.name} Remix`,
+    createdAt: now,
+    lastEditedAt: now,
+  };
 }
