@@ -17,6 +17,10 @@ Read [CONTEXT.md](CONTEXT.md) for the domain glossary, [docs/adr/](docs/adr/) fo
 
 Svelte + Vite + TypeScript (no SvelteKit — single client-only screen, no routing/SSR). Hosted on Cloudflare Workers (static assets), PR previews via `wrangler versions upload --preview-alias`. See [ADR 0002](docs/adr/0002-svelte-vite-typescript.md) and [ADR 0004](docs/adr/0004-cloudflare-workers-ci.md).
 
+## Workflow
+
+`/implement` doesn't stop at a local commit: build → run `/code-review` locally against the diff → triage findings by gravity (fix what matters now, log or defer low-gravity ones — e.g. to `docs/BACKLOG.md`, a spawned background task, or a follow-up issue) → commit → `gh pr create` → `gh pr merge --auto --squash` right away. The review gate is local, before the PR, not a manual-merge gate on the PR itself — don't wait for a manual merge once checks are green.
+
 ## Conventions
 
 - **Engine is a pure function.** `src/engine/` takes a monogram configuration (letters, Design, Frame, colors) and returns an SVG string. No DOM access, no `window`/`document`, no side effects — this is what makes Designs unit-testable and snapshot-testable without a browser.
