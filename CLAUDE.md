@@ -21,6 +21,8 @@ Svelte + Vite + TypeScript (no SvelteKit — single client-only screen, no routi
 
 `/implement` doesn't stop at a local commit: build → run `/code-review` locally against the diff → triage findings by gravity (fix what matters now, log or defer low-gravity ones — e.g. to `docs/BACKLOG.md`, a spawned background task, or a follow-up issue) → commit → `gh pr create` → `gh pr merge --auto --squash` right away. The review gate is local, before the PR, not a manual-merge gate on the PR itself — don't wait for a manual merge once checks are green.
 
+It also doesn't stop at opening the PR: stay subscribed to it (poll `gh pr checks`/`gh pr view` — e.g. via a scheduled wakeup) until it actually merges, rather than firing `gh pr create` and moving on. If a check fails, investigate and fix it, don't just wait passively.
+
 ## Conventions
 
 - **Engine is a pure function.** `src/engine/` takes a monogram configuration (letters, Design, Frame, colors) and returns an SVG string. No DOM access, no `window`/`document`, no side effects — this is what makes Designs unit-testable and snapshot-testable without a browser.
