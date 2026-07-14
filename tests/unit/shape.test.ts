@@ -94,6 +94,63 @@ describe("warpPathCommands", () => {
     expect(Number.isFinite(first.x)).toBe(true);
     expect(Number.isFinite(first.y)).toBe(true);
   });
+
+  it("maps the box's own boundary points exactly onto the diamond (issue #38)", () => {
+    // The right edge of the box (centerX + halfWidth, centerY) is on the
+    // block's bounding-box boundary — the envelope map's defining property
+    // is that boundary points land exactly on the target diamond, i.e. the
+    // L1 distance from center equals the radius.
+    const commands: PathCommand[] = [
+      { type: "M", x: BOX.centerX + BOX.halfWidth, y: BOX.centerY },
+    ];
+    const [warped] = warpPathCommands(commands, BOX, "diamond");
+    if (!warped || warped.type !== "M")
+      throw new Error("expected an M command");
+    const radius = Math.max(BOX.halfWidth, BOX.halfHeight);
+    const dx = Math.abs(warped.x - BOX.centerX);
+    const dy = Math.abs(warped.y - BOX.centerY);
+    expect(dx + dy).toBeCloseTo(radius);
+  });
+
+  it("maps the box center to itself for a diamond Shape", () => {
+    const commands: PathCommand[] = [
+      { type: "M", x: BOX.centerX, y: BOX.centerY },
+    ];
+    const [warped] = warpPathCommands(commands, BOX, "diamond");
+    if (!warped || warped.type !== "M")
+      throw new Error("expected an M command");
+    expect(warped.x).toBeCloseTo(BOX.centerX);
+    expect(warped.y).toBeCloseTo(BOX.centerY);
+  });
+
+  it("produces only finite coordinates for a diamond Shape — no NaN even for points outside the nominal box", () => {
+    const commands: PathCommand[] = [
+      { type: "M", x: 0, y: 0 },
+      { type: "L", x: 1000, y: 1000 },
+    ];
+    const warped = warpPathCommands(commands, BOX, "diamond");
+    for (const cmd of warped) {
+      if (cmd.type === "M" || cmd.type === "L") {
+        expect(Number.isFinite(cmd.x)).toBe(true);
+        expect(Number.isFinite(cmd.y)).toBe(true);
+      }
+    }
+  });
+
+  it("doesn't divide by zero for a degenerate zero-size box with a diamond Shape", () => {
+    const degenerate: LetterBlockBox = {
+      centerX: 500,
+      centerY: 500,
+      halfWidth: 0,
+      halfHeight: 0,
+    };
+    const commands: PathCommand[] = [{ type: "M", x: 500, y: 500 }];
+    const warped = warpPathCommands(commands, degenerate, "diamond");
+    const [first] = warped;
+    if (!first || first.type !== "M") throw new Error("expected an M command");
+    expect(Number.isFinite(first.x)).toBe(true);
+    expect(Number.isFinite(first.y)).toBe(true);
+  });
 });
 
 describe("scalePathCommands", () => {

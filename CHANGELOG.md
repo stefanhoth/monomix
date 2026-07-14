@@ -17,6 +17,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 - MonoMix now speaks German as well as English. It defaults to your browser's language, with a switcher in the top corner if you'd rather pick manually — your choice is remembered on your next visit.
 - A "What's new" link in the top corner opens a panel with a curated, plain-language look at recent changes, grouped by month — a small dot shows up whenever there's something you haven't seen yet.
 - Every font now also comes in a "Circle" design that presses your letters into a classic circle monogram — the outer letters bow to follow the ring. Combine it with any Frame and it still fits perfectly.
+- Every font now also comes in a "Diamond" design that presses your letters into a classic diamond monogram silhouette.
 
 ### Changed
 
