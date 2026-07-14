@@ -27,7 +27,6 @@ function font(id: string): FontEntry {
 interface ShapeVariant {
   fontId: string;
   shape: Exclude<Shape, "none">;
-  label: string;
 }
 
 // The curated Shape catalog (issue #39): one font per distinct style voice,
@@ -36,19 +35,23 @@ interface ShapeVariant {
 // DECISIONS.md for the culling call. Shaped Designs lead the gallery, per
 // "the gallery leads with shaped Designs" (issue #39).
 const SHAPED: ShapeVariant[] = [
-  { fontId: "playfair-display", shape: "circle", label: "Circle" },
-  { fontId: "playfair-display", shape: "diamond", label: "Diamond" },
-  { fontId: "cinzel-decorative", shape: "circle", label: "Circle" },
-  { fontId: "cinzel-decorative", shape: "diamond", label: "Diamond" },
-  { fontId: "archivo-black", shape: "circle", label: "Circle" },
-  { fontId: "archivo-black", shape: "diamond", label: "Diamond" },
-  { fontId: "alfa-slab-one", shape: "circle", label: "Circle" },
-  { fontId: "alfa-slab-one", shape: "diamond", label: "Diamond" },
-  { fontId: "alex-brush", shape: "circle", label: "Circle" },
-  { fontId: "alex-brush", shape: "diamond", label: "Diamond" },
-  { fontId: "unifraktur-cook", shape: "circle", label: "Circle" },
-  { fontId: "unifraktur-cook", shape: "diamond", label: "Diamond" },
+  { fontId: "playfair-display", shape: "circle" },
+  { fontId: "playfair-display", shape: "diamond" },
+  { fontId: "cinzel-decorative", shape: "circle" },
+  { fontId: "cinzel-decorative", shape: "diamond" },
+  { fontId: "archivo-black", shape: "circle" },
+  { fontId: "archivo-black", shape: "diamond" },
+  { fontId: "alfa-slab-one", shape: "circle" },
+  { fontId: "alfa-slab-one", shape: "diamond" },
+  { fontId: "alex-brush", shape: "circle" },
+  { fontId: "alex-brush", shape: "diamond" },
+  { fontId: "unifraktur-cook", shape: "circle" },
+  { fontId: "unifraktur-cook", shape: "diamond" },
 ];
+
+function capitalize(word: string): string {
+  return word[0]!.toUpperCase() + word.slice(1);
+}
 
 interface ArrangementVariant {
   fontId: string;
@@ -90,7 +93,7 @@ const shapedDesigns: Design[] = SHAPED.map((variant) => {
   const f = font(variant.fontId);
   return {
     id: `${f.id}-${variant.shape}`,
-    name: `${f.family} ${variant.label}`,
+    name: `${f.family} ${capitalize(variant.shape)}`,
     fontId: f.id,
     arrangement: "horizontal",
     shape: variant.shape,

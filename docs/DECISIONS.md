@@ -33,7 +33,11 @@ dev`, never bundled by `vite build` since nothing references it) showed
   total), plus 3 plain (unshaped) Designs from fonts not already used above
   (Poppins Classic, Kelly Slab Classic, Cormorant Garamond Stacked) so a
   "letters as-is" look survives the cull without repeating a font under two
-  entries. `DESIGNS` orders the shaped block first — the gallery leads with
+  entries — Cormorant Garamond's thin strokes are exactly what reads as
+  elegant unshaped (a classic wedding-monogram look) and what goes muddy once
+  pressed into a Shape, so it's excluded from `SHAPED` but kept in
+  `UNSHAPED`, not a contradiction of the same weak-serif reasoning above.
+  `DESIGNS` orders the shaped block first — the gallery leads with
   it, and `DESIGNS[0]` (Playfair Display Circle) is what
   `DEFAULT_PROJECT_SETTINGS.designId` resolves to, making a circle template
   the first-run default for free rather than needing a separate default rule.
