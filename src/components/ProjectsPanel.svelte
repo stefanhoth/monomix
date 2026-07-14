@@ -100,6 +100,7 @@
                 {#if font && design && project.letters.length > 0}
                   {@html composeMonogram(project.letters, font, {
                     arrangement: design.arrangement,
+                    shape: design.shape,
                     frame: {
                       id: project.frameId,
                       gap: project.frameGap,

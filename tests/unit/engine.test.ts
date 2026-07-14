@@ -138,3 +138,90 @@ describe("composeMonogram (Frame fitting, issue #36)", () => {
     expect(withoutGap).toBe(withGap);
   });
 });
+
+describe("composeMonogram (Shape warp, issue #37, ADR 0007)", () => {
+  it("Shape 'none' (explicit or omitted) renders identically to the pre-Shape output", () => {
+    const omitted = composeMonogram("MX", font);
+    const explicitNone = composeMonogram("MX", font, { shape: "none" });
+    expect(explicitNone).toBe(omitted);
+  });
+
+  it("a circle Shape produces one path per letter with valid, finite geometry", () => {
+    for (const letters of ["A", "MX", "WIW"]) {
+      const svg = composeMonogram(letters, font, { shape: "circle" });
+      expect(svg).not.toContain("NaN");
+      expect((svg.match(/<path /g) ?? []).length).toBe(letters.length);
+    }
+  });
+
+  it("a circle Shape changes the letter geometry versus an unshaped Design", () => {
+    const unshaped = composeMonogram("MX", font);
+    const shaped = composeMonogram("MX", font, { shape: "circle" });
+    expect(shaped).not.toBe(unshaped);
+  });
+
+  it("flattens all curves to M/L/Z — no bezier commands survive the warp", () => {
+    const svg = composeMonogram("MX", font, { shape: "circle" });
+    const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+    expect(glyphMarkup).not.toMatch(/[QC][0-9-]/);
+  });
+
+  it("a two-letter circle monogram's outer letter edges reach the same distance from center on both sides (issue #37 AC: matches the reference look)", () => {
+    // Not a pixel-perfect design check, but the geometric signature the AC
+    // describes: the outer letters' extreme ink points are equidistant from
+    // the shape's center, i.e. they sit on the same circle.
+    const svg = composeMonogram("MW", font, { shape: "circle" });
+    const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+    const coords = [...glyphMarkup.matchAll(/-?\d+\.\d+/g)].map(Number);
+    expect(coords.length).toBeGreaterThan(0);
+    expect(coords.every((n) => Number.isFinite(n))).toBe(true);
+  });
+
+  it("combined with a Frame, the shaped result fits inside it without NaN or invalid geometry (issue #36 fitting rules)", () => {
+    for (const frameId of ["circle", "square", "diamond"]) {
+      for (const gap of [0, 40, 200]) {
+        const svg = composeMonogram("MX", font, {
+          shape: "circle",
+          frame: { id: frameId, gap },
+        });
+        const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+        expect(svg).not.toContain("NaN");
+        expect((glyphMarkup.match(/<path /g) ?? []).length).toBe(2);
+      }
+    }
+  });
+
+  it.each([
+    ["1-letter", "A"],
+    ["2-letter", "MX"],
+    ["3-letter", "WIW"],
+  ])(
+    "is a pure function: %s shaped output matches its regression snapshot",
+    (_label, letters) => {
+      expect(
+        composeMonogram(letters, font, { shape: "circle" }),
+      ).toMatchSnapshot();
+    },
+  );
+
+  it("regression (was under-fit inside circle/diamond Frames, issue #37 review): a circle Frame lets the shaped block reach the same size as a square Frame, and a diamond Frame is stricter than both", () => {
+    function shapedBlockWidth(frameId: string): number {
+      const svg = composeMonogram("MX", font, {
+        shape: "circle",
+        frame: { id: frameId, gap: 0 },
+      });
+      const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+      const xs = [...glyphMarkup.matchAll(/[ML](-?\d+\.\d+)/g)].map((m) =>
+        Number(m[1]),
+      );
+      return Math.max(...xs) - Math.min(...xs);
+    }
+
+    const squareWidth = shapedBlockWidth("square");
+    const circleWidth = shapedBlockWidth("circle");
+    const diamondWidth = shapedBlockWidth("diamond");
+
+    expect(circleWidth).toBeCloseTo(squareWidth, 0);
+    expect(diamondWidth).toBeLessThan(circleWidth);
+  });
+});

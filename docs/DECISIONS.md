@@ -11,6 +11,49 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-07-14
+
+- **The circle Shape warp uses the Fernandez-Guasti "elliptical grid" square-to-disc
+  mapping, not an arc-text (rotate-along-a-circle) effect.** Given a letter block's
+  bounding box, `u²(1-v²/2) + v²(1-u²/2)` reduces to exactly 1 whenever `|u|=1` or
+  `|v|=1` — i.e. the _entire_ boundary of the box (not just its corners) lands
+  exactly on the target circle, which is what makes "the outer edges of the outer
+  letters follow the circle" (issue #37 AC) a property of the formula rather than
+  something tuned by hand. Letters stay upright and bow at their edges instead of
+  rotating individually, which reads as a legitimate circle-monogram press across
+  every font style tried (serif, bold sans, script, blackletter) rather than an
+  arc-text effect. `src/engine/shape.ts`'s `warpPathCommands` applies it per-point
+  after adaptively subdividing every path segment (including straight `L`s, which
+  become curved once warped) — output is always flattened to `M`/`L`/`Z`, since a
+  formerly-straight segment re-expressed as a bezier after a non-linear warp isn't
+  meaningful. (Issue #37, ADR 0007)
+- **The Shape warp's "fit to the canvas or Frame" step gets its own
+  `fitCircleScale` (`src/engine/fit.ts`), not a reuse of `fitScale`.** An
+  initial pass reused `fitScale(2r, 2r, extent, shape)` directly, on the
+  reasoning that a warped block's bounding box is a square of half-extent
+  `r` — but `fitScale` assumes a rectangular block whose _corners_ are its
+  farthest points from center, and a warped-into-a-circle block's actual
+  content is a disc, not a rectangle, so its corners are empty space, not
+  ink. That mismatch silently under-fit the circle Shape inside a circle
+  Frame to ~70.7% of the available space and inside a diamond Frame to 50%
+  (caught in review, `docs/adr/0007`'s "combine with any Frame and it still
+  fits perfectly" wasn't actually true). `fitCircleScale(radius, extent,
+shape)` instead uses each norm's worst-case value over the Euclidean unit
+  circle (1 for square/circle, `√2` for diamond) — the two functions do
+  share `fit.ts`'s Frame-extent resolution (`frameFitExtent`, extracted from
+  `fitLayoutToFrame` in the same pass so both callers derive the extent/norm
+  from one place), just not the scale formula itself, since a disc and a
+  rectangle are fit against a norm boundary differently. (Issue #37)
+- **Every font in the catalog gets a "Circle" Design (horizontal arrangement
+  only), not a hand-curated subset.** ADR 0007 anticipated curating which fonts
+  "survive" a Shape; visually spot-checking one font per style category (serif,
+  bold geometric sans, script, blackletter) in the running app showed the generic
+  envelope map reads as a clean circle press in every case, with no self-
+  intersections or broken counters — so shipping it broadly rather than picking a
+  handful upfront avoided an arbitrary, unverifiable cut. "Stacked" arrangement
+  doesn't get a Shape variant: a vertically stacked column pressed into a circle
+  has no reference circle-monogram equivalent. (Issue #37)
+
 ## 2026-07-13
 
 - **Frame fitting picks the geometric norm (Chebyshev/Euclidean/Manhattan)

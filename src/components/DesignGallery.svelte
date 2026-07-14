@@ -56,6 +56,7 @@
         {#if font && letters.length > 0}
           {@html composeMonogram(letters, font, {
             arrangement: design.arrangement,
+            shape: design.shape,
           })}
         {/if}
       </span>

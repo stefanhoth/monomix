@@ -33,6 +33,15 @@ describe("DESIGNS catalog", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it("has at least one circle Shape Design for every Letter Count (issue #37)", () => {
+    for (const count of [1, 2, 3] as const) {
+      const circleDesigns = DESIGNS.filter(
+        (d) => d.shape === "circle" && d.supports.includes(count),
+      );
+      expect(circleDesigns.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it.each(
     DESIGNS.flatMap((design) =>
       design.supports.map((count) => ({ design, count })),
@@ -46,6 +55,7 @@ describe("DESIGNS catalog", () => {
 
       const svg = composeMonogram(letters, font, {
         arrangement: design.arrangement,
+        shape: design.shape,
       });
 
       expect(svg).toContain("<svg");

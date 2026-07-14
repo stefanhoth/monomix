@@ -11,6 +11,7 @@ function design(id: string, supports: Design["supports"]): Design {
     name: id,
     fontId: "cinzel",
     arrangement: "horizontal",
+    shape: "none",
     supports,
   };
 }
