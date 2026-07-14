@@ -40,8 +40,8 @@
   } from "./lib/onboarding";
   import {
     createProject,
-    createNewProject,
     projectSettingsEqual,
+    remixProject,
     toProjectSettings,
     DEFAULT_PROJECT_SETTINGS,
     type Project,
@@ -59,8 +59,8 @@
   import { getLastSeenEntryId, markEntrySeen } from "./lib/changelog-storage";
   import DesignGallery from "./components/DesignGallery.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
+  import NewProjectSurface from "./components/NewProjectSurface.svelte";
   import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
-  import ProjectsPanel from "./components/ProjectsPanel.svelte";
   import LocaleSwitcher from "./components/LocaleSwitcher.svelte";
   import WhatsNewPanel from "./components/WhatsNewPanel.svelte";
 
@@ -249,8 +249,8 @@
   });
 
   // Loads every field from `project` into the live editor state and makes
-  // it the active Project — used on initial hydration, when switching to a
-  // different recent Project, and after onboarding creates the first one.
+  // it the active Project — used on initial hydration, by "Start blank" and
+  // Remix (issue #48), and after onboarding creates the first one.
   // Deliberately synchronous end-to-end (no `await` before the field
   // reassignments): flush()'s pending-write capture happens synchronously
   // the instant it's called (the JS engine runs an async function's body
@@ -410,28 +410,43 @@
     void completeOnboarding("ABC");
   }
 
-  // "New Project" (issue #14 AC): starts from the most recently used
-  // settings, not hardcoded defaults. Flushes any pending autosave first so
-  // `createNewProject`'s "most recently edited Project" lookup sees the
-  // latest edit, not a stale pre-debounce snapshot.
-  async function handleNewProject() {
-    await autosave.flush();
-    const project = await createNewProject(projectStore);
+  // The New surface (issue #48): the topbar "New" button opens an overlay
+  // with "Start blank" + recent Projects as Remix seeds, replacing #14's
+  // silent "new Project inherits last settings".
+  let newSurfaceOpen = $state(false);
+
+  // "Start blank" (issue #48 AC): a fresh Project from app defaults —
+  // deliberately NOT the last-used settings; building on previous work is
+  // exactly what Remix below is for.
+  async function handleStartBlank() {
+    newSurfaceOpen = false;
+    const project = createProject();
     switchToProject(project);
     await projectStore.put(project);
     await refreshProjects();
   }
 
-  // Synchronous and reads from the already-loaded `projects` list rather
-  // than re-fetching from the store — see switchToProject's docstring for
-  // why an async gap here would be a correctness bug, not just a style
-  // choice: an edit made while awaiting a fetch could land on the outgoing
-  // Project instead of the one being switched to.
-  function handleSelectProject(id: string) {
-    if (id === activeProjectMeta?.id) return;
-    const project = projects.find((p) => p.id === id);
-    if (!project) return;
-    switchToProject(project);
+  // Remix (issue #48 AC): new Project seeded from the source's settings,
+  // made active; the source's content and lastEditedAt stay untouched (we
+  // only ever put() the remix). Reads from the already-loaded `projects`
+  // list and calls switchToProject synchronously — see its docstring for
+  // why an async gap before the switch would be a correctness bug.
+  async function handleRemixProject(id: string) {
+    const stored = projects.find((p) => p.id === id);
+    if (!stored) return;
+    newSurfaceOpen = false;
+    // Remixing the ACTIVE Project must seed from the live editor state, not
+    // the stored snapshot — an edit still inside the autosave debounce
+    // window (400ms) wouldn't have landed in `projects` yet and would be
+    // silently missing from the remix.
+    const source =
+      id === activeProjectMeta?.id
+        ? { ...stored, ...currentProjectSettings }
+        : stored;
+    const remix = remixProject(source);
+    switchToProject(remix);
+    await projectStore.put(remix);
+    await refreshProjects();
   }
 
   async function handleRenameProject(id: string, name: string) {
@@ -554,7 +569,7 @@
         <p class="tagline">{t("app.tagline")}</p>
       </div>
       <div class="top-bar-actions">
-        <button type="button" onclick={() => void handleNewProject()}>
+        <button type="button" onclick={() => (newSurfaceOpen = true)}>
           {t("projects.new")}
         </button>
         <button type="button" class="whatsnew-trigger" onclick={openWhatsNew}>
@@ -698,19 +713,6 @@
             </button>
           </div>
         </div>
-
-        <!-- Interim spot (issue #47): the Projects list moves into the
-             New/Remix flow in issue #48; until then it lives, unpolished,
-             below the tab panels. Its "New Project" button moved to the
-             topbar above. -->
-        <ProjectsPanel
-          {projects}
-          {fonts}
-          activeId={activeProjectMeta?.id}
-          onSelect={handleSelectProject}
-          onRename={(id, name) => void handleRenameProject(id, name)}
-          onDelete={(id) => void handleDeleteProject(id)}
-        />
       </div>
     </aside>
 
@@ -740,6 +742,17 @@
     </main>
   </div>
   <WhatsNewPanel open={whatsNewOpen} onClose={closeWhatsNew} {reducedMotion} />
+  <NewProjectSurface
+    open={newSurfaceOpen}
+    {projects}
+    {fonts}
+    onStartBlank={() => void handleStartBlank()}
+    onRemix={(id) => void handleRemixProject(id)}
+    onRename={(id, name) => void handleRenameProject(id, name)}
+    onDelete={(id) => void handleDeleteProject(id)}
+    onClose={() => (newSurfaceOpen = false)}
+    {reducedMotion}
+  />
 {/if}
 
 <style>

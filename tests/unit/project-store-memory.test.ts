@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { createMemoryProjectStore } from "../../src/lib/project-store-memory";
-import {
-  createNewProject,
-  DEFAULT_PROJECT_SETTINGS,
-} from "../../src/lib/project";
 import type { Project } from "../../src/lib/project";
 
 function project(overrides: Partial<Project> = {}): Project {
@@ -26,8 +22,8 @@ function project(overrides: Partial<Project> = {}): Project {
 
 // The fake in-memory adapter (issue #14: storage-adapter seam) is exercised
 // directly here so both the adapter's CRUD contract and anything built on
-// top of the ProjectStore interface (e.g. createNewProject) are testable
-// without real IndexedDB, per the test plan.
+// top of the ProjectStore interface are testable without real IndexedDB,
+// per the test plan.
 describe("createMemoryProjectStore", () => {
   it("put/get round-trips a Project", async () => {
     const store = createMemoryProjectStore();
@@ -76,36 +72,5 @@ describe("createMemoryProjectStore", () => {
     const list = await store.list();
     expect(list).toHaveLength(1);
     expect(list[0]?.name).toBe("New");
-  });
-});
-
-// "New Project inherits last settings" (issue #14 test plan) — this is the
-// storage-backed half of that logic (see project.test.ts for the pure
-// createProject() half), tested against the fake adapter.
-describe("createNewProject", () => {
-  it("inherits settings from the most recently edited Project when one exists", async () => {
-    const store = createMemoryProjectStore([
-      project({ id: "old", letters: "OLD", lastEditedAt: 100 }),
-      project({
-        id: "recent",
-        letters: "NEW",
-        frameId: "circle",
-        lastEditedAt: 999,
-      }),
-    ]);
-
-    const created = await createNewProject(store);
-
-    expect(created.letters).toBe("NEW");
-    expect(created.frameId).toBe("circle");
-    expect(created.id).not.toBe("old");
-    expect(created.id).not.toBe("recent");
-  });
-
-  it("falls back to DEFAULT_PROJECT_SETTINGS when the store is empty", async () => {
-    const store = createMemoryProjectStore();
-    const created = await createNewProject(store);
-    expect(created.letters).toBe(DEFAULT_PROJECT_SETTINGS.letters);
-    expect(created.designId).toBe(DEFAULT_PROJECT_SETTINGS.designId);
   });
 });

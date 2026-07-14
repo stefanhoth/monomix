@@ -4,6 +4,7 @@ import {
   deserializeProject,
   normalizeProject,
   projectSettingsEqual,
+  remixProject,
   serializeProject,
   toProjectSettings,
   DEFAULT_PROJECT_SETTINGS,
@@ -133,6 +134,47 @@ describe("createProject", () => {
   it("sets createdAt and lastEditedAt to the same fresh timestamp", () => {
     const created = createProject();
     expect(created.createdAt).toBe(created.lastEditedAt);
+  });
+});
+
+// Remix (CONTEXT.md, issue #48): a new Project seeded from an existing
+// Project's settings; the source stays untouched. The only way to build on
+// a past Project.
+describe("remixProject", () => {
+  it("copies every settings field from the source", () => {
+    const source = project({
+      letters: "ABC",
+      designId: "playfair-circle",
+      frameId: "diamond",
+      frameGap: 80,
+      lettersColor: "#ff0000",
+      frameColor: "#00ff00",
+      transparentBackground: false,
+      backgroundColor: "#0000ff",
+    });
+    const remix = remixProject(source);
+    expect(projectSettingsEqual(remix, toProjectSettings(source))).toBe(true);
+  });
+
+  it("is a new Project: fresh id and fresh timestamps, not the source's", () => {
+    const source = project({ createdAt: 1000, lastEditedAt: 2000 });
+    const before = Date.now();
+    const remix = remixProject(source);
+    expect(remix.id).not.toBe(source.id);
+    expect(remix.createdAt).toBeGreaterThanOrEqual(before);
+    expect(remix.lastEditedAt).toBe(remix.createdAt);
+  });
+
+  it("names the remix after its source", () => {
+    const remix = remixProject(project({ name: "My Monogram" }));
+    expect(remix.name).toBe("My Monogram Remix");
+  });
+
+  it("does not mutate the source Project (pure)", () => {
+    const source = project();
+    const snapshot = { ...source };
+    remixProject(source);
+    expect(source).toEqual(snapshot);
   });
 });
 

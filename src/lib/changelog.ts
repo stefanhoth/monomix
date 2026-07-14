@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-07-14-remix",
+    date: "2026-07-14",
+    en: 'Meet Remix: the "New Project" button now opens a surface where you start blank or remix any recent Project into a fresh one — the original stays untouched.',
+    de: 'Zeit für Remix: Der "Neues Projekt"-Button öffnet jetzt eine Oberfläche, in der du leer startest oder jedes frühere Projekt zu einem neuen remixt — das Original bleibt unangetastet.',
+  },
+  {
     id: "2026-07-14-fullscreen-workspace",
     date: "2026-07-14",
     en: "MonoMix is now a fullscreen studio: your monogram always stays in view while you flip through Designs, Frames, colors, and export in the new sidebar — on your phone too.",

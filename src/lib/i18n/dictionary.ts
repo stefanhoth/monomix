@@ -56,11 +56,19 @@ export const dictionary = {
   "frame.diamond": { en: "Diamond", de: "Raute" },
   "frame.dotted-circle": { en: "Dotted Circle", de: "Gepunkteter Kreis" },
   "frame.dashed-circle": { en: "Dashed Circle", de: "Gestrichelter Kreis" },
-  "projects.heading": { en: "Projects", de: "Projekte" },
   "projects.new": { en: "New Project", de: "Neues Projekt" },
   "projects.rename": { en: "Rename", de: "Umbenennen" },
   "projects.delete": { en: "Delete", de: "Löschen" },
   "projects.nameLabel": { en: "Project name", de: "Projektname" },
+  // The New surface (issue #48). "Remix" stays "Remix" in German — it's the
+  // product pun (MonoMix → Remix), see CONTEXT.md.
+  "new.startBlank": { en: "Start blank", de: "Leer starten" },
+  "new.remix": { en: "Remix", de: "Remix" },
+  "new.recent": {
+    en: "Or remix a recent Project",
+    de: "Oder remixe ein früheres Projekt",
+  },
+  "new.close": { en: "Close", de: "Schließen" },
   "onboarding.initialsLabel": { en: "Your initials?", de: "Deine Initialen?" },
   "onboarding.submit": {
     en: "See my monogram",

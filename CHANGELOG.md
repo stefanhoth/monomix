@@ -8,6 +8,8 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
+- A "New Project" surface behind the topbar button: start blank or **remix** any recent Project into a fresh one — the original stays untouched, as a frozen snapshot. Renaming and deleting recent Projects lives there now too, instead of in a permanent panel below the editor.
+
 - You can now export your monogram as SVG, PNG, JPG, or PDF.
 - The letters field now catches non-A-Z characters (like umlauts) and shows a helpful hint instead of silently changing what you typed. The layout also adapts to narrow/mobile screens.
 - A design gallery now shows every available style with your own letters live, filtered to the ones that fit your current initials. Pick one and the main preview updates with a smooth transition. Frame and color controls are still to come.
@@ -20,6 +22,8 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 - Every font now also comes in a "Diamond" design that presses your letters into a classic diamond monogram silhouette.
 
 ### Changed
+
+- Starting a new Project blank now uses the app defaults instead of silently inheriting your last-used settings — carrying settings forward is exactly what Remix is for.
 
 - The editor is now a fullscreen workspace: your monogram and the letters field always stay in view, while Designs, Frames, colors, and export moved into a tabbed sidebar (on phones: a fixed vertical split with the preview on top). No more scrolling the preview away to reach a control.
 - Design and Frame gallery tiles now render with your actual letter color on the same adaptive checkerboard the main preview uses — dark letters no longer vanish on dark-mode tiles.
