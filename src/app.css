@@ -9,3 +9,26 @@
 body {
   margin: 0;
 }
+
+/* Transparency checkerboard shared by the main preview and the gallery
+   tiles. Not a solid fill — a transparent background (the app's default)
+   must read as transparent, not as accidentally white/gray; an opaque
+   chosen background fully covers it anyway. The two colors come from the
+   --backdrop-* custom properties App.svelte sets on the workspace root:
+   a light or dark board depending on the *letters color* (issue #46), not
+   the UI theme. --checker-size lets small tiles use a finer grid. */
+.checkerboard {
+  --checker-size: 16px;
+  background-color: var(--backdrop-base);
+  background-image:
+    linear-gradient(45deg, var(--backdrop-check) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--backdrop-check) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--backdrop-check) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--backdrop-check) 75%);
+  background-size: var(--checker-size) var(--checker-size);
+  background-position:
+    0 0,
+    0 calc(var(--checker-size) / 2),
+    calc(var(--checker-size) / 2) calc(var(--checker-size) / -2),
+    calc(var(--checker-size) / -2) 0;
+}

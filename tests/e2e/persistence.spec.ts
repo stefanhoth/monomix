@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { skipOnboarding } from "./helpers/onboarding";
+import { openTab } from "./helpers/tabs";
 import {
   clearAppStorage,
   patchLastEditedProject,
@@ -45,10 +46,12 @@ test("a design/frame/color change also autosaves and survives a reload", async (
 }) => {
   await page.goto("/");
 
+  await openTab(page, "Frame");
   const frameGallery = page.getByRole("listbox", { name: "Frames" });
   await frameGallery
     .getByRole("option", { name: "Circle", exact: true })
     .click();
+  await openTab(page, "Colors");
   await page.getByLabel("Letter Color").fill("#ff0000");
 
   const preview = page.locator(".preview:not([inert]) svg");

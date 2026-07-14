@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { skipOnboarding } from "./helpers/onboarding";
+import { openTab } from "./helpers/tabs";
 
 test.beforeEach(async ({ page }) => {
   // Every test in this file exercises the editor's export flow directly,
@@ -21,6 +22,7 @@ for (const { button, extension } of FORMATS) {
     page,
   }) => {
     await page.goto("/");
+    await openTab(page, "Export");
     await expect(page.getByRole("button", { name: button })).toBeEnabled();
 
     const [download] = await Promise.all([
@@ -58,6 +60,7 @@ test("PNG export respects a chosen size (AC: 'at a chosen size')", async ({
   page,
 }) => {
   await page.goto("/");
+  await openTab(page, "Export");
   const sizeInput = page.getByLabel("PNG/JPG size (px)");
   await sizeInput.fill("256");
 

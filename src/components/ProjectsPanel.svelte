@@ -4,6 +4,8 @@
   import type { Project } from "../lib/project";
   import { t } from "../lib/i18n/store.svelte";
 
+  // "New Project" moved to the workspace topbar (issue #47) — this panel
+  // only lists/renames/deletes until it dissolves into the New/Remix flow.
   let {
     projects,
     fonts,
@@ -11,7 +13,6 @@
     onSelect,
     onRename,
     onDelete,
-    onNewProject,
   }: {
     /** Ordered by lastEditedAt desc — the caller (App.svelte) owns sorting. */
     projects: Project[];
@@ -20,7 +21,6 @@
     onSelect: (id: string) => void;
     onRename: (id: string, name: string) => void;
     onDelete: (id: string) => void;
-    onNewProject: () => void;
   } = $props();
 
   // Only one row can be mid-rename at a time, so a single pair of fields is
@@ -71,7 +71,6 @@
 <section class="projects-panel">
   <div class="projects-header">
     <h2>{t("projects.heading")}</h2>
-    <button type="button" onclick={onNewProject}>{t("projects.new")}</button>
   </div>
 
   {#if projects.length > 0}

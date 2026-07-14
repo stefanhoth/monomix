@@ -21,6 +21,8 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Changed
 
+- The editor is now a fullscreen workspace: your monogram and the letters field always stay in view, while Designs, Frames, colors, and export moved into a tabbed sidebar (on phones: a fixed vertical split with the preview on top). No more scrolling the preview away to reach a control.
+- Design and Frame gallery tiles now render with your actual letter color on the same adaptive checkerboard the main preview uses — dark letters no longer vanish on dark-mode tiles.
 - Frames now stay put: instead of a Frame shrinking to make room, your lettering scales to fit inside it. The Frame Gap slider controls that breathing room directly — all the way down means your letters fill the Frame, and no font/letters combination can overflow it anymore.
 - The design gallery has been re-curated: shaped (circle and diamond) monograms now lead the gallery, and the underwhelming plain font-only designs have mostly been retired in their favor. The very first design you see is now a classic circle monogram.
 

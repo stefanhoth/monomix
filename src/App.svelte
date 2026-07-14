@@ -30,6 +30,11 @@
   import { isFirstRun } from "./lib/first-run";
   import { backdropTone, BACKDROP_COLORS } from "./lib/preview-backdrop";
   import {
+    WORKSPACE_TABS,
+    tabForKey,
+    type WorkspaceTab,
+  } from "./lib/workspace-tabs";
+  import {
     hasCompletedOnboarding,
     markOnboardingComplete,
   } from "./lib/onboarding";
@@ -97,6 +102,30 @@
   let backgroundColor = $state("#ffffff");
 
   let onboardingComplete = $state(untrack(() => hasCompletedOnboarding()));
+
+  // Sidebar tab (issue #47). Tabs are views over the same live editor
+  // state, never gates — all editable state lives in the $state vars above,
+  // so switching tabs can't lose anything. All four panels stay mounted
+  // (toggled via the `hidden` attribute) so e.g. the Design gallery's
+  // scroll position survives a round-trip through the Colors tab.
+  let activeTab: WorkspaceTab = $state("design");
+
+  // WAI-ARIA tabs keyboard pattern with automatic activation: arrows move
+  // both focus and selection. tabForKey returns undefined for keys the
+  // tablist doesn't own (Tab, characters, ...) — those must keep their
+  // default behavior. Attached to each tab button (the focusable elements),
+  // not the tablist container.
+  function handleTabKeydown(
+    event: KeyboardEvent & { currentTarget: HTMLButtonElement },
+  ) {
+    const next = tabForKey(activeTab, event.key);
+    if (!next) return;
+    event.preventDefault();
+    activeTab = next;
+    event.currentTarget.parentElement
+      ?.querySelector<HTMLButtonElement>(`#tab-${next}`)
+      ?.focus();
+  }
 
   // What's new panel (issue #17, ADR 0005): lastSeenChangelogId starts from
   // storage and only updates when the panel is opened (see openWhatsNew) —
@@ -508,10 +537,26 @@
     onSkip={handleOnboardingSkip}
   />
 {:else}
-  <main>
-    <div class="top-bar">
-      <h1>MonoMix</h1>
+  <!-- Fullscreen workspace (issue #47): the monogram is the hero — the
+       canvas zone (preview + letters input) is always visible, every other
+       control lives in the sidebar's tabs, and nothing ever scrolls the
+       preview out of view. The backdrop custom properties are set here so
+       the main preview AND the gallery tiles share the same letters-color-
+       aware checkerboard (issue #46 follow-up). -->
+  <div
+    class="workspace"
+    style:--backdrop-base={backdrop.base}
+    style:--backdrop-check={backdrop.check}
+  >
+    <header class="top-bar">
+      <div class="brand">
+        <h1>MonoMix</h1>
+        <p class="tagline">{t("app.tagline")}</p>
+      </div>
       <div class="top-bar-actions">
+        <button type="button" onclick={() => void handleNewProject()}>
+          {t("projects.new")}
+        </button>
         <button type="button" class="whatsnew-trigger" onclick={openWhatsNew}>
           {t("whatsnew.buttonLabel")}
           {#if hasUnseenChangelog}
@@ -521,154 +566,224 @@
         </button>
         <LocaleSwitcher />
       </div>
-    </div>
-    <p class="tagline">{t("app.tagline")}</p>
+    </header>
 
-    <label>
-      {t("letters.label")}
-      <input value={letters} oninput={handleLettersInput} />
-    </label>
-    {#if lettersHint}
-      <p class="hint" role="alert">{lettersHint}</p>
-    {/if}
+    <aside class="sidebar">
+      <div class="tablist" role="tablist" aria-label={t("tabs.label")}>
+        {#each WORKSPACE_TABS as tab (tab)}
+          <button
+            type="button"
+            role="tab"
+            id={`tab-${tab}`}
+            aria-selected={activeTab === tab}
+            aria-controls={`panel-${tab}`}
+            tabindex={activeTab === tab ? 0 : -1}
+            onclick={() => (activeTab = tab)}
+            onkeydown={handleTabKeydown}
+          >
+            {t(`tabs.${tab}`)}
+          </button>
+        {/each}
+      </div>
 
-    {#key resolvedDesignId}
-      <div
-        class="preview"
-        style:--backdrop-base={backdrop.base}
-        style:--backdrop-check={backdrop.check}
-        transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
-      >
-        {#if preview}
-          {@html preview}
+      <div class="sidebar-content">
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-design"
+          aria-labelledby="tab-design"
+          hidden={activeTab !== "design"}
+        >
+          <DesignGallery
+            designs={availableDesigns}
+            letters={debouncedLetters}
+            {fonts}
+            {lettersColor}
+            selectedId={resolvedDesignId}
+            onSelect={(id) => (selectedDesignId = id)}
+            {reducedMotion}
+          />
+        </div>
+
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-frame"
+          aria-labelledby="tab-frame"
+          hidden={activeTab !== "frame"}
+        >
+          <FrameGallery
+            frames={FRAMES}
+            letters={debouncedLetters}
+            font={resolvedFont}
+            arrangement={resolvedDesign?.arrangement}
+            shape={resolvedDesign?.shape}
+            gap={resolvedFrameGap}
+            {lettersColor}
+            {frameColor}
+            selectedId={selectedFrameId}
+            onSelect={(id) => (selectedFrameId = id)}
+          />
+
+          <div class="gap-control">
+            <label>
+              {t("frameGap.label")}
+              <input
+                type="range"
+                min={MIN_GAP}
+                max={MAX_GAP}
+                step="5"
+                bind:value={frameGap}
+              />
+            </label>
+            <output class="gap-value">{frameGap}</output>
+          </div>
+        </div>
+
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-colors"
+          aria-labelledby="tab-colors"
+          hidden={activeTab !== "colors"}
+        >
+          <div class="color-controls">
+            <label>
+              {t("color.letters")}
+              <input type="color" bind:value={lettersColor} />
+            </label>
+            <label>
+              {t("color.frame")}
+              <input type="color" bind:value={frameColor} />
+            </label>
+            <label class:disabled={transparentBackground}>
+              {t("color.background")}
+              <input
+                type="color"
+                bind:value={backgroundColor}
+                disabled={transparentBackground}
+              />
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" bind:checked={transparentBackground} />
+              {t("color.transparent")}
+            </label>
+          </div>
+        </div>
+
+        <div
+          class="panel"
+          role="tabpanel"
+          id="panel-export"
+          aria-labelledby="tab-export"
+          hidden={activeTab !== "export"}
+        >
+          <label class="export-size">
+            {t("export.sizeLabel")}
+            <input type="number" min="128" max="4096" bind:value={exportSize} />
+          </label>
+
+          <div class="export-actions">
+            <button onclick={() => handleExport("svg")} disabled={!preview}>
+              {t("export.svg")}
+            </button>
+            <button onclick={() => handleExport("png")} disabled={!preview}>
+              {t("export.png")}
+            </button>
+            <button onclick={() => handleExport("jpg")} disabled={!preview}>
+              {t("export.jpg")}
+            </button>
+            <button onclick={() => handleExport("pdf")} disabled={!preview}>
+              {t("export.pdf")}
+            </button>
+          </div>
+        </div>
+
+        <!-- Interim spot (issue #47): the Projects list moves into the
+             New/Remix flow in issue #48; until then it lives, unpolished,
+             below the tab panels. Its "New Project" button moved to the
+             topbar above. -->
+        <ProjectsPanel
+          {projects}
+          {fonts}
+          activeId={activeProjectMeta?.id}
+          onSelect={handleSelectProject}
+          onRename={(id, name) => void handleRenameProject(id, name)}
+          onDelete={(id) => void handleDeleteProject(id)}
+        />
+      </div>
+    </aside>
+
+    <main class="canvas-zone">
+      <label class="letters-field">
+        {t("letters.label")}
+        <input value={letters} oninput={handleLettersInput} />
+      </label>
+      <!-- Fixed-height slot so the hint appearing/disappearing never shifts
+           the preview (or anything else) around. -->
+      <div class="hint-slot">
+        {#if lettersHint}
+          <p class="hint" role="alert">{lettersHint}</p>
         {/if}
       </div>
-    {/key}
 
-    <DesignGallery
-      designs={availableDesigns}
-      letters={debouncedLetters}
-      {fonts}
-      selectedId={resolvedDesignId}
-      onSelect={(id) => (selectedDesignId = id)}
-      {reducedMotion}
-    />
-
-    <FrameGallery
-      frames={FRAMES}
-      letters={debouncedLetters}
-      font={resolvedFont}
-      arrangement={resolvedDesign?.arrangement}
-      shape={resolvedDesign?.shape}
-      gap={resolvedFrameGap}
-      {lettersColor}
-      {frameColor}
-      selectedId={selectedFrameId}
-      onSelect={(id) => (selectedFrameId = id)}
-    />
-
-    <div class="gap-control">
-      <label>
-        {t("frameGap.label")}
-        <input
-          type="range"
-          min={MIN_GAP}
-          max={MAX_GAP}
-          step="5"
-          bind:value={frameGap}
-        />
-      </label>
-      <output class="gap-value">{frameGap}</output>
-    </div>
-
-    <div class="color-controls">
-      <label>
-        {t("color.letters")}
-        <input type="color" bind:value={lettersColor} />
-      </label>
-      <label>
-        {t("color.frame")}
-        <input type="color" bind:value={frameColor} />
-      </label>
-      <label class:disabled={transparentBackground}>
-        {t("color.background")}
-        <input
-          type="color"
-          bind:value={backgroundColor}
-          disabled={transparentBackground}
-        />
-      </label>
-      <label class="checkbox-label">
-        <input type="checkbox" bind:checked={transparentBackground} />
-        {t("color.transparent")}
-      </label>
-    </div>
-
-    <label>
-      {t("export.sizeLabel")}
-      <input type="number" min="128" max="4096" bind:value={exportSize} />
-    </label>
-
-    <div class="export-actions">
-      <button onclick={() => handleExport("svg")} disabled={!preview}>
-        {t("export.svg")}
-      </button>
-      <button onclick={() => handleExport("png")} disabled={!preview}>
-        {t("export.png")}
-      </button>
-      <button onclick={() => handleExport("jpg")} disabled={!preview}>
-        {t("export.jpg")}
-      </button>
-      <button onclick={() => handleExport("pdf")} disabled={!preview}>
-        {t("export.pdf")}
-      </button>
-    </div>
-
-    <ProjectsPanel
-      {projects}
-      {fonts}
-      activeId={activeProjectMeta?.id}
-      onSelect={handleSelectProject}
-      onRename={(id, name) => void handleRenameProject(id, name)}
-      onDelete={(id) => void handleDeleteProject(id)}
-      onNewProject={() => void handleNewProject()}
-    />
-  </main>
+      {#key resolvedDesignId}
+        <div
+          class="preview checkerboard"
+          transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
+        >
+          {#if preview}
+            {@html preview}
+          {/if}
+        </div>
+      {/key}
+    </main>
+  </div>
   <WhatsNewPanel open={whatsNewOpen} onClose={closeWhatsNew} {reducedMotion} />
 {/if}
 
 <style>
-  main {
-    max-width: 32rem;
-    margin: 4rem auto;
-    padding: 0 1.5rem;
+  .workspace {
+    display: grid;
+    grid-template-areas:
+      "topbar topbar"
+      "sidebar canvas";
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: clamp(18rem, 32vw, 24rem) minmax(0, 1fr);
+    height: 100dvh;
     font-family:
       system-ui,
       -apple-system,
       sans-serif;
   }
 
-  @media (max-width: 30rem) {
-    main {
-      margin: 1.5rem auto;
-    }
-  }
-
   .top-bar {
+    grid-area: topbar;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
+    padding: 0.6rem 1.25rem;
+    border-bottom: 1px solid light-dark(#e2e2e2, #2a2a2c);
   }
 
-  .top-bar h1 {
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .brand h1 {
     margin: 0;
+    font-size: 1.25rem;
   }
 
   .top-bar-actions {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex-shrink: 0;
   }
 
   .whatsnew-trigger {
@@ -706,52 +821,157 @@
   }
 
   .tagline {
+    margin: 0;
+    font-size: 0.875rem;
+    color: light-dark(#555, #aaa);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar {
+    grid-area: sidebar;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 1px solid light-dark(#e2e2e2, #2a2a2c);
+    background: light-dark(#fafafa, #161618);
+  }
+
+  .tablist {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.4rem 0.75rem 0;
+    border-bottom: 1px solid light-dark(#e2e2e2, #2a2a2c);
+  }
+
+  .tablist [role="tab"] {
+    flex: 1;
+    font: inherit;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.25rem;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: light-dark(#555, #aaa);
+    cursor: pointer;
+  }
+
+  .tablist [role="tab"][aria-selected="true"] {
+    color: light-dark(#0b57d0, #a8c7fa);
+    border-bottom-color: currentColor;
+    font-weight: 600;
+  }
+
+  .sidebar-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem 0.75rem;
+  }
+
+  /* Restarts every time a panel un-hides (CSS animations don't run while
+     display: none), so tab switches get a light glide without any JS —
+     and none at all under prefers-reduced-motion. */
+  .panel {
+    animation: panel-in 160ms ease;
+  }
+
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel {
+      animation: none;
+    }
+  }
+
+  .canvas-zone {
+    grid-area: canvas;
+    /* Size container so .preview below can size itself against the zone's
+       *height* (cqh) — the one dimension plain percentages can't reach in
+       a column flexbox. */
+    container-type: size;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 0;
+    overflow: hidden;
+    padding: 1.5rem;
+  }
+
+  .letters-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.875rem;
     color: light-dark(#555, #aaa);
   }
 
+  .letters-field input {
+    font: inherit;
+    font-size: 1.4rem;
+    text-align: center;
+    width: 9rem;
+    letter-spacing: 0.15em;
+    padding: 0.3rem 0.5rem;
+    color: light-dark(#111, #eee);
+  }
+
+  /* The slot reserves one line; the hint itself overlays (absolute) so a
+     long suggestion wrapping to a second line on narrow viewports still
+     never shifts the preview below it. */
+  .hint-slot {
+    position: relative;
+    min-height: 1.4rem;
+    width: 100%;
+  }
+
   .hint {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 100%;
+    text-align: center;
     color: light-dark(#b3261e, #ffb4ab);
     font-size: 0.875rem;
-    margin: 0.25rem 0 0;
+    margin: 0;
   }
 
   .preview {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    /* Checkerboard, not a solid fill — a transparent background (the
-       default, see `transparentBackground` above) must read as transparent,
-       not as accidentally white/gray. An opaque chosen background fully
-       covers this anyway, so it's safe to render unconditionally.
-       The colors come from BACKDROP_COLORS via the custom properties set on
-       the element — light or dark board depending on the letters color
-       (issue #46), not on the UI theme. */
-    background-color: var(--backdrop-base);
-    background-image:
-      linear-gradient(45deg, var(--backdrop-check) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--backdrop-check) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--backdrop-check) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--backdrop-check) 75%);
-    background-size: 16px 16px;
-    background-position:
-      0 0,
-      0 8px,
-      8px -8px,
-      -8px 0px;
-    color: light-dark(#111, #eee);
+    /* The monogram is a square (the engine emits a square viewBox), so its
+       rendered height equals this width — capping the width at "the zone's
+       height minus everything stacked around the preview" (letters field,
+       hint slot, gaps, paddings) guarantees the whole canvas zone fits
+       without scrolling. The rem cap keeps it tasteful on huge screens.
+       Checkerboard background comes from the shared .checkerboard utility
+       (app.css) fed by the --backdrop-* properties set on .workspace. */
+    width: min(100%, max(calc(100cqh - 11rem), 12rem), 44rem);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
   }
 
   .preview :global(svg) {
     display: block;
     width: 100%;
-    max-width: 20rem;
-    margin: 0 auto;
+    height: auto;
   }
 
   .gap-control {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin-top: 1rem;
+    padding: 0 0.25rem;
   }
 
   .gap-control label {
@@ -759,6 +979,7 @@
     flex-direction: column;
     gap: 0.25rem;
     flex: 1;
+    font-size: 0.875rem;
   }
 
   .gap-value {
@@ -769,16 +990,16 @@
 
   .color-controls {
     display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: 1rem;
-    margin-top: 1rem;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.25rem;
   }
 
   .color-controls label {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
     font-size: 0.875rem;
   }
 
@@ -787,15 +1008,92 @@
   }
 
   .color-controls label.checkbox-label {
-    flex-direction: row;
-    align-items: center;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
     gap: 0.4rem;
   }
 
-  .export-actions {
+  .export-size {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.875rem;
+    padding: 0.25rem;
+  }
+
+  .export-size input {
+    width: 6rem;
+  }
+
+  .export-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
-    margin-top: 1rem;
+    margin-top: 0.75rem;
+    padding: 0 0.25rem;
+  }
+
+  /* Mobile (issue #47): fixed vertical split — canvas zone on top, tab bar
+     + panel below, panel content scrolls within its own zone. Deliberately
+     not a bottom sheet: a sheet covers the preview exactly when a change
+     is being made. */
+  @media (max-width: 48rem) {
+    .workspace {
+      grid-template-areas:
+        "topbar"
+        "canvas"
+        "sidebar";
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 42dvh) minmax(0, 1fr);
+    }
+
+    .tagline {
+      display: none;
+    }
+
+    /* Tighter topbar so the full brand name and all three actions fit a
+       375px-wide viewport without truncating. */
+    .top-bar {
+      padding: 0.5rem 0.75rem;
+      gap: 0.5rem;
+    }
+
+    .top-bar-actions {
+      gap: 0.5rem;
+    }
+
+    .brand h1 {
+      font-size: 1.1rem;
+    }
+
+    .sidebar {
+      border-right: none;
+      border-top: 1px solid light-dark(#e2e2e2, #2a2a2c);
+    }
+
+    .canvas-zone {
+      padding: 0.75rem 1rem;
+      gap: 0.4rem;
+    }
+
+    .letters-field {
+      flex-direction: row;
+      gap: 0.5rem;
+    }
+
+    .letters-field input {
+      font-size: 1.1rem;
+      width: 7rem;
+    }
+
+    .hint-slot {
+      min-height: 1.2rem;
+    }
+
+    .preview {
+      width: min(100%, max(calc(100cqh - 7rem), 8rem), 44rem);
+      padding: 1rem;
+    }
   }
 </style>
