@@ -42,6 +42,15 @@ describe("DESIGNS catalog", () => {
     }
   });
 
+  it("has at least one diamond Shape Design for every Letter Count (issue #38)", () => {
+    for (const count of [1, 2, 3] as const) {
+      const diamondDesigns = DESIGNS.filter(
+        (d) => d.shape === "diamond" && d.supports.includes(count),
+      );
+      expect(diamondDesigns.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it.each(
     DESIGNS.flatMap((design) =>
       design.supports.map((count) => ({ design, count })),

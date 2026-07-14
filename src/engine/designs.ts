@@ -52,11 +52,16 @@ interface ShapeVariant {
 // The Shape catalog (ADR 0007): each entry is one Design per font, pressing
 // its "classic" horizontal row into the Shape's silhouette — a "stacked"
 // column has no reference circle-monogram equivalent, so Shape variants
-// build on horizontal only. Diamond and further Shapes (docs/BACKLOG.md)
-// are each just one more entry here plus a matching mapping function in
-// src/engine/shape.ts.
+// build on horizontal only. Further Shapes (docs/BACKLOG.md) are each just
+// one more entry here plus a matching mapping function in src/engine/shape.ts.
 const SHAPES: ShapeVariant[] = [
   { suffix: "circle", shape: "circle", label: "Circle", supports: [1, 2, 3] },
+  {
+    suffix: "diamond",
+    shape: "diamond",
+    label: "Diamond",
+    supports: [1, 2, 3],
+  },
 ];
 
 function designsForFont(font: FontEntry): Design[] {

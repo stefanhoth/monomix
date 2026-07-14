@@ -225,3 +225,52 @@ describe("composeMonogram (Shape warp, issue #37, ADR 0007)", () => {
     expect(diamondWidth).toBeLessThan(circleWidth);
   });
 });
+
+describe("composeMonogram (Shape warp, issue #38, ADR 0007: diamond)", () => {
+  it("a diamond Shape produces one path per letter with valid, finite geometry", () => {
+    for (const letters of ["A", "MX", "WIW"]) {
+      const svg = composeMonogram(letters, font, { shape: "diamond" });
+      expect(svg).not.toContain("NaN");
+      expect((svg.match(/<path /g) ?? []).length).toBe(letters.length);
+    }
+  });
+
+  it("a diamond Shape changes the letter geometry versus an unshaped Design", () => {
+    const unshaped = composeMonogram("MX", font);
+    const shaped = composeMonogram("MX", font, { shape: "diamond" });
+    expect(shaped).not.toBe(unshaped);
+  });
+
+  it("flattens all curves to M/L/Z for a diamond Shape — no bezier commands survive the warp", () => {
+    const svg = composeMonogram("MX", font, { shape: "diamond" });
+    const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+    expect(glyphMarkup).not.toMatch(/[QC][0-9-]/);
+  });
+
+  it("combined with a Frame, a diamond-shaped result fits inside it without NaN or invalid geometry (issue #36 fitting rules)", () => {
+    for (const frameId of ["circle", "square", "diamond"]) {
+      for (const gap of [0, 40, 200]) {
+        const svg = composeMonogram("MX", font, {
+          shape: "diamond",
+          frame: { id: frameId, gap },
+        });
+        const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+        expect(svg).not.toContain("NaN");
+        expect((glyphMarkup.match(/<path /g) ?? []).length).toBe(2);
+      }
+    }
+  });
+
+  it.each([
+    ["1-letter", "A"],
+    ["2-letter", "MX"],
+    ["3-letter", "WIW"],
+  ])(
+    "is a pure function: %s diamond-shaped output matches its regression snapshot",
+    (_label, letters) => {
+      expect(
+        composeMonogram(letters, font, { shape: "diamond" }),
+      ).toMatchSnapshot();
+    },
+  );
+});
