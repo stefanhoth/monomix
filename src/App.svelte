@@ -28,6 +28,7 @@
     resolveSelectedDesignId,
   } from "./lib/gallery";
   import { isFirstRun } from "./lib/first-run";
+  import { backdropTone, BACKDROP_COLORS } from "./lib/preview-backdrop";
   import {
     hasCompletedOnboarding,
     markOnboardingComplete,
@@ -184,6 +185,9 @@
   let resolvedBackground = $derived(
     transparentBackground ? "transparent" : backgroundColor,
   );
+  // Checkerboard follows the letters color, not the UI theme (issue #46) —
+  // near-black default letters were unreadable on the dark-mode board.
+  let backdrop = $derived(BACKDROP_COLORS[backdropTone(lettersColor)]);
   let preview = $derived(
     resolvedFont && resolvedDesign && letters.length > 0
       ? composeMonogram(letters, resolvedFont, {
@@ -531,6 +535,8 @@
     {#key resolvedDesignId}
       <div
         class="preview"
+        style:--backdrop-base={backdrop.base}
+        style:--backdrop-check={backdrop.check}
         transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
       >
         {#if preview}
@@ -716,13 +722,16 @@
     /* Checkerboard, not a solid fill — a transparent background (the
        default, see `transparentBackground` above) must read as transparent,
        not as accidentally white/gray. An opaque chosen background fully
-       covers this anyway, so it's safe to render unconditionally. */
-    background-color: light-dark(#fff, #1c1c1e);
+       covers this anyway, so it's safe to render unconditionally.
+       The colors come from BACKDROP_COLORS via the custom properties set on
+       the element — light or dark board depending on the letters color
+       (issue #46), not on the UI theme. */
+    background-color: var(--backdrop-base);
     background-image:
-      linear-gradient(45deg, light-dark(#ddd, #333) 25%, transparent 25%),
-      linear-gradient(-45deg, light-dark(#ddd, #333) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, light-dark(#ddd, #333) 75%),
-      linear-gradient(-45deg, transparent 75%, light-dark(#ddd, #333) 75%);
+      linear-gradient(45deg, var(--backdrop-check) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--backdrop-check) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--backdrop-check) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--backdrop-check) 75%);
     background-size: 16px 16px;
     background-position:
       0 0,

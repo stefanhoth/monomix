@@ -45,8 +45,10 @@ or product but don't warrant a full [ADR](adr/).
   persisted — a dark-mode user would ship near-white letters, invisible on
   paper; the bug would move from screen into the file) and an always-light
   board (fails mirrored for deliberately white letters, e.g. dark-merch
-  monograms). Instead a pure luminance threshold on `lettersColor` picks a
-  light or dark checkerboard — preview-only UI, never exported, unit-testable,
+  monograms). Instead a pure function of `lettersColor` picks the board with
+  the higher WCAG contrast ratio to it (equivalent to a fixed luminance
+  threshold ≈ 0.21, but stated as a contrast argmax so the boards' own colors
+  stay the single source of truth) — preview-only UI, never exported, unit-testable,
   and legibility becomes an invariant for any letter color rather than a lucky
   theme combination. Moot once the user picks an opaque background (it covers
   the board). (Grilling session 2026-07-14)
