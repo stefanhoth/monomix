@@ -19,77 +19,26 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // Launch-day catalog: MonoMix ships today, so the panel describes the
+  // product as it is — not an incremental "X changed" history predating a
+  // launch no user ever saw.
   {
-    id: "2026-07-14-remix",
+    id: "2026-07-14-launch",
     date: "2026-07-14",
-    en: 'Meet Remix: the "New Project" button now opens a surface where you start blank or remix any recent Project into a fresh one — the original stays untouched.',
-    de: 'Zeit für Remix: Der "Neues Projekt"-Button öffnet jetzt eine Oberfläche, in der du leer startest oder jedes frühere Projekt zu einem neuen remixt — das Original bleibt unangetastet.',
+    en: "MonoMix is here — mix your monogram live from curated Designs (classic circle and diamond monograms included), wrap it in a decorative Frame, and make the colors yours.",
+    de: "MonoMix ist da — mixe dein Monogramm live aus kuratierten Designs (klassische Kreis- und Rauten-Monogramme inklusive), lege einen dekorativen Rahmen darum und mach die Farben zu deinen.",
   },
   {
-    id: "2026-07-14-fullscreen-workspace",
+    id: "2026-07-14-launch-export",
     date: "2026-07-14",
-    en: "MonoMix is now a fullscreen studio: your monogram always stays in view while you flip through Designs, Frames, colors, and export in the new sidebar — on your phone too.",
-    de: "MonoMix ist jetzt ein Vollbild-Studio: Dein Monogramm bleibt immer im Blick, während du Designs, Rahmen, Farben und Export in der neuen Seitenleiste durchgehst — auch auf dem Handy.",
+    en: "Take it with you: export as SVG, PNG, JPG, or PDF — in any size you need.",
+    de: "Zum Mitnehmen: Export als SVG, PNG, JPG oder PDF — in jeder Größe, die du brauchst.",
   },
   {
-    id: "2026-07-14-curated-gallery",
+    id: "2026-07-14-launch-remix",
     date: "2026-07-14",
-    en: "The design gallery got a refresh: circle and diamond monograms now lead the way, and we trimmed the weaker plain designs to make room.",
-    de: "Die Design-Galerie wurde überarbeitet: Kreis- und Rauten-Monogramme stehen jetzt vorne, schwächere einfache Designs haben wir dafür aussortiert.",
-  },
-  {
-    id: "2026-07-14-diamond-shape",
-    date: "2026-07-14",
-    en: 'Now with a "Diamond" design too: every font can press your letters into a diamond monogram, just like the circle.',
-    de: 'Jetzt auch mit "Raute": Jede Schriftart presst deine Buchstaben wie beim Kreis auch in ein Rauten-Monogramm.',
-  },
-  {
-    id: "2026-07-14-circle-shape",
-    date: "2026-07-14",
-    en: 'Meet the classic circle monogram: every font now has a "Circle" design that presses your letters into a ring.',
-    de: 'Das klassische Kreis-Monogramm ist da: Jede Schriftart hat jetzt ein "Kreis"-Design, das deine Buchstaben in einen Ring presst.',
-  },
-  {
-    id: "2026-07-13-whats-new",
-    date: "2026-07-13",
-    en: "This panel! A quick look at what's changed, with a badge here whenever there's something new.",
-    de: "Dieses Panel! Ein schneller Überblick über Neuerungen, mit einem Hinweis hier, sobald es etwas Neues gibt.",
-  },
-  {
-    id: "2026-07-13-i18n",
-    date: "2026-07-13",
-    en: "MonoMix now speaks German as well as English, matching your browser's language automatically.",
-    de: "MonoMix spricht jetzt auch Deutsch, passend zur Sprache deines Browsers.",
-  },
-  {
-    id: "2026-07-11-persistence",
-    date: "2026-07-11",
-    en: "Your work now saves itself as you go — reload anytime and pick up right where you left off. A Projects panel keeps your recent monograms within reach.",
-    de: "Deine Arbeit wird jetzt automatisch gespeichert — lade jederzeit neu und mach genau dort weiter. Ein Projekte-Panel hält deine letzten Monogramme griffbereit.",
-  },
-  {
-    id: "2026-07-11-onboarding",
-    date: "2026-07-11",
-    en: "First time here? Just enter your initials and watch your monogram gallery reveal itself.",
-    de: "Zum ersten Mal hier? Gib einfach deine Initialen ein und sieh zu, wie sich deine Monogramm-Galerie entfaltet.",
-  },
-  {
-    id: "2026-07-11-frames-colors",
-    date: "2026-07-11",
-    en: "Add a decorative Frame — circle, square, diamond, dotted, or dashed — and pick your own colors for letters, Frame, and background.",
-    de: "Füge einen dekorativen Rahmen hinzu — Kreis, Quadrat, Raute, gepunktet oder gestrichelt — und wähle eigene Farben für Buchstaben, Rahmen und Hintergrund.",
-  },
-  {
-    id: "2026-07-11-design-gallery",
-    date: "2026-07-11",
-    en: "A Design gallery shows every available style with your own letters, live — pick one and watch the preview update instantly.",
-    de: "Eine Design-Galerie zeigt jeden verfügbaren Stil live mit deinen eigenen Buchstaben — wähle einen aus und die Vorschau aktualisiert sich sofort.",
-  },
-  {
-    id: "2026-07-11-export",
-    date: "2026-07-11",
-    en: "Export your monogram as SVG, PNG, JPG, or PDF.",
-    de: "Exportiere dein Monogramm als SVG, PNG, JPG oder PDF.",
+    en: "Your work saves itself in your browser as you go, and any earlier Project can be remixed into a fresh one with a single click.",
+    de: "Deine Arbeit speichert sich beim Arbeiten von selbst im Browser, und jedes frühere Projekt lässt sich mit einem Klick zu einem neuen remixen.",
   },
 ];
 
