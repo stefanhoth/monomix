@@ -43,6 +43,8 @@ const SHAPED: ShapeVariant[] = [
   { fontId: "archivo-black", shape: "diamond" },
   { fontId: "alfa-slab-one", shape: "circle" },
   { fontId: "alfa-slab-one", shape: "diamond" },
+  { fontId: "kelly-slab", shape: "circle" },
+  { fontId: "kelly-slab", shape: "diamond" },
   { fontId: "alex-brush", shape: "circle" },
   { fontId: "alex-brush", shape: "diamond" },
   { fontId: "unifraktur-cook", shape: "circle" },
@@ -68,13 +70,6 @@ interface ArrangementVariant {
 const UNSHAPED: ArrangementVariant[] = [
   {
     fontId: "poppins",
-    suffix: "classic",
-    arrangement: "horizontal",
-    label: "Classic",
-    supports: [1, 2, 3],
-  },
-  {
-    fontId: "kelly-slab",
     suffix: "classic",
     arrangement: "horizontal",
     label: "Classic",
