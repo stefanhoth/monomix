@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-07-14-curated-gallery",
+    date: "2026-07-14",
+    en: "The design gallery got a refresh: circle and diamond monograms now lead the way, and we trimmed the weaker plain designs to make room.",
+    de: "Die Design-Galerie wurde überarbeitet: Kreis- und Rauten-Monogramme stehen jetzt vorne, schwächere einfache Designs haben wir dafür aussortiert.",
+  },
+  {
     id: "2026-07-14-diamond-shape",
     date: "2026-07-14",
     en: 'Now with a "Diamond" design too: every font can press your letters into a diamond monogram, just like the circle.',

@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { skipOnboarding } from "./helpers/onboarding";
-import { clearAppStorage, readPersistedField } from "./helpers/storage";
+import {
+  clearAppStorage,
+  patchLastEditedProject,
+  readPersistedField,
+} from "./helpers/storage";
 
 test.beforeEach(async ({ page }) => {
   // Every test in this file simulates a returning user (see
@@ -61,4 +65,28 @@ test("a design/frame/color change also autosaves and survives a reload", async (
   const reloadedPreview = page.locator(".preview:not([inert]) svg");
   await expect(reloadedPreview.locator("circle")).toHaveCount(1);
   await expect(reloadedPreview.locator("g")).toHaveAttribute("fill", "#ff0000");
+});
+
+test("opening a Project whose Design id was culled from the catalog falls back to the default Design instead of crashing (issue #39 AC)", async ({
+  page,
+}) => {
+  await page.goto("/");
+  // Let the very first autosave land so there's a real persisted Project to
+  // corrupt — pre-launch stored Projects referencing a removed Design id
+  // must never be migrated, only fall back gracefully (ADR 0007).
+  await expect.poll(() => readPersistedField(page, "designId")).toBeTruthy();
+
+  await patchLastEditedProject(page, {
+    designId: "a-culled-design-id-that-no-longer-exists",
+  });
+
+  await page.reload();
+
+  const gallery = page.getByRole("listbox", { name: "Designs" });
+  const firstTile = gallery.getByRole("option").first();
+  await expect(firstTile).toHaveAttribute("aria-selected", "true");
+
+  const preview = page.locator(".preview:not([inert]) svg");
+  await expect(preview).toBeVisible();
+  await expect(preview.locator("path")).toHaveCount(2);
 });

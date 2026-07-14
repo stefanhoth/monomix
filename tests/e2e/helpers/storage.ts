@@ -36,6 +36,64 @@ export async function clearAppStorage(page: Page): Promise<void> {
 }
 
 /**
+ * Overwrites one or more fields of the most recently edited persisted
+ * Project directly in IndexedDB, bypassing the UI entirely — used to
+ * simulate a Project that references a Design id no longer in the curated
+ * catalog (issue #39 AC: "opening a Project with an unknown Design id falls
+ * back to the default Design without crashing"), a state the UI itself has
+ * no way to produce since every id it writes always comes from the current
+ * DESIGNS catalog.
+ */
+export async function patchLastEditedProject(
+  page: Page,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  await page.evaluate(
+    ({ dbName, patch }) => {
+      return new Promise<void>((resolve, reject) => {
+        const openRequest = indexedDB.open(dbName);
+        openRequest.onerror = () => reject(openRequest.error);
+        openRequest.onsuccess = () => {
+          const db = openRequest.result;
+          const store = db
+            .transaction("projects", "readwrite")
+            .objectStore("projects");
+          const cursorRequest = store
+            .index("lastEditedAt")
+            .openCursor(null, "prev");
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor) {
+              db.close();
+              resolve();
+              return;
+            }
+            const updated = {
+              ...(cursor.value as Record<string, unknown>),
+              ...patch,
+            };
+            const putRequest = store.put(updated);
+            putRequest.onsuccess = () => {
+              db.close();
+              resolve();
+            };
+            putRequest.onerror = () => {
+              db.close();
+              reject(putRequest.error);
+            };
+          };
+          cursorRequest.onerror = () => {
+            db.close();
+            reject(cursorRequest.error);
+          };
+        };
+      });
+    },
+    { dbName: PROJECTS_DB_NAME, patch },
+  );
+}
+
+/**
  * Reads one field of the most recently edited persisted Project directly
  * from IndexedDB, bypassing the UI entirely. Used to confirm an autosave
  * has actually landed (not just that the debounce timer fired) before a
