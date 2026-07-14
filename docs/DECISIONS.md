@@ -13,6 +13,43 @@ or product but don't warrant a full [ADR](adr/).
 
 ## 2026-07-14
 
+- **The editor becomes a fullscreen workspace with a tabbed sidebar — no wizard.**
+  The single 32rem column scrolled the preview out of view during every design/
+  frame/color choice, violating Design Principle 1 ("the live preview dominates
+  the screen"). A wizard was considered and rejected: steps are gates, which
+  contradicts Principle 3 ("everything flows, no dead ends"), and the first-run
+  hand-holding case is already covered by onboarding (#13). Desktop: sidebar
+  left with four tabs (Design | Frame | Colors | Export — tabs over scrollable
+  sections because "overloaded" is a density problem sections merely relocate),
+  canvas zone fills the rest. The letters input lives permanently in the canvas
+  zone, not in a tab — it's the identity-defining input and Letter Count filters
+  the Design gallery, so burying it forces tab round-trips. Mobile: fixed
+  vertical split (canvas zone on top, tab bar + panel below, panel scrolls
+  within its zone), not a bottom sheet — a sheet covers the preview exactly when
+  a change is being made. (Grilling session 2026-07-14)
+- **Projects move out of the permanent UI into the "New" flow, and become
+  remix-only.** The recent-Projects list doesn't earn permanent screen space;
+  it appears when starting something new, where past Projects act as seeds. A
+  Remix (CONTEXT.md) creates a new Project from an existing one's settings; the
+  source stays untouched. There is deliberately no "open old Project for
+  editing" — every non-active Project is a frozen snapshot (rename/delete/remix
+  only), which also removes the silent-overwrite risk of autosave landing on an
+  old Project someone only meant to look at. "Start blank" seeds from app
+  defaults, reversing #14's "new Project inherits last settings" — that behavior
+  was the unnamed precursor of Remix, and keeping both would leave two
+  near-identical paths. (Grilling session 2026-07-14)
+- **The preview's transparency checkerboard adapts its brightness to the
+  letters color, instead of following the UI theme.** Near-black default
+  letters on the dark-mode checkerboard (`#1c1c1e`/`#333`) were unreadable.
+  Rejected: theme-aware default letter colors (the color is exported and
+  persisted — a dark-mode user would ship near-white letters, invisible on
+  paper; the bug would move from screen into the file) and an always-light
+  board (fails mirrored for deliberately white letters, e.g. dark-merch
+  monograms). Instead a pure luminance threshold on `lettersColor` picks a
+  light or dark checkerboard — preview-only UI, never exported, unit-testable,
+  and legibility becomes an invariant for any letter color rather than a lucky
+  theme combination. Moot once the user picks an opaque background (it covers
+  the board). (Grilling session 2026-07-14)
 - **The re-curated catalog (issue #39) is a hand-picked list of 16 Designs, not
   a filtered cross-product of the font catalog.** `src/engine/designs.ts`
   previously built `DESIGNS` as every font × {classic, stacked, circle,
