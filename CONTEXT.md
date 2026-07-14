@@ -33,5 +33,9 @@ _Avoid_: Border, ring
 The breathing room between the lettering and the Frame. The Frame's position is fixed; a larger gap scales the lettering down inside it (0 = the lettering fills the Frame). UI label: "Frame Gap" (EN) / "Abstand" (DE).
 
 **Project**:
-One persisted Monogram configuration (letters, Design, Frame, colors, gap). The app lists recent Projects, and a new Project starts from the most recently used settings.
+One persisted Monogram configuration (letters, Design, Frame, colors, gap). Only the active Project is editable (edits save implicitly); every other Project is a frozen snapshot — it can be renamed, deleted, or used as a Remix source, but never re-opened for editing. A blank new Project starts from app defaults.
 _Avoid_: Draft, document, file
+
+**Remix**:
+Creating a new Project seeded from an existing Project's settings; the source Project stays untouched. The only way to build on a past Project.
+_Avoid_: Duplicate, copy, clone, open
