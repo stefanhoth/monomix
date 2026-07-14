@@ -268,12 +268,16 @@
     await initProject();
 
     // Load the font the initial preview actually needs first, so it's
-    // never blocked on the other 16 gallery fonts (Design Principle 2:
-    // fast first result). The rest load in the background and populate
-    // the gallery progressively as each one arrives.
+    // never blocked on the other gallery fonts (Design Principle 2: fast
+    // first result). The rest load in the background and populate the
+    // gallery progressively as each one arrives — only fonts a curated
+    // Design actually uses, since #39 shrunk DESIGNS to a subset of FONTS.
     const primaryId = untrack(() => resolvedDesign)?.fontId;
     const primary = FONTS.find((f) => f.id === primaryId);
-    const rest = FONTS.filter((f) => f.id !== primaryId);
+    const usedFontIds = new Set(DESIGNS.map((d) => d.fontId));
+    const rest = FONTS.filter(
+      (f) => f.id !== primaryId && usedFontIds.has(f.id),
+    );
 
     if (primary) {
       fonts.set(primary.id, await loadFont(primary.url));

@@ -13,6 +13,47 @@ or product but don't warrant a full [ADR](adr/).
 
 ## 2026-07-14
 
+- **The re-curated catalog (issue #39) is a hand-picked list of 16 Designs, not
+  a filtered cross-product of the font catalog.** `src/engine/designs.ts`
+  previously built `DESIGNS` as every font × {classic, stacked, circle,
+  diamond} (68 entries) — the approach #37's DECISIONS.md entry defended at
+  the time ("every font gets a Circle Design ... not a hand-curated subset").
+  Reviewing every font × {circle, diamond} × Letter Count combination on a new
+  dev-only contact sheet (`contact-sheet.html`, reachable only via `npm run
+dev`, never bundled by `vite build` since nothing references it) showed
+  several fonts read as weak or muddy once pressed into a Shape — thin
+  serif/script strokes (Cormorant Garamond, League Spartan, Tangerine, Pinyon
+  Script) lose definition at circle/diamond scale, and near-duplicate style
+  pairs (UnifrakturMaguntia next to UnifrakturCook, Roboto Slab next to Alfa
+  Slab One) added redundancy without adding a distinct voice. The curated
+  catalog keeps one font per distinct style voice — refined serif (Playfair
+  Display), ornate serif (Cinzel Decorative), bold geometric sans (Archivo
+  Black), bold slab (Alfa Slab One), rounded bold slab (Kelly Slab), script
+  (Alex Brush), blackletter (UnifrakturCook) — each contributing both a circle
+  and a diamond Design (14 total), plus 2 plain (unshaped) Designs from fonts
+  not already used above (Poppins Classic, Cormorant Garamond Stacked) so a
+  "letters as-is" look survives the cull without repeating a font under two
+  entries — Cormorant Garamond's thin strokes are exactly what reads as
+  elegant unshaped (a classic wedding-monogram look) and what goes muddy once
+  pressed into a Shape, so it's excluded from `SHAPED` but kept in
+  `UNSHAPED`, not a contradiction of the same weak-serif reasoning above.
+  Kelly Slab moved from `UNSHAPED` into `SHAPED` after PR review (stefanhoth,
+  PR #44): its rounded bold strokes read well pressed into the more aggressive
+  Shapes too, distinct enough from Alfa Slab One's squared-off slab to earn
+  its own pair rather than being redundant with it — the "Kelly Slab Classic"
+  unshaped entry was dropped in the same change to keep one font from
+  appearing under two different-looking entries. `DESIGNS` orders the shaped
+  block first — the gallery leads with it, and `DESIGNS[0]` (Playfair Display
+  Circle) is what `DEFAULT_PROJECT_SETTINGS.designId` resolves to, making a
+  circle template the first-run default for free rather than needing a
+  separate default rule. We are pre-launch, so no migration was written for
+  stored Projects referencing a now-culled Design id — `resolveSelectedDesignId`
+  (`src/lib/gallery.ts`) already falls back to the first available Design
+  whenever the current selection isn't in the (now smaller) catalog, which is
+  what makes the fallback graceful rather than a special case added for this
+  issue; a new e2e test (`tests/e2e/persistence.spec.ts`) locks in that an
+  unknown `designId` read back from IndexedDB doesn't crash the app. (Issue
+  #39)
 - **The circle Shape warp uses the Fernandez-Guasti "elliptical grid" square-to-disc
   mapping, not an arc-text (rotate-along-a-circle) effect.** Given a letter block's
   bounding box, `u²(1-v²/2) + v²(1-u²/2)` reduces to exactly 1 whenever `|u|=1` or
