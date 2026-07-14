@@ -23,3 +23,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 - Frames now stay put: instead of a Frame shrinking to make room, your lettering scales to fit inside it. The Frame Gap slider controls that breathing room directly — all the way down means your letters fill the Frame, and no font/letters combination can overflow it anymore.
 - The design gallery has been re-curated: shaped (circle and diamond) monograms now lead the gallery, and the underwhelming plain font-only designs have mostly been retired in their favor. The very first design you see is now a classic circle monogram.
+
+### Fixed
+
+- The transparency checkerboard behind the preview now adapts to your letters color instead of the light/dark theme — dark letters were nearly invisible against the dark-mode checkerboard, and white letters (say, for dark fabric) now get a dark board to stand out against. Exported files are unaffected.
