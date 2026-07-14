@@ -24,6 +24,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 ### Changed
 
 - Starting a new Project blank now uses the app defaults instead of silently inheriting your last-used settings — carrying settings forward is exactly what Remix is for.
+- The in-app "What's new" panel now tells MonoMix's launch-day story as it ships today, instead of an incremental pre-launch history no user ever saw.
 
 - The editor is now a fullscreen workspace: your monogram and the letters field always stay in view, while Designs, Frames, colors, and export moved into a tabbed sidebar (on phones: a fixed vertical split with the preview on top). No more scrolling the preview away to reach a control.
 - Design and Frame gallery tiles now render with your actual letter color on the same adaptive checkerboard the main preview uses — dark letters no longer vanish on dark-mode tiles.
