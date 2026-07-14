@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { skipOnboarding } from "./helpers/onboarding";
+import { openTab } from "./helpers/tabs";
 import { clearAppStorage } from "./helpers/storage";
 
 test.beforeEach(async ({ page }) => {
@@ -74,6 +75,7 @@ test("the recent-projects list orders Projects by last-edited, most recent first
     .click();
   await expect(list.getByRole("listitem").first()).toContainText("ABC");
 
+  await openTab(page, "Colors");
   await page.getByLabel("Letter Color").fill("#00ff00");
 
   await expect

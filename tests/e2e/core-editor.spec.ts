@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { skipOnboarding } from "./helpers/onboarding";
+import { openTab } from "./helpers/tabs";
 
 test.beforeEach(async ({ page }) => {
   // Every test in this file exercises the editor directly, not onboarding
@@ -29,6 +30,7 @@ test("typing letters, picking a Frame, adjusting the gap, and changing colors al
   // "No Frame" is the default: no stroked shape behind the letters yet.
   await expect(preview.locator("circle")).toHaveCount(0);
 
+  await openTab(page, "Frame");
   const frameGallery = page.getByRole("listbox", { name: "Frames" });
   const circleFrame = frameGallery.getByRole("option", {
     name: "Circle",
@@ -56,6 +58,7 @@ test("typing letters, picking a Frame, adjusting the gap, and changing colors al
     .poll(async () => preview.locator("path").first().getAttribute("d"))
     .not.toBe(initialPathData);
 
+  await openTab(page, "Colors");
   await page.getByLabel("Letter Color").fill("#ff0000");
   await expect(preview.locator("g")).toHaveAttribute("fill", "#ff0000");
 
@@ -124,6 +127,7 @@ test("layout adapts to a narrow mobile viewport without horizontal overflow", as
 
   await expect(page.getByRole("heading", { name: "MonoMix" })).toBeVisible();
   await expect(page.getByLabel("Letters")).toBeVisible();
+  await openTab(page, "Export");
   await expect(page.getByRole("button", { name: "Export SVG" })).toBeVisible();
 });
 
@@ -143,6 +147,7 @@ test("the background defaults to a transparent checkerboard and switches to an o
   );
   expect(checkerboardImage).toContain("gradient");
 
+  await openTab(page, "Colors");
   const transparentToggle = page.getByLabel("Transparent background");
   await expect(transparentToggle).toBeChecked();
 

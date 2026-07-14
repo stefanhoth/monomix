@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-07-14-fullscreen-workspace",
+    date: "2026-07-14",
+    en: "MonoMix is now a fullscreen studio: your monogram always stays in view while you flip through Designs, Frames, colors, and export in the new sidebar — on your phone too.",
+    de: "MonoMix ist jetzt ein Vollbild-Studio: Dein Monogramm bleibt immer im Blick, während du Designs, Rahmen, Farben und Export in der neuen Seitenleiste durchgehst — auch auf dem Handy.",
+  },
+  {
     id: "2026-07-14-curated-gallery",
     date: "2026-07-14",
     en: "The design gallery got a refresh: circle and diamond monograms now lead the way, and we trimmed the weaker plain designs to make room.",

@@ -53,7 +53,7 @@
       aria-selected={selected}
       onclick={() => onSelect(frame.id)}
     >
-      <span class="tile-preview">
+      <span class="tile-preview checkerboard">
         {#if font && letters.length > 0}
           {@html composeMonogram(letters, font, {
             arrangement,
@@ -73,8 +73,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
     gap: 0.5rem;
-    max-height: 20rem;
-    overflow-y: auto;
+    /* No max-height/overflow of its own — the sidebar's panel area (issue
+       #47) is the single scroll container, avoiding nested scrollbars. */
     padding: 0.25rem;
   }
 
@@ -99,7 +99,9 @@
     display: block;
     width: 100%;
     aspect-ratio: 1;
-    color: light-dark(#111, #eee);
+    border-radius: 0.25rem;
+    /* Finer grid than the main preview — same .checkerboard utility. */
+    --checker-size: 8px;
   }
 
   .tile-preview :global(svg) {

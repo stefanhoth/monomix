@@ -9,6 +9,7 @@
     designs,
     letters,
     fonts,
+    lettersColor,
     selectedId,
     onSelect,
     reducedMotion = false,
@@ -16,6 +17,12 @@
     designs: Design[];
     letters: string;
     fonts: Map<string, Font>;
+    /**
+     * Tiles render with the user's actual letters color (issue #47) — the
+     * letters-color-aware .checkerboard backdrop keeps them legible where
+     * theme-colored letters on theme-colored tiles used to fail (#46).
+     */
+    lettersColor: string;
     selectedId: string;
     onSelect: (id: string) => void;
     // Staggered reveal (issue #13: first-run onboarding transition). Svelte
@@ -52,11 +59,12 @@
           : Math.min(i, MAX_STAGGER_STEPS) * STAGGER_STEP_MS,
       }}
     >
-      <span class="tile-preview">
+      <span class="tile-preview checkerboard">
         {#if font && letters.length > 0}
           {@html composeMonogram(letters, font, {
             arrangement: design.arrangement,
             shape: design.shape,
+            lettersColor,
           })}
         {/if}
       </span>
@@ -70,8 +78,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
     gap: 0.5rem;
-    max-height: 20rem;
-    overflow-y: auto;
+    /* No max-height/overflow of its own — the sidebar's panel area (issue
+       #47) is the single scroll container, avoiding nested scrollbars. */
     padding: 0.25rem;
   }
 
@@ -96,7 +104,9 @@
     display: block;
     width: 100%;
     aspect-ratio: 1;
-    color: light-dark(#111, #eee);
+    border-radius: 0.25rem;
+    /* Finer grid than the main preview — same .checkerboard utility. */
+    --checker-size: 8px;
   }
 
   .tile-preview :global(svg) {
