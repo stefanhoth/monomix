@@ -8,6 +8,8 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
+- Six decorative fonts join the catalog: Rye (Tuscan/Western), Elsie Swash Caps and Berkshire Swash (swash serifs), Pirata One (blackletter) — each with circle and diamond Designs — plus Monsieur La Doulaise (flourished calligraphy, 1–2 letters) and Fascinate Inline (art déco) as classic Designs.
+
 - A "New Project" surface behind the topbar button: start blank or **remix** any recent Project into a fresh one — the original stays untouched, as a frozen snapshot. Renaming and deleting recent Projects lives there now too, instead of in a permanent panel below the editor.
 
 - You can now export your monogram as SVG, PNG, JPG, or PDF.

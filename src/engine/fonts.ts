@@ -13,7 +13,7 @@ const fontUrls = import.meta.glob("../assets/fonts/*/font.ttf", {
 }) as Record<string, string>;
 
 export type FontStyle =
-  "serif" | "slab" | "geometric-sans" | "blackletter" | "script";
+  "serif" | "slab" | "geometric-sans" | "blackletter" | "script" | "decorative";
 
 export interface FontEntry {
   id: string;
@@ -111,6 +111,40 @@ const CATALOG: Omit<FontEntry, "url">[] = [
     license: "OFL-1.1",
   },
   { id: "tangerine", family: "Tangerine", style: "script", license: "OFL-1.1" },
+  // "Schmuck" additions (issue #53) — decorative letterforms picked via the
+  // engine-rendered comparison-sheet prototype; see the issue for the
+  // per-font warp-survival verdict that decides their Designs.
+  { id: "rye", family: "Rye", style: "decorative", license: "OFL-1.1" },
+  {
+    id: "elsie-swash-caps",
+    family: "Elsie Swash Caps",
+    style: "decorative",
+    license: "OFL-1.1",
+  },
+  {
+    id: "berkshire-swash",
+    family: "Berkshire Swash",
+    style: "decorative",
+    license: "OFL-1.1",
+  },
+  {
+    id: "monsieur-la-doulaise",
+    family: "Monsieur La Doulaise",
+    style: "script",
+    license: "OFL-1.1",
+  },
+  {
+    id: "fascinate-inline",
+    family: "Fascinate Inline",
+    style: "decorative",
+    license: "OFL-1.1",
+  },
+  {
+    id: "pirata-one",
+    family: "Pirata One",
+    style: "blackletter",
+    license: "OFL-1.1",
+  },
 ];
 
 export const FONTS: FontEntry[] = CATALOG.map((entry) => {

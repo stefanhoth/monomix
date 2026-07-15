@@ -3,7 +3,7 @@ import { FONTS } from "../../src/engine/fonts";
 
 describe("font catalog", () => {
   it("resolves a url for every catalog entry", () => {
-    expect(FONTS.length).toBe(17);
+    expect(FONTS.length).toBe(23);
     for (const font of FONTS) {
       expect(font.url).toMatch(/font\.ttf$/);
     }

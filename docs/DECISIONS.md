@@ -11,6 +11,21 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-07-15
+
+- **Six "Schmuck" fonts join the catalog, curated per warp-survival (#53).**
+  Candidates were picked from google/fonts `ofl/` and judged on an
+  engine-rendered comparison sheet (classic/circle/diamond × 1/2/3 letters,
+  calibrated against Cinzel Decorative and Pinyon Script). Rye, Elsie Swash
+  Caps, Berkshire Swash, and Pirata One survive the Shape warp and get the
+  full circle + diamond Design set; Monsieur La Doulaise (flourished
+  calligraphy) and Fascinate Inline (art déco inline) do not — the warp turns
+  them into hairline tangles / crushed inline strokes — so they join as
+  classic (unshaped) Designs only, Monsieur additionally capped at Letter
+  Count 1–2 because three flourished capitals collide. A new `FontStyle`
+  value `decorative` covers the entries no existing style fits. (Prototype
+  verdict recorded in issue #53.)
+
 ## 2026-07-14
 
 - **The editor becomes a fullscreen workspace with a tabbed sidebar — no wizard.**
