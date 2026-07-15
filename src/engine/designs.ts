@@ -49,6 +49,17 @@ const SHAPED: ShapeVariant[] = [
   { fontId: "alex-brush", shape: "diamond" },
   { fontId: "unifraktur-cook", shape: "circle" },
   { fontId: "unifraktur-cook", shape: "diamond" },
+  // Schmuck fonts (issue #53) — the four candidates whose ornament survives
+  // the Shape warp per the comparison-sheet prototype. Appended (not
+  // inserted) so DESIGNS[0], the first-run default, stays unchanged.
+  { fontId: "rye", shape: "circle" },
+  { fontId: "rye", shape: "diamond" },
+  { fontId: "elsie-swash-caps", shape: "circle" },
+  { fontId: "elsie-swash-caps", shape: "diamond" },
+  { fontId: "berkshire-swash", shape: "circle" },
+  { fontId: "berkshire-swash", shape: "diamond" },
+  { fontId: "pirata-one", shape: "circle" },
+  { fontId: "pirata-one", shape: "diamond" },
 ];
 
 function capitalize(word: string): string {
@@ -81,6 +92,24 @@ const UNSHAPED: ArrangementVariant[] = [
     arrangement: "stacked",
     label: "Stacked",
     supports: [2, 3],
+  },
+  // Schmuck fonts (issue #53) whose ornament does NOT survive the Shape
+  // warp — classic (unshaped) only, per the comparison-sheet prototype.
+  // Monsieur La Doulaise's flourished capitals collide at three letters,
+  // so it deliberately opts out of Letter Count 3.
+  {
+    fontId: "monsieur-la-doulaise",
+    suffix: "classic",
+    arrangement: "horizontal",
+    label: "Classic",
+    supports: [1, 2],
+  },
+  {
+    fontId: "fascinate-inline",
+    suffix: "classic",
+    arrangement: "horizontal",
+    label: "Classic",
+    supports: [1, 2, 3],
   },
 ];
 

@@ -19,6 +19,12 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  {
+    id: "2026-07-15-schmuck-fonts",
+    date: "2026-07-15",
+    en: "Six ornamental fonts arrived: Western spurs (Rye), swash capitals (Elsie, Berkshire), pirate blackletter (Pirata One), flourished calligraphy (Monsieur La Doulaise), and art-déco inline (Fascinate) — ten new Designs in the gallery.",
+    de: "Sechs Schmuck-Schriften sind da: Western-Zierbuchstaben (Rye), Schwungkapitalen (Elsie, Berkshire), Piraten-Fraktur (Pirata One), kalligraphische Schnörkel (Monsieur La Doulaise) und Art-déco-Linien (Fascinate) — zehn neue Designs in der Galerie.",
+  },
   // Launch-day catalog: MonoMix ships today, so the panel describes the
   // product as it is — not an incremental "X changed" history predating a
   // launch no user ever saw.
