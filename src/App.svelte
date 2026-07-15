@@ -58,6 +58,7 @@
   } from "./lib/changelog";
   import { getLastSeenEntryId, markEntrySeen } from "./lib/changelog-storage";
   import DesignGallery from "./components/DesignGallery.svelte";
+  import FontCreditsPanel from "./components/FontCreditsPanel.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
   import NewProjectSurface from "./components/NewProjectSurface.svelte";
   import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
@@ -151,6 +152,27 @@
   function closeWhatsNew() {
     whatsNewOpen = false;
   }
+
+  // Font credits panel (ADR 0003: "an about page credits every font"). It
+  // lists the whole catalog, so opening it lazy-loads the fonts no curated
+  // Design uses — the initial page load keeps paying only for Design fonts
+  // (Design Principle 2). `requestedFontIds` is plain (not $state): only
+  // read inside the effect to dedupe fetches, never displayed.
+  let creditsOpen = $state(false);
+  const requestedFontIds = new Set<string>();
+  $effect(() => {
+    if (!creditsOpen) return;
+    for (const f of FONTS) {
+      if (fonts.has(f.id) || requestedFontIds.has(f.id)) continue;
+      requestedFontIds.add(f.id);
+      loadFont(f.url).then(
+        (font) => fonts.set(f.id, font),
+        // Forget failed loads so re-opening the panel retries them instead
+        // of leaving that specimen permanently blank.
+        () => requestedFontIds.delete(f.id),
+      );
+    }
+  });
 
   // Projects (issue #14): implicit, Canva/Figma-style autosave — every
   // editor change debounce-saves to the active Project, no save button.
@@ -572,7 +594,11 @@
         <button type="button" onclick={() => (newSurfaceOpen = true)}>
           {t("projects.new")}
         </button>
-        <button type="button" class="whatsnew-trigger" onclick={openWhatsNew}>
+        <button
+          type="button"
+          class="quiet-trigger whatsnew-trigger"
+          onclick={openWhatsNew}
+        >
           {t("whatsnew.buttonLabel")}
           {#if hasUnseenChangelog}
             <span class="badge" aria-hidden="true"></span>
@@ -713,6 +739,13 @@
             </button>
           </div>
         </div>
+        <button
+          type="button"
+          class="quiet-trigger credits-trigger"
+          onclick={() => (creditsOpen = true)}
+        >
+          {t("credits.trigger")}
+        </button>
       </div>
     </aside>
 
@@ -742,6 +775,12 @@
     </main>
   </div>
   <WhatsNewPanel open={whatsNewOpen} onClose={closeWhatsNew} {reducedMotion} />
+  <FontCreditsPanel
+    open={creditsOpen}
+    {fonts}
+    onClose={() => (creditsOpen = false)}
+    {reducedMotion}
+  />
   <NewProjectSurface
     open={newSurfaceOpen}
     {projects}
@@ -799,8 +838,9 @@
     flex-shrink: 0;
   }
 
-  .whatsnew-trigger {
-    position: relative;
+  /* Shared quiet-link look for chrome that must recede (Design Principle
+     1): the What's-new and Fonts-&-licenses triggers. */
+  .quiet-trigger {
     font: inherit;
     font-size: 0.875rem;
     background: none;
@@ -809,6 +849,10 @@
     color: light-dark(#555, #aaa);
     text-decoration: underline;
     cursor: pointer;
+  }
+
+  .whatsnew-trigger {
+    position: relative;
   }
 
   .badge {
@@ -881,6 +925,12 @@
     min-height: 0;
     overflow-y: auto;
     padding: 1rem 0.75rem;
+  }
+
+  .credits-trigger {
+    display: block;
+    margin: 1.5rem 0.25rem 0.25rem;
+    font-size: 0.8125rem;
   }
 
   /* Restarts every time a panel un-hides (CSS animations don't run while

@@ -80,6 +80,13 @@ export const dictionary = {
   "whatsnew.unseenIndicator": { en: "(new)", de: "(neu)" },
   "whatsnew.heading": { en: "What's new", de: "Neuigkeiten" },
   "whatsnew.close": { en: "Close", de: "Schließen" },
+  "credits.trigger": { en: "Fonts & licenses", de: "Schriften & Lizenzen" },
+  "credits.heading": { en: "Fonts & licenses", de: "Schriften & Lizenzen" },
+  "credits.intro": {
+    en: "Every monogram is set in one of these libre-licensed fonts:",
+    de: "Jedes Monogramm entsteht aus einer dieser frei lizenzierten Schriften:",
+  },
+  "credits.close": { en: "Close", de: "Schließen" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dictionary;
