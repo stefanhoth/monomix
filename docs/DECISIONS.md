@@ -13,6 +13,13 @@ or product but don't warrant a full [ADR](adr/).
 
 ## 2026-07-15
 
+- **Font credits: whole catalog, license names untranslated, no in-app
+  changelog entry.** The credits panel (ADR 0003's "an about page credits
+  every font") lists all 23 shipped fonts, not just the ones curated
+  Designs use — everything in the bundle deserves credit. License display
+  names ("SIL Open Font License 1.1", "Apache License 2.0") are legal
+  proper nouns and stay out of the i18n dictionary. Considered and skipped:
+  a curated What's-new entry — quiet chrome doesn't clear the ADR 0005 bar.
 - **Six "Schmuck" fonts join the catalog, curated per warp-survival (#53).**
   Candidates were picked from google/fonts `ofl/` and judged on an
   engine-rendered comparison sheet (classic/circle/diamond × 1/2/3 letters,
