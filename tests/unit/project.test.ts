@@ -5,6 +5,7 @@ import {
   normalizeProject,
   projectSettingsEqual,
   remixProject,
+  resolveProjectBackground,
   serializeProject,
   toProjectSettings,
   DEFAULT_PROJECT_SETTINGS,
@@ -23,8 +24,9 @@ function project(overrides: Partial<Project> = {}): Project {
     frameGap: 40,
     lettersColor: "#111111",
     frameColor: "#111111",
-    transparentBackground: true,
+    backgroundKind: "transparent",
     backgroundColor: "#ffffff",
+    backgroundImage: null,
     createdAt: 1000,
     lastEditedAt: 2000,
     ...overrides,
@@ -53,9 +55,7 @@ describe("normalizeProject", () => {
     expect(result.designId).toBe(DEFAULT_PROJECT_SETTINGS.designId);
     expect(result.frameId).toBe(DEFAULT_PROJECT_SETTINGS.frameId);
     expect(result.frameGap).toBe(DEFAULT_PROJECT_SETTINGS.frameGap);
-    expect(result.transparentBackground).toBe(
-      DEFAULT_PROJECT_SETTINGS.transparentBackground,
-    );
+    expect(result.backgroundKind).toBe(DEFAULT_PROJECT_SETTINGS.backgroundKind);
   });
 
   it("generates an id and name when missing or malformed, rather than throwing", () => {
@@ -69,13 +69,20 @@ describe("normalizeProject", () => {
     const result = normalizeProject({
       letters: 123,
       frameGap: "not a number",
-      transparentBackground: "yes",
+      backgroundKind: "not-a-kind",
     });
     expect(result.letters).toBe(DEFAULT_PROJECT_SETTINGS.letters);
     expect(result.frameGap).toBe(DEFAULT_PROJECT_SETTINGS.frameGap);
-    expect(result.transparentBackground).toBe(
-      DEFAULT_PROJECT_SETTINGS.transparentBackground,
-    );
+    expect(result.backgroundKind).toBe(DEFAULT_PROJECT_SETTINGS.backgroundKind);
+  });
+
+  it("derives backgroundKind from the pre-#63 transparentBackground boolean when backgroundKind is absent", () => {
+    expect(
+      normalizeProject({ transparentBackground: true }).backgroundKind,
+    ).toBe("transparent");
+    expect(
+      normalizeProject({ transparentBackground: false }).backgroundKind,
+    ).toBe("color");
   });
 
   it("defaults createdAt/lastEditedAt to now when missing", () => {
@@ -107,8 +114,9 @@ describe("createProject", () => {
       frameGap: 120,
       lettersColor: "#ff0000",
       frameColor: "#00ff00",
-      transparentBackground: false,
+      backgroundKind: "color",
       backgroundColor: "#3355ff",
+      backgroundImage: null,
     };
     const created = createProject(settings);
     expect(created).toMatchObject(settings);
@@ -151,7 +159,7 @@ describe("remixProject", () => {
       frameGap: 80,
       lettersColor: "#ff0000",
       frameColor: "#00ff00",
-      transparentBackground: false,
+      backgroundKind: "color",
       backgroundColor: "#0000ff",
     });
     const remix = remixProject(source);
@@ -192,8 +200,9 @@ describe("toProjectSettings", () => {
       frameGap: full.frameGap,
       lettersColor: full.lettersColor,
       frameColor: full.frameColor,
-      transparentBackground: full.transparentBackground,
+      backgroundKind: full.backgroundKind,
       backgroundColor: full.backgroundColor,
+      backgroundImage: full.backgroundImage,
     });
     expect(settings).not.toHaveProperty("id");
     expect(settings).not.toHaveProperty("name");
@@ -211,5 +220,47 @@ describe("projectSettingsEqual", () => {
     const a = toProjectSettings(project());
     const b = toProjectSettings(project({ letters: "ABC" }));
     expect(projectSettingsEqual(a, b)).toBe(false);
+  });
+});
+
+describe("resolveProjectBackground (issue #63/#64)", () => {
+  it("resolves 'transparent' to the plain transparent string", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "transparent",
+        backgroundColor: "#3355ff",
+        backgroundImage: "data:image/png;base64,abc",
+      }),
+    ).toBe("transparent");
+  });
+
+  it("resolves 'color' to the plain color string", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "color",
+        backgroundColor: "#3355ff",
+        backgroundImage: null,
+      }),
+    ).toBe("#3355ff");
+  });
+
+  it("resolves 'image' with a picked image to a BackgroundFill object", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "image",
+        backgroundColor: "#3355ff",
+        backgroundImage: "data:image/png;base64,abc",
+      }),
+    ).toEqual({ kind: "image", dataUrl: "data:image/png;base64,abc" });
+  });
+
+  it("falls back to transparent for 'image' with nothing picked yet", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "image",
+        backgroundColor: "#3355ff",
+        backgroundImage: null,
+      }),
+    ).toBe("transparent");
   });
 });

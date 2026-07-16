@@ -8,6 +8,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
+- You can now set a picture as the background, behind the letters and Frame — pick "Image" in the Colors tab and upload one. It's included in every export format (SVG, PNG, JPG, PDF) and falls back to transparent if you switch away without picking a file.
 - Letters now support lowercase, with a case toggle next to the letters field: "ABC" (uppercase, the previous behavior) or "Abc" (keeps each letter's case exactly as typed). Every Design supports both.
 - An "About" link in the top corner opens a page explaining what MonoMix is, how to use it, and which version you're running — deep-linkable via the `#about` URL for sharing outside the app.
 - Narrow and wide diamond Shape and Frame variants: two new aspect ratios alongside the existing (symmetric) Diamond, each with matching Designs (Playfair Display, Archivo Black) and a matching Frame silhouette.

@@ -4,6 +4,7 @@
  * every Design/Frame combination unit-testable without a browser.
  */
 export { composeMonogram, type ComposeOptions } from "./render";
+export { type BackgroundFill } from "./background";
 export {
   layoutLetters,
   VIEWBOX_SIZE,
