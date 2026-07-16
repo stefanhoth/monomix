@@ -3,9 +3,12 @@ import type { PathCommand } from "opentype.js";
 /**
  * The outer silhouette a Design's arranged letters are pressed into
  * (CONTEXT.md's Shape). "none" leaves the arrangement undeformed — the pure
- * warp stage (ADR 0007) is a no-op for it.
+ * warp stage (ADR 0007) is a no-op for it. "diamond-narrow"/"diamond-wide"
+ * (issue #61) are non-1:1-aspect diamonds: narrow is tall (compressed
+ * horizontally), wide is broad (compressed vertically).
  */
-export type Shape = "none" | "circle" | "diamond";
+export type Shape =
+  "none" | "circle" | "diamond" | "diamond-narrow" | "diamond-wide";
 
 /** The arranged letter block's bounding box, in viewBox units — what the
  * envelope map normalizes every path point against (ADR 0007: "letter-block
@@ -36,31 +39,46 @@ function circleEnvelope(u: number, v: number): { u: number; v: number } {
 }
 
 /**
- * Maps the square [-1,1]x[-1,1] onto the diamond |u|+|v|<=1 (the unit disc
- * in the L1 norm) — the diamond analogue of circleEnvelope's elliptical-grid
- * formula above, same separable shape (each coordinate scaled by a factor of
- * the *other* coordinate) but with the linear factor (1-|t|/2) in place of
- * the elliptical sqrt(1-t²/2): at |u|=1, u'=(1-|v|/2) and v'=v/2, so
- * |u'|+|v'| = (1-|v|/2)+|v|/2 = 1 for every v, and symmetrically at |v|=1 —
- * the whole square boundary lands exactly on the diamond, not just corners.
- * (A pure radial rescale from the box center was tried first and rejected:
- * it scales each point by a factor depending on its own angle from center,
- * which twists a glyph's strokes against each other instead of warping the
- * block as a whole — this grid-style formula keeps the same per-axis
- * structure that makes circleEnvelope read as a smooth press, not a twist.)
+ * Maps the square [-1,1]x[-1,1] onto the diamond |u/a|+|v/b|<=1 (the unit
+ * disc in the L1 norm, scaled `a` horizontally and `b` vertically) — the
+ * diamond analogue of circleEnvelope's elliptical-grid formula above, same
+ * separable shape (each coordinate scaled by a factor of the *other*
+ * coordinate) but with the linear factor (1-|t|/2) in place of the
+ * elliptical sqrt(1-t²/2): at |u|=1, u'=a(1-|v|/2) and v'=bv/2, so
+ * |u'|/a+|v'|/b = (1-|v|/2)+|v|/2 = 1 for every v (the `a`/`b` scale factors
+ * cancel out of the boundary equation), and symmetrically at |v|=1 — the
+ * whole square boundary lands exactly on the (possibly non-1:1) diamond, not
+ * just corners, for any aspect ratio. (A pure radial rescale from the box
+ * center was tried first and rejected: it scales each point by a factor
+ * depending on its own angle from center, which twists a glyph's strokes
+ * against each other instead of warping the block as a whole — this
+ * grid-style formula keeps the same per-axis structure that makes
+ * circleEnvelope read as a smooth press, not a twist.)
  */
-function diamondEnvelope(u: number, v: number): { u: number; v: number } {
+function diamondEnvelope(
+  u: number,
+  v: number,
+  a = 1,
+  b = 1,
+): { u: number; v: number } {
   return {
-    u: u * (1 - Math.abs(v) / 2),
-    v: v * (1 - Math.abs(u) / 2),
+    u: a * u * (1 - Math.abs(v) / 2),
+    v: b * v * (1 - Math.abs(u) / 2),
   };
 }
+
+/** Short-axis:long-axis ratio for the narrow/wide diamond Shape variants
+ * (issue #61) — shared with frames.ts (Frame silhouette) and fit.ts (Frame
+ * fitting norms) so the Shape and its matching Frame line up. */
+export const DIAMOND_ASPECT = 0.6;
 
 // Adding a new Shape (BACKLOG.md: "just" a new mapping function) means
 // adding one more entry here.
 const ENVELOPES: Partial<Record<Shape, EnvelopeMap>> = {
   circle: circleEnvelope,
   diamond: diamondEnvelope,
+  "diamond-narrow": (u, v) => diamondEnvelope(u, v, DIAMOND_ASPECT, 1),
+  "diamond-wide": (u, v) => diamondEnvelope(u, v, 1, DIAMOND_ASPECT),
 };
 
 /** Maps one point through `shape`'s envelope, relative to `box`. A no-op

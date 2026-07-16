@@ -12,6 +12,8 @@
     circle: "frame.circle",
     square: "frame.square",
     diamond: "frame.diamond",
+    "diamond-narrow": "frame.diamond-narrow",
+    "diamond-wide": "frame.diamond-wide",
     "dotted-circle": "frame.dotted-circle",
     "dashed-circle": "frame.dashed-circle",
   };

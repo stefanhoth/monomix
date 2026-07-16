@@ -7,6 +7,7 @@ import {
 } from "../../src/engine/fit";
 import { VIEWBOX_SIZE, type Layout } from "../../src/engine/layout";
 import { frameInnerExtent } from "../../src/engine/frames";
+import { DIAMOND_ASPECT } from "../../src/engine/shape";
 
 describe("fitScale", () => {
   it("square: scales by the Chebyshev (max) norm — the larger half-extent must reach the boundary", () => {
@@ -45,6 +46,32 @@ describe("fitScale", () => {
     expect(diamondScale).toBeLessThan(circleScale);
   });
 
+  it("diamond-narrow: scales by the Manhattan norm with the horizontal half-extent divided by DIAMOND_ASPECT (issue #61)", () => {
+    // Half-extents 3 and 2: 3/DIAMOND_ASPECT + 2 sums to exactly `extent`,
+    // so a diamond-narrow of that extent needs no further scaling.
+    const extent = 3 / DIAMOND_ASPECT + 2;
+    expect(fitScale(6, 4, extent, "diamond-narrow")).toBeCloseTo(1);
+  });
+
+  it("diamond-wide: scales by the Manhattan norm with the vertical half-extent divided by DIAMOND_ASPECT (issue #61)", () => {
+    const extent = 3 + 2 / DIAMOND_ASPECT;
+    expect(fitScale(6, 4, extent, "diamond-wide")).toBeCloseTo(1);
+  });
+
+  it("diamond-narrow and diamond-wide are each stricter than the symmetric diamond along their compressed axis (issue #61)", () => {
+    // A block wider than tall is squeezed harder by diamond-narrow (whose
+    // horizontal reach is compressed) than by the symmetric diamond.
+    const narrowScale = fitScale(100, 50, 100, "diamond-narrow");
+    const diamondScale = fitScale(100, 50, 100, "diamond");
+    expect(narrowScale).toBeLessThan(diamondScale);
+
+    // Symmetrically, a block taller than wide is squeezed harder by
+    // diamond-wide (whose vertical reach is compressed).
+    const wideScale = fitScale(50, 100, 100, "diamond-wide");
+    const diamondScale2 = fitScale(50, 100, 100, "diamond");
+    expect(wideScale).toBeLessThan(diamondScale2);
+  });
+
   it("gap 0 (the full extent): the natural block size only determines the scale ratio, not the outcome", () => {
     // Regardless of the block's starting size, the scaled result always
     // exactly reaches `extent` — this is what "0 = lettering fills the
@@ -74,6 +101,8 @@ describe("fitScale", () => {
       "square",
       "circle",
       "diamond",
+      "diamond-narrow",
+      "diamond-wide",
       "dotted-circle",
       "dashed-circle",
     ] as const) {
@@ -137,8 +166,22 @@ describe("fitCircleScale (issue #37: fitting an already-warped, circular Shape b
     );
   });
 
+  it("diamond-narrow and diamond-wide (issue #61) share the same worst-case norm and are each stricter than the symmetric diamond", () => {
+    const diamondScale = fitCircleScale(100, 200, "diamond");
+    const narrowScale = fitCircleScale(100, 200, "diamond-narrow");
+    const wideScale = fitCircleScale(100, 200, "diamond-wide");
+    expect(narrowScale).toBeCloseTo(wideScale);
+    expect(narrowScale).toBeLessThan(diamondScale);
+  });
+
   it("an extent of 0 scales the disc to nothing, not NaN or negative", () => {
-    for (const shape of ["square", "circle", "diamond"] as const) {
+    for (const shape of [
+      "square",
+      "circle",
+      "diamond",
+      "diamond-narrow",
+      "diamond-wide",
+    ] as const) {
       expect(fitCircleScale(100, 0, shape)).toBe(0);
     }
   });

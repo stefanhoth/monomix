@@ -3,7 +3,9 @@ import type { PathCommand } from "opentype.js";
 import {
   warpPathCommands,
   scalePathCommands,
+  DIAMOND_ASPECT,
   type LetterBlockBox,
+  type Shape,
 } from "../../src/engine/shape";
 
 const BOX: LetterBlockBox = {
@@ -150,6 +152,67 @@ describe("warpPathCommands", () => {
     if (!first || first.type !== "M") throw new Error("expected an M command");
     expect(Number.isFinite(first.x)).toBe(true);
     expect(Number.isFinite(first.y)).toBe(true);
+  });
+
+  it.each(["diamond-narrow", "diamond-wide"] as const)(
+    "%s maps the box center to itself",
+    (shape) => {
+      const commands: PathCommand[] = [
+        { type: "M", x: BOX.centerX, y: BOX.centerY },
+      ];
+      const [warped] = warpPathCommands(commands, BOX, shape);
+      if (!warped || warped.type !== "M")
+        throw new Error("expected an M command");
+      expect(warped.x).toBeCloseTo(BOX.centerX);
+      expect(warped.y).toBeCloseTo(BOX.centerY);
+    },
+  );
+
+  it.each(["diamond-narrow", "diamond-wide"] as const)(
+    "%s produces only finite coordinates — no NaN even for points outside the nominal box",
+    (shape) => {
+      const commands: PathCommand[] = [
+        { type: "M", x: 0, y: 0 },
+        { type: "L", x: 1000, y: 1000 },
+      ];
+      const warped = warpPathCommands(commands, BOX, shape);
+      for (const cmd of warped) {
+        if (cmd.type === "M" || cmd.type === "L") {
+          expect(Number.isFinite(cmd.x)).toBe(true);
+          expect(Number.isFinite(cmd.y)).toBe(true);
+        }
+      }
+    },
+  );
+
+  it("diamond-narrow compresses the horizontal axis and diamond-wide compresses the vertical axis relative to the symmetric diamond (issue #61)", () => {
+    const radius = Math.max(BOX.halfWidth, BOX.halfHeight);
+    const rightEdge: PathCommand[] = [
+      { type: "M", x: BOX.centerX + BOX.halfWidth, y: BOX.centerY },
+    ];
+    const topEdge: PathCommand[] = [
+      { type: "M", x: BOX.centerX, y: BOX.centerY - BOX.halfHeight },
+    ];
+
+    function warpedDistance(commands: PathCommand[], shape: Shape): number {
+      const [warped] = warpPathCommands(commands, BOX, shape);
+      if (!warped || warped.type !== "M")
+        throw new Error("expected an M command");
+      return Math.hypot(warped.x - BOX.centerX, warped.y - BOX.centerY);
+    }
+
+    // diamond-narrow: the right (horizontal) vertex is pulled in, the top
+    // (vertical) vertex stays at the full radius (tall, compressed sideways).
+    expect(warpedDistance(rightEdge, "diamond-narrow")).toBeCloseTo(
+      radius * DIAMOND_ASPECT,
+    );
+    expect(warpedDistance(topEdge, "diamond-narrow")).toBeCloseTo(radius);
+
+    // diamond-wide: the reverse (broad, compressed vertically).
+    expect(warpedDistance(rightEdge, "diamond-wide")).toBeCloseTo(radius);
+    expect(warpedDistance(topEdge, "diamond-wide")).toBeCloseTo(
+      radius * DIAMOND_ASPECT,
+    );
   });
 });
 

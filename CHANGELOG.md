@@ -8,6 +8,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
+- Narrow and wide diamond Shape and Frame variants: two new aspect ratios alongside the existing (symmetric) Diamond, each with matching Designs (Playfair Display, Archivo Black) and a matching Frame silhouette.
 - A quiet "Fonts & licenses" link below the sidebar panels opens a credits page: every font in the catalog with a live specimen, its libre license, and a link to its Google Fonts page.
 - Six decorative fonts join the catalog: Rye (Tuscan/Western), Elsie Swash Caps and Berkshire Swash (swash serifs), Pirata One (blackletter) — each with circle and diamond Designs — plus Monsieur La Doulaise (flourished calligraphy, 1–2 letters) and Fascinate Inline (art déco) as classic Designs.
 

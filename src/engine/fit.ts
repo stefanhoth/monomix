@@ -5,6 +5,7 @@ import {
   DEFAULT_GAP,
   type FrameShapeKind,
 } from "./frames";
+import { DIAMOND_ASPECT } from "./shape";
 
 const CENTER = VIEWBOX_SIZE / 2;
 
@@ -21,6 +22,10 @@ const CENTER = VIEWBOX_SIZE / 2;
  * - square (axis-aligned): Chebyshev/L-infinity — max(w, h) <= extent.
  * - circle (and its dotted/dashed variants): Euclidean/L2 — sqrt(w^2+h^2) <= extent.
  * - diamond (a square rotated 45°): Manhattan/L1 — w + h <= extent.
+ * - diamond-narrow/diamond-wide (issue #61): the same Manhattan/L1 norm but
+ *   scaled by DIAMOND_ASPECT along whichever axis is compressed, since their
+ *   vertices sit at (extent, 0)/(0, extent*DIAMOND_ASPECT) — narrow — or the
+ *   reverse — wide — rather than (extent, 0)/(0, extent).
  */
 function shapeNormExtent(
   halfWidth: number,
@@ -32,6 +37,10 @@ function shapeNormExtent(
       return Math.max(halfWidth, halfHeight);
     case "diamond":
       return halfWidth + halfHeight;
+    case "diamond-narrow":
+      return halfWidth / DIAMOND_ASPECT + halfHeight;
+    case "diamond-wide":
+      return halfWidth + halfHeight / DIAMOND_ASPECT;
     case "circle":
     case "dotted-circle":
     case "dashed-circle":
@@ -65,20 +74,37 @@ export function fitScale(
  * unit circle — 1 for square (L∞) and circle (L2), since a disc's boundary
  * already coincides with a circle's and just touches a square's flat edges
  * at its own radius, but sqrt(2) for diamond (L1), whose closest boundary
- * point to center sits at 45°, not on an axis. Used by the Shape warp stage
- * (src/engine/shape.ts, ADR 0007) once letters have been pressed into a
- * circle: the warped block's own bounding box is a square, not the letters'
- * actual (round) silhouette, so `fitScale`'s rectangular-corner assumption
- * doesn't apply to it.
+ * point to center sits at 45°, not on an axis (and, generalizing to a
+ * diamond's DIAMOND_ASPECT-scaled narrow/wide variants (issue #61),
+ * sqrt(1/DIAMOND_ASPECT² + 1) — same value for both, since compressing
+ * either axis by DIAMOND_ASPECT brings that axis's edge equally close).
+ * Used by the Shape warp stage (src/engine/shape.ts, ADR 0007) once letters
+ * have been pressed into a circle: the warped block's own bounding box is a
+ * square, not the letters' actual (round) silhouette, so `fitScale`'s
+ * rectangular-corner assumption doesn't apply to it.
  */
+function diamondWorstCaseNorm(shape: FrameShapeKind): number {
+  switch (shape) {
+    case "diamond":
+      return Math.SQRT2;
+    case "diamond-narrow":
+    case "diamond-wide":
+      return Math.sqrt(1 / DIAMOND_ASPECT ** 2 + 1);
+    case "square":
+    case "circle":
+    case "dotted-circle":
+    case "dashed-circle":
+      return 1;
+  }
+}
+
 export function fitCircleScale(
   radius: number,
   extent: number,
   shape: FrameShapeKind,
 ): number {
   if (radius === 0) return 1;
-  const worstCaseNorm = shape === "diamond" ? Math.SQRT2 : 1;
-  return extent / (radius * worstCaseNorm);
+  return extent / (radius * diamondWorstCaseNorm(shape));
 }
 
 /**

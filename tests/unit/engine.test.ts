@@ -111,7 +111,15 @@ describe("composeMonogram (Frame fitting, issue #36)", () => {
     expect((letterPaths(svg).match(/<path /g) ?? []).length).toBe(2);
   });
 
-  it.each(["circle", "square", "diamond", "dotted-circle", "dashed-circle"])(
+  it.each([
+    "circle",
+    "square",
+    "diamond",
+    "diamond-narrow",
+    "diamond-wide",
+    "dotted-circle",
+    "dashed-circle",
+  ])(
     "%s: fits every Letter Count without producing NaN or invalid geometry, across a range of gaps",
     (frameId) => {
       for (const letters of ["A", "MX", "WIW"]) {
@@ -274,3 +282,53 @@ describe("composeMonogram (Shape warp, issue #38, ADR 0007: diamond)", () => {
     },
   );
 });
+
+describe.each(["diamond-narrow", "diamond-wide"] as const)(
+  "composeMonogram (Shape warp, issue #61: %s)",
+  (shape) => {
+    it("produces one path per letter with valid, finite geometry", () => {
+      for (const letters of ["A", "MX", "WIW"]) {
+        const svg = composeMonogram(letters, font, { shape });
+        expect(svg).not.toContain("NaN");
+        expect((svg.match(/<path /g) ?? []).length).toBe(letters.length);
+      }
+    });
+
+    it("changes the letter geometry versus an unshaped Design", () => {
+      const unshaped = composeMonogram("MX", font);
+      const shaped = composeMonogram("MX", font, { shape });
+      expect(shaped).not.toBe(unshaped);
+    });
+
+    it("flattens all curves to M/L/Z — no bezier commands survive the warp", () => {
+      const svg = composeMonogram("MX", font, { shape });
+      const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+      expect(glyphMarkup).not.toMatch(/[QC][0-9-]/);
+    });
+
+    it("combined with a Frame, the shaped result fits inside it without NaN or invalid geometry (issue #36 fitting rules)", () => {
+      for (const frameId of ["circle", "square", "diamond", shape]) {
+        for (const gap of [0, 40, 200]) {
+          const svg = composeMonogram("MX", font, {
+            shape,
+            frame: { id: frameId, gap },
+          });
+          const glyphMarkup = svg.slice(svg.indexOf('<g fill="currentColor">'));
+          expect(svg).not.toContain("NaN");
+          expect((glyphMarkup.match(/<path /g) ?? []).length).toBe(2);
+        }
+      }
+    });
+
+    it.each([
+      ["1-letter", "A"],
+      ["2-letter", "MX"],
+      ["3-letter", "WIW"],
+    ])(
+      "is a pure function: %s shaped output matches its regression snapshot",
+      (_label, letters) => {
+        expect(composeMonogram(letters, font, { shape })).toMatchSnapshot();
+      },
+    );
+  },
+);
