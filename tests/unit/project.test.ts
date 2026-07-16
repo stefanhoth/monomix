@@ -17,6 +17,7 @@ function project(overrides: Partial<Project> = {}): Project {
     id: "p1",
     name: "MX",
     letters: "MX",
+    letterCase: "upper",
     designId: "cinzel-classic",
     frameId: "circle",
     frameGap: 40,
@@ -100,6 +101,7 @@ describe("createProject", () => {
   it("inherits every settings field from the given settings, not hardcoded defaults", () => {
     const settings: ProjectSettings = {
       letters: "ABC",
+      letterCase: "preserve",
       designId: "playfair-stacked",
       frameId: "diamond",
       frameGap: 120,
@@ -184,6 +186,7 @@ describe("toProjectSettings", () => {
     const settings = toProjectSettings(full);
     expect(settings).toEqual({
       letters: full.letters,
+      letterCase: full.letterCase,
       designId: full.designId,
       frameId: full.frameId,
       frameGap: full.frameGap,

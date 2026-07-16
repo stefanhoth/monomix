@@ -50,8 +50,16 @@ export type LettersHint =
   | { kind: "generic" }
   | { kind: "suggestion"; invalid: string; suggestion: string };
 
+/**
+ * The case model (issue #62, ADR 0008): "upper" is the original, still-
+ * default behavior (every valid letter is uppercased). "preserve" keeps
+ * each valid letter's case exactly as typed, so "Max" stays "Max" rather
+ * than becoming "MAX".
+ */
+export type LetterCaseMode = "upper" | "preserve";
+
 export interface LettersInputResult {
-  /** Always uppercase A-Z, capped at 3 characters — safe to feed straight into the engine. */
+  /** A-Z or a-z depending on `caseMode`, capped at 3 characters — safe to feed straight into the engine. */
   letters: string;
   /** Set when at least one character was rejected; null when the input was already clean. */
   hint: LettersHint | null;
@@ -59,13 +67,16 @@ export interface LettersInputResult {
 
 const isAsciiLetter = (ch: string) => /^[a-zA-Z]$/.test(ch);
 
-export function sanitizeLettersInput(raw: string): LettersInputResult {
+export function sanitizeLettersInput(
+  raw: string,
+  caseMode: LetterCaseMode = "upper",
+): LettersInputResult {
   const chars = [...raw];
   const invalidChars = chars.filter((ch) => !isAsciiLetter(ch));
   const validChars = chars
     .filter(isAsciiLetter)
     .slice(0, MAX_LETTERS)
-    .map((ch) => ch.toUpperCase());
+    .map((ch) => (caseMode === "upper" ? ch.toUpperCase() : ch));
 
   if (invalidChars.length === 0) {
     return { letters: validChars.join(""), hint: null };

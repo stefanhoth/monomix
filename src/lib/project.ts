@@ -1,5 +1,6 @@
 import { DESIGNS, NO_FRAME_ID } from "../engine";
 import { DEFAULT_FRAME_GAP } from "./frame-gap";
+import type { LetterCaseMode } from "./letters-input";
 
 /**
  * A Project (CONTEXT.md) captures the full editor state that #12's core
@@ -11,6 +12,9 @@ import { DEFAULT_FRAME_GAP } from "./frame-gap";
  */
 export interface ProjectSettings {
   letters: string;
+  /** Issue #62 / ADR 0008: "upper" (default) uppercases every letter as
+   * before; "preserve" keeps each letter's case exactly as typed. */
+  letterCase: LetterCaseMode;
   designId: string;
   frameId: string;
   frameGap: number;
@@ -32,6 +36,7 @@ export interface Project extends ProjectSettings {
 // to inherit from (the very first Project any user ever creates).
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   letters: "MX",
+  letterCase: "upper",
   designId: DESIGNS[0]!.id,
   frameId: NO_FRAME_ID,
   frameGap: DEFAULT_FRAME_GAP,
@@ -69,6 +74,10 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     letters: isString(raw.letters)
       ? raw.letters
       : DEFAULT_PROJECT_SETTINGS.letters,
+    letterCase:
+      raw.letterCase === "upper" || raw.letterCase === "preserve"
+        ? raw.letterCase
+        : DEFAULT_PROJECT_SETTINGS.letterCase,
     designId: isString(raw.designId)
       ? raw.designId
       : DEFAULT_PROJECT_SETTINGS.designId,
@@ -110,6 +119,7 @@ export function deserializeProject(json: string): Project {
 export function toProjectSettings(project: Project): ProjectSettings {
   return {
     letters: project.letters,
+    letterCase: project.letterCase,
     designId: project.designId,
     frameId: project.frameId,
     frameGap: project.frameGap,
@@ -129,6 +139,7 @@ export function projectSettingsEqual(
 ): boolean {
   return (
     a.letters === b.letters &&
+    a.letterCase === b.letterCase &&
     a.designId === b.designId &&
     a.frameId === b.frameId &&
     a.frameGap === b.frameGap &&

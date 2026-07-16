@@ -2,7 +2,7 @@
 
 Backs the algorithmic Designs (ADR 0006). All 23 fonts are sourced from [google/fonts](https://github.com/google/fonts) — every family there ships its license file (`OFL.txt` or `LICENSE.txt`) alongside the font, satisfying ADR 0003 (SIL OFL / CC0 / Apache-2.0 only).
 
-Each font is subset at acquisition time to exactly what MonoMix uses — uppercase `A-Z` plus space (Letters are restricted to A-Z; see CONTEXT.md) — via [`scripts/subset-font.mjs`](../scripts/subset-font.mjs) (`subset-font`, a WASM build of harfbuzz's `hb-subset`). This cut the catalog from ~2.9 MB to ~230 KB, which matters directly for Design Principle 2 (fast first result) and the PWA's full-offline precache.
+Each font is subset at acquisition time to exactly what MonoMix uses — `A-Z`, `a-z`, and space (Letters support both cases as of issue #62 / ADR 0008; see CONTEXT.md) — via [`scripts/subset-font.mjs`](../scripts/subset-font.mjs) (`subset-font`, a WASM build of harfbuzz's `hb-subset`). This keeps the catalog a small fraction of the ~2.9 MB the 23 full families would cost, which matters directly for Design Principle 2 (fast first result) and the PWA's full-offline precache.
 
 Registered in [`src/engine/fonts.ts`](../src/engine/fonts.ts).
 
@@ -35,11 +35,11 @@ Registered in [`src/engine/fonts.ts`](../src/engine/fonts.ts).
 ## Adding a font
 
 1. Confirm the license in [google/fonts](https://github.com/google/fonts) (`ofl/<family>/OFL.txt` or `apache/<family>/LICENSE.txt`) qualifies per ADR 0003.
-2. Download the source `.ttf` and its license file.
-3. `node scripts/subset-font.mjs <source.ttf> src/assets/fonts/<id>/`
-4. Copy the license file into `src/assets/fonts/<id>/`.
+2. Get a source file with the full character set (both cases): either the matching `@fontsource/<slug>` npm package's `files/<slug>-latin-400-normal.woff2` (`npm install @fontsource/<slug> --no-save` somewhere scratch, `subset-font` reads woff2 directly — this is what issue #62's catalog-wide regeneration used), or a raw `.ttf` from google/fonts directly.
+3. `node scripts/subset-font.mjs <source> src/assets/fonts/<id>/`
+4. Copy the license file into `src/assets/fonts/<id>/` (the `@fontsource` package's own `LICENSE` file is the same upstream text).
 5. Add an entry to the `CATALOG` array in `src/engine/fonts.ts` and to the table above.
 
 ## Known simplification
 
-Several families (`cinzel`, `playfair-display`, `cormorant-garamond`, `league-spartan`, `roboto-slab`) ship as variable fonts; we use whatever the default named instance resolves to rather than instancing a specific weight. Picking a deliberate weight per Design (e.g. baking a Bold static instance with `fonttools varLib.instancer`) is a possible future refinement, not a v1 blocker.
+Several families (`cinzel`, `playfair-display`, `cormorant-garamond`, `league-spartan`, `roboto-slab`) are variable fonts upstream; the catalog uses `@fontsource`'s static weight-400 instance rather than instancing a specific weight from the variable font directly (issue #62 regenerated the whole catalog this way, switching from the original hand-fetched variable-font sources to `@fontsource`'s pre-built static files — a more reliable, scriptable source for 23 fonts at once than guessing raw google/fonts paths). Picking a deliberate weight per Design (e.g. baking a Bold static instance with `fonttools varLib.instancer`) is a possible future refinement, not a v1 blocker.
