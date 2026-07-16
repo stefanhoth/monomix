@@ -15,7 +15,7 @@
 - **Per-letter colors** — each letter individually colorable; technically cheap since every letter is its own path.
 - **sveltebits UI kit** — evaluate https://sveltebits.xyz for UI components (see ADR 0002).
 - **Per-design glyph sets** — designs whose fonts carry umlauts/digits could allow more than A–Z (rejected for v1 to keep the gallery consistent).
-- **Custom domain** — attach monomix.stefanhoth.com to the production Worker (hosting is Cloudflare Workers from day 1, see ADR 0004).
+- **Custom domain** — attach monomix.stefanhoth.com to the production Worker (hosting is Cloudflare Workers from day 1, see ADR 0004). Runbook drafted: [docs/CUSTOM-DOMAIN.md](CUSTOM-DOMAIN.md); needs Cloudflare dashboard/DNS access to execute.
 - **Non-Latin scripts research** — monogram-style fonts likely exist for Devanagari, CJK, Arabic on non-Western platforms; investigate sources and licensing.
 - **Cloudflare API token rotation** — the `CLOUDFLARE_API_TOKEN` repo secret expires 2027-01-01; rotate before then or CI deploys will start failing.
 - **Interlocked/overlapping glyph composition** — letters that weave through each other (boolean overlap handling, per-glyph slicing) is a genuinely different mechanism than the Shape warp (ADR 0007) and stays deferred. (The circle/diamond half of the former "genuinely distinct composition styles" entry ships as Shaped Designs, ADR 0007.)
