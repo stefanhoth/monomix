@@ -57,6 +57,7 @@
     latestEntryId,
   } from "./lib/changelog";
   import { getLastSeenEntryId, markEntrySeen } from "./lib/changelog-storage";
+  import AboutPanel from "./components/AboutPanel.svelte";
   import DesignGallery from "./components/DesignGallery.svelte";
   import FontCreditsPanel from "./components/FontCreditsPanel.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
@@ -173,6 +174,34 @@
       );
     }
   });
+
+  // About panel (issue #55): explains the app's purpose and basic usage as
+  // a near-fullscreen modal. Deep-linkable via the #about URL hash — kept in
+  // sync with `aboutOpen` via history.replaceState (no pushState) so opening
+  // or closing it never grows browser history, and mounted outside the
+  // projectReady/onboarding gate below so a shared /#about link resolves
+  // instantly rather than waiting on the IndexedDB Project check.
+  let aboutOpen = $state(location.hash === "#about");
+
+  function setAboutHash(open: boolean) {
+    const url = new URL(location.href);
+    url.hash = open ? "about" : "";
+    history.replaceState(null, "", url);
+  }
+
+  function openAbout() {
+    aboutOpen = true;
+    setAboutHash(true);
+  }
+
+  function closeAbout() {
+    aboutOpen = false;
+    setAboutHash(false);
+  }
+
+  function syncAboutFromHash() {
+    aboutOpen = location.hash === "#about";
+  }
 
   // Projects (issue #14): implicit, Canva/Figma-style autosave — every
   // editor change debounce-saves to the active Project, no save button.
@@ -561,6 +590,8 @@
   }
 </script>
 
+<svelte:window onhashchange={syncAboutFromHash} />
+
 {#if !projectReady}
   <!-- Briefly blank while the initial "does a Project already exist?"
        IndexedDB check resolves — deciding whether to show onboarding or the
@@ -604,6 +635,9 @@
             <span class="badge" aria-hidden="true"></span>
             <span class="sr-only">{t("whatsnew.unseenIndicator")}</span>
           {/if}
+        </button>
+        <button type="button" class="quiet-trigger" onclick={openAbout}>
+          {t("about.trigger")}
         </button>
         <LocaleSwitcher />
       </div>
@@ -794,6 +828,8 @@
   />
 {/if}
 
+<AboutPanel open={aboutOpen} onClose={closeAbout} {reducedMotion} />
+
 <style>
   .workspace {
     display: grid;
@@ -839,7 +875,7 @@
   }
 
   /* Shared quiet-link look for chrome that must recede (Design Principle
-     1): the What's-new and Fonts-&-licenses triggers. */
+     1): the What's-new, Fonts-&-licenses, and About triggers. */
   .quiet-trigger {
     font: inherit;
     font-size: 0.875rem;

@@ -13,6 +13,21 @@ or product but don't warrant a full [ADR](adr/).
 
 ## 2026-07-16
 
+- **The "about page" (issue #55) is an in-app panel, not a routed marketing
+  page, and is deep-linkable via a `#about` URL hash.** The issue linked a
+  landing-page generator skill, but a gated page users click through before
+  reaching the tool fights Design Principle 2 ("fast first result") and
+  reverses the "single client-only screen, no routing" call in ADR 0002.
+  `AboutPanel.svelte` follows the `NewProjectSurface`/`WhatsNewPanel` dialog
+  pattern instead, sized as a near-fullscreen centered modal (prose to read,
+  not a list to skim alongside the editor) rather than their side-drawer.
+  It's mounted outside the `projectReady`/onboarding gate in `App.svelte` and
+  syncs `open` with `location.hash` via `history.replaceState` (never
+  `pushState`, so opening/closing never grows browser history) — a shared
+  `/#about` link resolves instantly, even for a first-run visitor. Also
+  wires up `APP_VERSION` (`vite.config.ts` → `__APP_VERSION__`), which
+  ADR 0005 already promised "shown in the app's about area" but nothing had
+  actually consumed — this panel is that area.
 - **Narrow/wide diamond aspect ratio is a single shared constant
   (`DIAMOND_ASPECT = 0.6`), and only 2 of the 10 existing diamond-Design
   fonts get narrow/wide variants (issue #61).** The constant lives in

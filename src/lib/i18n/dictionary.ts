@@ -89,6 +89,35 @@ export const dictionary = {
     de: "Jedes Monogramm entsteht aus einer dieser frei lizenzierten Schriften:",
   },
   "credits.close": { en: "Close", de: "Schließen" },
+  "about.trigger": { en: "About", de: "Über" },
+  "about.heading": { en: "About MonoMix", de: "Über MonoMix" },
+  "about.close": { en: "Close", de: "Schließen" },
+  "about.intro": {
+    en: "MonoMix turns 1–3 letters into a monogram, entirely in your browser — no account, no upload, no server. Pick a Design, add a Frame, choose your colors, and export as SVG, PNG, JPG, or PDF.",
+    de: "MonoMix verwandelt 1–3 Buchstaben in ein Monogramm – komplett in deinem Browser, ohne Konto, Upload oder Server. Wähle ein Design, füge einen Rahmen hinzu, bestimme die Farben und exportiere als SVG, PNG, JPG oder PDF.",
+  },
+  "about.usageHeading": { en: "How it works", de: "So funktioniert's" },
+  "about.usageStep1": {
+    en: "Type your initials (1–3 letters).",
+    de: "Gib deine Initialen ein (1–3 Buchstaben).",
+  },
+  "about.usageStep2": {
+    en: "Pick a Design — a font, arrangement, and shape.",
+    de: "Wähle ein Design – eine Kombination aus Schrift, Anordnung und Form.",
+  },
+  "about.usageStep3": {
+    en: "Optionally add a Frame and set your colors.",
+    de: "Füge optional einen Rahmen hinzu und lege die Farben fest.",
+  },
+  "about.usageStep4": {
+    en: "Export as SVG, PNG, JPG, or PDF.",
+    de: "Exportiere als SVG, PNG, JPG oder PDF.",
+  },
+  "about.privacyNote": {
+    en: "Everything happens on your device. Install MonoMix as an app to use it offline.",
+    de: "Alles passiert auf deinem Gerät. Installiere MonoMix als App, um es offline zu nutzen.",
+  },
+  "about.version": { en: "Version {version}", de: "Version {version}" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dictionary;
