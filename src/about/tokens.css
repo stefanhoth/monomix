@@ -1,0 +1,77 @@
+/* Hallmark tokens · theme: Hum · genre: playful */
+
+:root {
+  /* Colour — Hum: cream paper, multi-accent, never pure white/black */
+  --color-paper: oklch(97% 0.012 95);
+  --color-paper-2: oklch(94% 0.016 95);
+  --color-paper-3: oklch(91% 0.02 95);
+  --color-ink: oklch(20% 0.012 250);
+  --color-ink-2: oklch(38% 0.014 250);
+
+  --color-accent: oklch(86% 0.18 95); /* pear-yellow — primary */
+  --color-accent-deep: oklch(70% 0.19 95);
+  --color-accent-2: oklch(66% 0.18 235); /* sky-cyan — secondary */
+  --color-accent-2-deep: oklch(52% 0.17 235);
+  --color-accent-3: oklch(68% 0.24 18); /* coral-red — single pop moment */
+  --color-accent-3-deep: oklch(54% 0.22 18);
+  --color-mint: oklch(80% 0.16 150);
+  --color-lavender: oklch(74% 0.16 305);
+
+  --color-focus: oklch(55% 0.19 235);
+  --color-rule: oklch(20% 0.012 250 / 0.12);
+  --color-rule-on-ink: oklch(97% 0.012 95 / 0.15);
+
+  --shadow-btn-cast: oklch(76% 0.2 95 / 0.45);
+  --shadow-tile-hover: 0 12px 32px -16px oklch(20% 0.012 250 / 0.16);
+
+  /* Type */
+  --font-display:
+    "Plus Jakarta Sans", ui-rounded, system-ui, "Segoe UI", sans-serif;
+  --font-body: "Plus Jakarta Sans", ui-rounded, system-ui, sans-serif;
+  --font-label: "JetBrains Mono", ui-monospace, monospace;
+
+  --text-xs: 0.7rem;
+  --text-sm: 0.85rem;
+  --text-base: 1rem;
+  --text-md: 1.2rem;
+  --text-lg: 1.4rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.2rem;
+  --text-3xl: 2.75rem;
+  --text-display: clamp(2.5rem, 4.2vw + 1rem, 4.5rem);
+  --text-display-s: clamp(2.1rem, 3vw + 1rem, 3.2rem);
+
+  /* Space — 4pt scale */
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+  --space-4xl: 9rem;
+
+  --page-gutter: clamp(1.25rem, 4vw, 3rem);
+  --page-max: 72rem;
+
+  /* Radius — Hum is the rounded theme, no square corners */
+  --radius-card: 20px;
+  --radius-pill: 999px;
+  --radius-input: 12px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-snap: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 200;
+}
