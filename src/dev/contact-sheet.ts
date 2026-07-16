@@ -4,15 +4,14 @@ import type { Shape } from "../engine/shape";
 import type { LetterCount } from "../engine";
 
 /**
- * Dev-only curation tool for issue #39: renders every font × {circle,
- * diamond} × Letter Count candidate so the catalog can be re-curated around
- * shaped templates. Reachable only via `npm run dev` -> /contact-sheet.html;
- * this entry point is never linked from index.html and isn't part of any
- * `rollupOptions.input`, so `vite build` never bundles it into dist/ — it
- * ships to nobody.
+ * Dev-only curation tool for issue #39: renders every font × Shape × Letter
+ * Count candidate so the catalog can be re-curated around shaped templates.
+ * Reachable only via `npm run dev` -> /contact-sheet.html; this entry point
+ * is never linked from index.html and isn't part of any `rollupOptions.input`,
+ * so `vite build` never bundles it into dist/ — it ships to nobody.
  */
 
-const SHAPES: Shape[] = ["circle", "diamond"];
+const SHAPES: Shape[] = ["circle", "diamond", "diamond-narrow", "diamond-wide"];
 const LETTER_COUNTS: LetterCount[] = [1, 2, 3];
 const SAMPLE_LETTERS: Record<LetterCount, string> = {
   1: "M",
@@ -25,7 +24,7 @@ if (!app) throw new Error("Missing #app root element");
 
 app.innerHTML = `
   <h1>MonoMix design contact sheet (dev only)</h1>
-  <p>Every font × {circle, diamond} × Letter Count candidate, for curation review (issue #39). Not shipped to users.</p>
+  <p>Every font × Shape × Letter Count candidate, for curation review (issues #39, #61). Not shipped to users.</p>
 `;
 
 for (const font of FONTS) {

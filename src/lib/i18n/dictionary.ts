@@ -54,6 +54,8 @@ export const dictionary = {
   "frame.circle": { en: "Circle", de: "Kreis" },
   "frame.square": { en: "Square", de: "Quadrat" },
   "frame.diamond": { en: "Diamond", de: "Raute" },
+  "frame.diamond-narrow": { en: "Narrow Diamond", de: "Schmale Raute" },
+  "frame.diamond-wide": { en: "Wide Diamond", de: "Breite Raute" },
   "frame.dotted-circle": { en: "Dotted Circle", de: "Gepunkteter Kreis" },
   "frame.dashed-circle": { en: "Dashed Circle", de: "Gestrichelter Kreis" },
   "projects.new": { en: "New Project", de: "Neues Projekt" },

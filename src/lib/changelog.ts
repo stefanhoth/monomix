@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-07-16-diamond-variants",
+    date: "2026-07-16",
+    en: "Two new diamond shapes: a narrow (tall) and a wide (broad) diamond, each with its own Design and matching Frame.",
+    de: "Zwei neue Rauten-Formen: eine schmale (hohe) und eine breite (flache) Raute, jeweils mit eigenem Design und passendem Rahmen.",
+  },
+  {
     id: "2026-07-15-schmuck-fonts",
     date: "2026-07-15",
     en: "Six ornamental fonts arrived: Western spurs (Rye), swash capitals (Elsie, Berkshire), pirate blackletter (Pirata One), flourished calligraphy (Monsieur La Doulaise), and art-déco inline (Fascinate) — ten new Designs in the gallery.",

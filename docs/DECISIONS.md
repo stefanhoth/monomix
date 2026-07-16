@@ -11,6 +11,20 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-07-16
+
+- **Narrow/wide diamond aspect ratio is a single shared constant
+  (`DIAMOND_ASPECT = 0.6`), and only 2 of the 10 existing diamond-Design
+  fonts get narrow/wide variants (issue #61).** The constant lives in
+  `src/engine/shape.ts` and is imported by `frames.ts`/`fit.ts` so the Shape
+  warp, the Frame silhouette, and the Frame-fitting norm can't drift apart —
+  "the Shape and its matching Frame line up" is a property of sharing one
+  number, not three independently-tuned ones. Playfair Display and Archivo
+  Black (the catalog's first serif and first slab voices) get narrow + wide
+  Designs; extending every font to both new aspects is a 20-entry curation
+  pass in the spirit of issue #39/#53's contact-sheet review, deferred
+  rather than done speculatively here.
+
 ## 2026-07-15
 
 - **Font credits: whole catalog, license names untranslated, no in-app

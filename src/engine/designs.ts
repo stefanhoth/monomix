@@ -60,11 +60,21 @@ const SHAPED: ShapeVariant[] = [
   { fontId: "berkshire-swash", shape: "diamond" },
   { fontId: "pirata-one", shape: "circle" },
   { fontId: "pirata-one", shape: "diamond" },
+  // Narrow/wide diamond variants (issue #61) — the same two style voices
+  // that lead the circle/diamond catalog above, so every diamond aspect is
+  // represented by at least one recognizable font.
+  { fontId: "playfair-display", shape: "diamond-narrow" },
+  { fontId: "playfair-display", shape: "diamond-wide" },
+  { fontId: "archivo-black", shape: "diamond-narrow" },
+  { fontId: "archivo-black", shape: "diamond-wide" },
 ];
 
-function capitalize(word: string): string {
-  return word[0]!.toUpperCase() + word.slice(1);
-}
+const SHAPE_LABELS: Record<Exclude<Shape, "none">, string> = {
+  circle: "Circle",
+  diamond: "Diamond",
+  "diamond-narrow": "Diamond Narrow",
+  "diamond-wide": "Diamond Wide",
+};
 
 interface ArrangementVariant {
   fontId: string;
@@ -117,7 +127,7 @@ const shapedDesigns: Design[] = SHAPED.map((variant) => {
   const f = font(variant.fontId);
   return {
     id: `${f.id}-${variant.shape}`,
-    name: `${f.family} ${capitalize(variant.shape)}`,
+    name: `${f.family} ${SHAPE_LABELS[variant.shape]}`,
     fontId: f.id,
     arrangement: "horizontal",
     shape: variant.shape,

@@ -1,15 +1,23 @@
 import { VIEWBOX_SIZE } from "./layout";
 import { sanitizeColor } from "./color";
+import { DIAMOND_ASPECT } from "./shape";
 
 /**
  * Frames are independent decorative rings around the letters (CONTEXT.md),
  * not a clip mask — they're positioned purely relative to the fixed
  * VIEWBOX_SIZE canvas, not the letters' actual rendered ink extent. Basic
  * parametric geometry only; motif/advanced frames are deferred
- * (docs/BACKLOG.md).
+ * (docs/BACKLOG.md). "diamond-narrow"/"diamond-wide" (issue #61) mirror the
+ * matching non-1:1 diamond Shape variants (src/engine/shape.ts).
  */
 export type FrameShapeKind =
-  "circle" | "square" | "diamond" | "dotted-circle" | "dashed-circle";
+  | "circle"
+  | "square"
+  | "diamond"
+  | "diamond-narrow"
+  | "diamond-wide"
+  | "dotted-circle"
+  | "dashed-circle";
 
 export interface Frame {
   id: string;
@@ -25,6 +33,8 @@ export const FRAMES: Frame[] = [
   { id: "circle", name: "Circle", shape: "circle" },
   { id: "square", name: "Square", shape: "square" },
   { id: "diamond", name: "Diamond", shape: "diamond" },
+  { id: "diamond-narrow", name: "Narrow Diamond", shape: "diamond-narrow" },
+  { id: "diamond-wide", name: "Wide Diamond", shape: "diamond-wide" },
   { id: "dotted-circle", name: "Dotted Circle", shape: "dotted-circle" },
   { id: "dashed-circle", name: "Dashed Circle", shape: "dashed-circle" },
 ];
@@ -97,6 +107,20 @@ export function composeFrame(
       return `<rect x="${CENTER - r}" y="${CENTER - r}" width="${r * 2}" height="${r * 2}" ${attrs}/>`;
     case "diamond": {
       const d = `M${CENTER} ${CENTER - r} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - r} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+    case "diamond-narrow": {
+      // Tall: the vertical vertices reach the full radius, the horizontal
+      // ones are compressed to DIAMOND_ASPECT of it.
+      const rx = r * DIAMOND_ASPECT;
+      const d = `M${CENTER} ${CENTER - r} L${CENTER + rx} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - rx} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+    case "diamond-wide": {
+      // Broad: the horizontal vertices reach the full radius, the vertical
+      // ones are compressed to DIAMOND_ASPECT of it.
+      const ry = r * DIAMOND_ASPECT;
+      const d = `M${CENTER} ${CENTER - ry} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + ry} L${CENTER - r} ${CENTER} Z`;
       return `<path d="${d}" ${attrs}/>`;
     }
     case "dotted-circle":

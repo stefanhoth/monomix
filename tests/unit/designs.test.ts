@@ -51,6 +51,18 @@ describe("DESIGNS catalog", () => {
     }
   });
 
+  it.each(["diamond-narrow", "diamond-wide"] as const)(
+    "has at least one %s Shape Design for every Letter Count (issue #61)",
+    (shape) => {
+      for (const count of [1, 2, 3] as const) {
+        const matching = DESIGNS.filter(
+          (d) => d.shape === shape && d.supports.includes(count),
+        );
+        expect(matching.length).toBeGreaterThanOrEqual(1);
+      }
+    },
+  );
+
   it.each(
     DESIGNS.flatMap((design) =>
       design.supports.map((count) => ({ design, count })),
