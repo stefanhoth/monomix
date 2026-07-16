@@ -2,7 +2,17 @@ import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { VitePWA } from "vite-plugin-pwa";
 
+// ADR 0005: the release workflow injects the CalVer tag as the APP_VERSION
+// env var around `npm run build` (.github/workflows/release.yml); `define`
+// inlines it as a build-time constant so it reaches the About panel without
+// a runtime env lookup. Falls back to "dev" for local builds, which never
+// set that env var.
+const appVersion = process.env.APP_VERSION ?? "dev";
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   plugins: [
     svelte(),
     VitePWA({
