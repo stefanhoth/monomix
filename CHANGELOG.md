@@ -8,6 +8,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
+- A `/about` marketing page introduces MonoMix to people who haven't opened the app yet — separate from the in-app About panel, which is a quick reference for people already using it.
 - An "About" link in the top corner opens a page explaining what MonoMix is, how to use it, and which version you're running — deep-linkable via the `#about` URL for sharing outside the app.
 - Narrow and wide diamond Shape and Frame variants: two new aspect ratios alongside the existing (symmetric) Diamond, each with matching Designs (Playfair Display, Archivo Black) and a matching Frame silhouette.
 - A quiet "Fonts & licenses" link below the sidebar panels opens a credits page: every font in the catalog with a live specimen, its libre license, and a link to its Google Fonts page.
