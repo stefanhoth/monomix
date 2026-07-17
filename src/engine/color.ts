@@ -18,3 +18,18 @@ export function sanitizeColor(
   if (input === undefined) return fallback;
   return SAFE_COLOR_PATTERN.test(input) ? input : fallback;
 }
+
+/**
+ * Clamps an opacity (issue #65: transparent letter fill) to the 0-1 range
+ * `fill-opacity` accepts, and falls back for non-finite input (e.g. NaN
+ * from a malformed stored value) — a number can't carry an XSS payload the
+ * way a color string can, but an out-of-range or non-finite value would
+ * still produce invalid/meaningless SVG.
+ */
+export function sanitizeOpacity(
+  input: number | undefined,
+  fallback: number,
+): number {
+  if (input === undefined || !Number.isFinite(input)) return fallback;
+  return Math.min(1, Math.max(0, input));
+}

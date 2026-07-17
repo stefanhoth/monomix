@@ -111,6 +111,9 @@
   // look the preview had before explicit color controls existed, without
   // trying to track the system color scheme dynamically.
   let lettersColor = $state("#111111");
+  // Issue #65: 0-1, 1 = fully opaque (the original, default look). Lets a
+  // background color/image/gradient show through the letterforms.
+  let lettersOpacity = $state(DEFAULT_PROJECT_SETTINGS.lettersOpacity);
   let frameColor = $state("#111111");
   // Background is transparent by default (checkerboard, not white — see
   // .preview below). `backgroundKind` picks which fill is active; the
@@ -309,6 +312,7 @@
             color: frameColor,
           },
           lettersColor,
+          lettersOpacity,
           background: resolvedBackground,
         })
       : "",
@@ -335,6 +339,7 @@
     frameId: selectedFrameId,
     frameGap,
     lettersColor,
+    lettersOpacity,
     frameColor,
     backgroundKind,
     backgroundColor,
@@ -370,6 +375,7 @@
     selectedFrameId = project.frameId;
     frameGap = project.frameGap;
     lettersColor = project.lettersColor;
+    lettersOpacity = project.lettersOpacity;
     frameColor = project.frameColor;
     backgroundKind = project.backgroundKind;
     backgroundColor = project.backgroundColor;
@@ -589,6 +595,7 @@
         selectedFrameId = DEFAULT_PROJECT_SETTINGS.frameId;
         frameGap = DEFAULT_PROJECT_SETTINGS.frameGap;
         lettersColor = DEFAULT_PROJECT_SETTINGS.lettersColor;
+        lettersOpacity = DEFAULT_PROJECT_SETTINGS.lettersOpacity;
         frameColor = DEFAULT_PROJECT_SETTINGS.frameColor;
         backgroundKind = DEFAULT_PROJECT_SETTINGS.backgroundKind;
         backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
@@ -616,6 +623,15 @@
     // Keep the DOM in sync immediately — a rejected character (e.g. an
     // umlaut) must never render, not even for a frame.
     event.currentTarget.value = result.letters;
+  }
+
+  // Letter Opacity (issue #65): the slider works in whole percent (0-100)
+  // for a legible display value; the underlying model (and what the engine
+  // accepts) is a 0-1 fraction.
+  function handleLettersOpacityInput(
+    event: Event & { currentTarget: HTMLInputElement },
+  ) {
+    lettersOpacity = Number(event.currentTarget.value) / 100;
   }
 
   // Background image (issue #63): reads + downscales the picked file
@@ -844,6 +860,22 @@
               {t("color.letters")}
               <input type="color" bind:value={lettersColor} />
             </label>
+            <div class="opacity-control">
+              <label>
+                {t("color.lettersOpacity")}
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={Math.round(lettersOpacity * 100)}
+                  oninput={handleLettersOpacityInput}
+                />
+              </label>
+              <output class="opacity-value"
+                >{Math.round(lettersOpacity * 100)}%</output
+              >
+            </div>
             <label>
               {t("color.frame")}
               <input type="color" bind:value={frameColor} />
@@ -1421,6 +1453,28 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
+    font-size: 0.875rem;
+  }
+
+  .opacity-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .opacity-control label {
+    flex: 1;
+  }
+
+  .opacity-control input[type="range"] {
+    flex: 1;
+    margin-left: 0.75rem;
+  }
+
+  .opacity-value {
+    font-variant-numeric: tabular-nums;
+    min-width: 2.5rem;
+    text-align: right;
     font-size: 0.875rem;
   }
 

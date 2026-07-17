@@ -35,6 +35,7 @@ export const dictionary = {
   },
   "frameGap.label": { en: "Frame Gap", de: "Abstand" },
   "color.letters": { en: "Letter Color", de: "Buchstabenfarbe" },
+  "color.lettersOpacity": { en: "Letter Opacity", de: "Buchstabendeckkraft" },
   "color.frame": { en: "Frame Color", de: "Rahmenfarbe" },
   "color.background": { en: "Background", de: "Hintergrund" },
   "color.backgroundTransparent": { en: "Transparent", de: "Transparent" },

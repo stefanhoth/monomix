@@ -23,6 +23,7 @@ function project(overrides: Partial<Project> = {}): Project {
     frameId: "circle",
     frameGap: 40,
     lettersColor: "#111111",
+    lettersOpacity: 1,
     frameColor: "#111111",
     backgroundKind: "transparent",
     backgroundColor: "#ffffff",
@@ -86,6 +87,21 @@ describe("normalizeProject", () => {
     ).toBe("color");
   });
 
+  it("accepts a valid lettersOpacity and rejects an out-of-range or non-numeric one (issue #65)", () => {
+    expect(normalizeProject({ lettersOpacity: 0.4 }).lettersOpacity).toBe(0.4);
+    expect(normalizeProject({ lettersOpacity: 0 }).lettersOpacity).toBe(0);
+    expect(normalizeProject({ lettersOpacity: 1 }).lettersOpacity).toBe(1);
+    expect(normalizeProject({ lettersOpacity: 1.5 }).lettersOpacity).toBe(
+      DEFAULT_PROJECT_SETTINGS.lettersOpacity,
+    );
+    expect(normalizeProject({ lettersOpacity: -0.1 }).lettersOpacity).toBe(
+      DEFAULT_PROJECT_SETTINGS.lettersOpacity,
+    );
+    expect(normalizeProject({ lettersOpacity: "0.5" }).lettersOpacity).toBe(
+      DEFAULT_PROJECT_SETTINGS.lettersOpacity,
+    );
+  });
+
   it("defaults createdAt/lastEditedAt to now when missing", () => {
     const before = Date.now();
     const result = normalizeProject({});
@@ -114,6 +130,7 @@ describe("createProject", () => {
       frameId: "diamond",
       frameGap: 120,
       lettersColor: "#ff0000",
+      lettersOpacity: 0.5,
       frameColor: "#00ff00",
       backgroundKind: "color",
       backgroundColor: "#3355ff",
@@ -160,6 +177,7 @@ describe("remixProject", () => {
       frameId: "diamond",
       frameGap: 80,
       lettersColor: "#ff0000",
+      lettersOpacity: 0.5,
       frameColor: "#00ff00",
       backgroundKind: "color",
       backgroundColor: "#0000ff",
@@ -201,6 +219,7 @@ describe("toProjectSettings", () => {
       frameId: full.frameId,
       frameGap: full.frameGap,
       lettersColor: full.lettersColor,
+      lettersOpacity: full.lettersOpacity,
       frameColor: full.frameColor,
       backgroundKind: full.backgroundKind,
       backgroundColor: full.backgroundColor,

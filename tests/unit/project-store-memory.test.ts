@@ -12,6 +12,7 @@ function project(overrides: Partial<Project> = {}): Project {
     frameId: "none",
     frameGap: 40,
     lettersColor: "#111111",
+    lettersOpacity: 1,
     frameColor: "#111111",
     backgroundKind: "transparent",
     backgroundColor: "#ffffff",

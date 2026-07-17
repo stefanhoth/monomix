@@ -15,7 +15,7 @@ import {
   frameFitExtent,
   type FrameFitTarget,
 } from "./fit";
-import { sanitizeColor } from "./color";
+import { sanitizeColor, sanitizeOpacity } from "./color";
 import { composeBackgroundLayer, type BackgroundFill } from "./background";
 import {
   warpPathCommands,
@@ -43,6 +43,10 @@ export interface ComposeOptions extends LayoutOptions {
   };
   /** Letter fill color. Defaults to "currentColor". */
   lettersColor?: string;
+  /** Letter fill opacity, 0-1 (issue #65: "see-through" letters that let a
+   * background color/image/gradient show through the letterforms).
+   * Defaults to 1 (fully opaque, the original behavior). */
+  lettersOpacity?: number;
   /** Background fill: a color string ("transparent" for none — the
    * default), or a `BackgroundFill` for the richer kinds (issue #63 image,
    * issue #64 gradient). */
@@ -140,7 +144,13 @@ export function composeMonogram(
   }
 
   const lettersColor = sanitizeColor(options.lettersColor, "currentColor");
-  const glyphGroup = `<g fill="${lettersColor}">${paths}</g>`;
+  const lettersOpacity = sanitizeOpacity(options.lettersOpacity, 1);
+  // Omitted entirely at full opacity (the default) so every existing
+  // Design's output stays byte-identical — fill-opacity="1" is a no-op but
+  // would still bloat every exported SVG.
+  const opacityAttr =
+    lettersOpacity < 1 ? ` fill-opacity="${lettersOpacity}"` : "";
+  const glyphGroup = `<g fill="${lettersColor}"${opacityAttr}>${paths}</g>`;
   const frameMarkup = options.frame
     ? composeFrame(options.frame.id, {
         color: options.frame.color,

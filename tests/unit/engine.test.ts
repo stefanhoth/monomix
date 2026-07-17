@@ -38,6 +38,36 @@ describe("composeMonogram", () => {
     expect(svg).toContain('<g fill="currentColor">');
   });
 
+  it("omits fill-opacity entirely at the default (fully opaque)", () => {
+    const svg = composeMonogram("A", font, { lettersOpacity: 1 });
+    expect(composeMonogram("A", font)).toBe(svg);
+    expect(svg).not.toContain("fill-opacity");
+  });
+
+  it("applies fill-opacity to the glyph group when reduced (issue #65)", () => {
+    const svg = composeMonogram("A", font, { lettersOpacity: 0.4 });
+    expect(svg).toContain('<g fill="currentColor" fill-opacity="0.4">');
+  });
+
+  it("supports fully transparent letters (a pure cut-out)", () => {
+    const svg = composeMonogram("A", font, { lettersOpacity: 0 });
+    expect(svg).toContain('fill-opacity="0">');
+    // The path geometry itself is unaffected — only the fill.
+    expect(svg).toContain("<path ");
+  });
+
+  it("clamps an out-of-range or non-finite opacity instead of producing invalid SVG", () => {
+    expect(composeMonogram("A", font, { lettersOpacity: -5 })).toContain(
+      'fill-opacity="0">',
+    );
+    expect(composeMonogram("A", font, { lettersOpacity: 5 })).not.toContain(
+      "fill-opacity",
+    );
+    expect(
+      composeMonogram("A", font, { lettersOpacity: Number.NaN }),
+    ).not.toContain("fill-opacity");
+  });
+
   it("draws a background rect first when a background color is given", () => {
     const svg = composeMonogram("A", font, { background: "#00ff00" });
     expect(svg).toContain('<rect width="1000" height="1000" fill="#00ff00"/>');
