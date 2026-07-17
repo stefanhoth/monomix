@@ -15,6 +15,7 @@ function project(overrides: Partial<Project> = {}): Project {
     lettersColor: "#111111",
     lettersOpacity: 1,
     frameColor: "#111111",
+    frameFilled: false,
     backgroundKind: "transparent",
     backgroundColor: "#ffffff",
     backgroundImage: null,

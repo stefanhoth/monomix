@@ -2,7 +2,11 @@
   import type { Font } from "opentype.js";
   import { fly } from "svelte/transition";
   import { DESIGNS, composeMonogram } from "../engine";
-  import { resolveProjectBackground, type Project } from "../lib/project";
+  import {
+    resolveProjectBackground,
+    resolveProjectFrameFill,
+    type Project,
+  } from "../lib/project";
   import { backdropTone, BACKDROP_COLORS } from "../lib/preview-backdrop";
   import { t } from "../lib/i18n/store.svelte";
 
@@ -143,6 +147,7 @@
                       id: project.frameId,
                       gap: project.frameGap,
                       color: project.frameColor,
+                      fill: resolveProjectFrameFill(project),
                     },
                     lettersColor: project.lettersColor,
                     lettersOpacity: project.lettersOpacity,
