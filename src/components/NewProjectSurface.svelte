@@ -2,7 +2,7 @@
   import type { Font } from "opentype.js";
   import { fly } from "svelte/transition";
   import { DESIGNS, composeMonogram } from "../engine";
-  import type { Project } from "../lib/project";
+  import { resolveProjectBackground, type Project } from "../lib/project";
   import { backdropTone, BACKDROP_COLORS } from "../lib/preview-backdrop";
   import { t } from "../lib/i18n/store.svelte";
 
@@ -145,9 +145,7 @@
                       color: project.frameColor,
                     },
                     lettersColor: project.lettersColor,
-                    background: project.transparentBackground
-                      ? "transparent"
-                      : project.backgroundColor,
+                    background: resolveProjectBackground(project),
                   })}
                 {/if}
               </span>

@@ -1,14 +1,26 @@
-import { DESIGNS, NO_FRAME_ID } from "../engine";
+import { DESIGNS, NO_FRAME_ID, type BackgroundFill } from "../engine";
 import { DEFAULT_FRAME_GAP } from "./frame-gap";
 import type { LetterCaseMode } from "./letters-input";
 
 /**
+ * The background's active fill type (issue #63 image, issue #64 gradient —
+ * this replaces the old standalone `transparentBackground` boolean, which
+ * could only ever express "off/on" for a single flat color). Exactly one
+ * kind is ever active; the fields below it (`backgroundColor`,
+ * `backgroundImage`, ...) hold every kind's settings at once so switching
+ * kinds in the UI doesn't lose the other kinds' last-picked values.
+ */
+export type BackgroundKind = "transparent" | "color" | "image";
+
+const BACKGROUND_KINDS: BackgroundKind[] = ["transparent", "color", "image"];
+
+/**
  * A Project (CONTEXT.md) captures the full editor state that #12's core
  * editor exposes: letters, the resolved Design/Frame ids, the Frame Gap,
- * and the three colors / transparent-background flag. Kept separate from
- * `Project`'s identity/metadata fields so it can be diffed, inherited by a
- * new Project, and round-tripped independently of *which* Project it
- * belongs to.
+ * and the three colors / background fill. Kept separate from `Project`'s
+ * identity/metadata fields so it can be diffed, inherited by a new
+ * Project, and round-tripped independently of *which* Project it belongs
+ * to.
  */
 export interface ProjectSettings {
   letters: string;
@@ -20,8 +32,10 @@ export interface ProjectSettings {
   frameGap: number;
   lettersColor: string;
   frameColor: string;
-  transparentBackground: boolean;
+  backgroundKind: BackgroundKind;
   backgroundColor: string;
+  /** A data URL (issue #63), or null when no image has been picked yet. */
+  backgroundImage: string | null;
 }
 
 export interface Project extends ProjectSettings {
@@ -42,8 +56,9 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   frameGap: DEFAULT_FRAME_GAP,
   lettersColor: "#111111",
   frameColor: "#111111",
-  transparentBackground: true,
+  backgroundKind: "transparent",
   backgroundColor: "#ffffff",
+  backgroundImage: null,
 };
 
 function isString(value: unknown): value is string {
@@ -56,6 +71,23 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isBoolean(value: unknown): value is boolean {
   return typeof value === "boolean";
+}
+
+function isBackgroundKind(value: unknown): value is BackgroundKind {
+  return (
+    typeof value === "string" && (BACKGROUND_KINDS as string[]).includes(value)
+  );
+}
+
+/** Reads `backgroundKind` when present; otherwise derives it from the
+ * pre-issue-#63 `transparentBackground` boolean a stored Project may still
+ * carry, so existing Projects don't silently reset to the default fill. */
+function resolveBackgroundKind(raw: Record<string, unknown>): BackgroundKind {
+  if (isBackgroundKind(raw.backgroundKind)) return raw.backgroundKind;
+  if (isBoolean(raw.transparentBackground)) {
+    return raw.transparentBackground ? "transparent" : "color";
+  }
+  return DEFAULT_PROJECT_SETTINGS.backgroundKind;
 }
 
 /**
@@ -93,12 +125,13 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     frameColor: isString(raw.frameColor)
       ? raw.frameColor
       : DEFAULT_PROJECT_SETTINGS.frameColor,
-    transparentBackground: isBoolean(raw.transparentBackground)
-      ? raw.transparentBackground
-      : DEFAULT_PROJECT_SETTINGS.transparentBackground,
+    backgroundKind: resolveBackgroundKind(raw),
     backgroundColor: isString(raw.backgroundColor)
       ? raw.backgroundColor
       : DEFAULT_PROJECT_SETTINGS.backgroundColor,
+    backgroundImage: isString(raw.backgroundImage)
+      ? raw.backgroundImage
+      : DEFAULT_PROJECT_SETTINGS.backgroundImage,
     createdAt: isFiniteNumber(raw.createdAt) ? raw.createdAt : now,
     lastEditedAt: isFiniteNumber(raw.lastEditedAt) ? raw.lastEditedAt : now,
   };
@@ -125,8 +158,9 @@ export function toProjectSettings(project: Project): ProjectSettings {
     frameGap: project.frameGap,
     lettersColor: project.lettersColor,
     frameColor: project.frameColor,
-    transparentBackground: project.transparentBackground,
+    backgroundKind: project.backgroundKind,
     backgroundColor: project.backgroundColor,
+    backgroundImage: project.backgroundImage,
   };
 }
 
@@ -145,8 +179,9 @@ export function projectSettingsEqual(
     a.frameGap === b.frameGap &&
     a.lettersColor === b.lettersColor &&
     a.frameColor === b.frameColor &&
-    a.transparentBackground === b.transparentBackground &&
-    a.backgroundColor === b.backgroundColor
+    a.backgroundKind === b.backgroundKind &&
+    a.backgroundColor === b.backgroundColor &&
+    a.backgroundImage === b.backgroundImage
   );
 }
 
@@ -170,6 +205,26 @@ export function createProject(
     createdAt: now,
     lastEditedAt: now,
   };
+}
+
+/**
+ * Resolves the background settings fields into what `composeMonogram`
+ * (src/engine) actually accepts — shared by App.svelte's live preview and
+ * NewProjectSurface.svelte's remix thumbnails so both render a Project's
+ * background the same way. Falls back to transparent for "image" with
+ * nothing picked yet (issue #63 AC), rather than a broken/empty fill.
+ */
+export function resolveProjectBackground(
+  settings: Pick<
+    ProjectSettings,
+    "backgroundKind" | "backgroundColor" | "backgroundImage"
+  >,
+): string | BackgroundFill {
+  if (settings.backgroundKind === "color") return settings.backgroundColor;
+  if (settings.backgroundKind === "image" && settings.backgroundImage) {
+    return { kind: "image", dataUrl: settings.backgroundImage };
+  }
+  return "transparent";
 }
 
 /**

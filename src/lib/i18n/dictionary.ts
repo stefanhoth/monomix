@@ -36,10 +36,30 @@ export const dictionary = {
   "frameGap.label": { en: "Frame Gap", de: "Abstand" },
   "color.letters": { en: "Letter Color", de: "Buchstabenfarbe" },
   "color.frame": { en: "Frame Color", de: "Rahmenfarbe" },
-  "color.background": { en: "Background Color", de: "Hintergrundfarbe" },
-  "color.transparent": {
-    en: "Transparent background",
-    de: "Transparenter Hintergrund",
+  "color.background": { en: "Background", de: "Hintergrund" },
+  "color.backgroundTransparent": { en: "Transparent", de: "Transparent" },
+  "color.backgroundSolid": { en: "Solid color", de: "Volltonfarbe" },
+  "color.backgroundColorInput": {
+    en: "Background Color",
+    de: "Hintergrundfarbe",
+  },
+  "color.backgroundImage": { en: "Image", de: "Bild" },
+  "color.backgroundImageUpload": {
+    en: "Upload background image",
+    de: "Hintergrundbild hochladen",
+  },
+  "color.backgroundImageRemove": { en: "Remove image", de: "Bild entfernen" },
+  "color.backgroundImageErrorType": {
+    en: "Please choose an image file.",
+    de: "Bitte wähle eine Bilddatei.",
+  },
+  "color.backgroundImageErrorSize": {
+    en: "That image is too large (max 20 MB).",
+    de: "Das Bild ist zu groß (max. 20 MB).",
+  },
+  "color.backgroundImageErrorDecode": {
+    en: "Couldn't read that image. Try a different file.",
+    de: "Das Bild konnte nicht gelesen werden. Versuche eine andere Datei.",
   },
   "export.sizeLabel": { en: "PNG/JPG size (px)", de: "PNG/JPG-Größe (px)" },
   "export.svg": { en: "Export SVG", de: "SVG exportieren" },

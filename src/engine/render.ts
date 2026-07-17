@@ -16,6 +16,7 @@ import {
   type FrameFitTarget,
 } from "./fit";
 import { sanitizeColor } from "./color";
+import { composeBackgroundLayer, type BackgroundFill } from "./background";
 import {
   warpPathCommands,
   scalePathCommands,
@@ -42,8 +43,10 @@ export interface ComposeOptions extends LayoutOptions {
   };
   /** Letter fill color. Defaults to "currentColor". */
   lettersColor?: string;
-  /** Background fill. Omit (or "transparent") for a transparent background — the default. */
-  background?: string;
+  /** Background fill: a color string ("transparent" for none — the
+   * default), or a `BackgroundFill` for the richer kinds (issue #63 image,
+   * issue #64 gradient). */
+  background?: string | BackgroundFill;
 }
 
 /** A positioned letter's raw glyph outline, in absolute viewBox coordinates. */
@@ -145,11 +148,10 @@ export function composeMonogram(
       })
     : "";
 
-  const background = sanitizeColor(options.background, "transparent");
-  const backgroundMarkup =
-    background === "transparent"
-      ? ""
-      : `<rect width="${VIEWBOX_SIZE}" height="${VIEWBOX_SIZE}" fill="${background}"/>`;
+  const { defs, markup: backgroundMarkup } = composeBackgroundLayer(
+    options.background,
+    VIEWBOX_SIZE,
+  );
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}">${backgroundMarkup}${frameMarkup}${glyphGroup}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}">${defs}${backgroundMarkup}${frameMarkup}${glyphGroup}</svg>`;
 }

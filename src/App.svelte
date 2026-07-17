@@ -46,11 +46,17 @@
     createProject,
     projectSettingsEqual,
     remixProject,
+    resolveProjectBackground,
     toProjectSettings,
     DEFAULT_PROJECT_SETTINGS,
     type Project,
     type ProjectSettings,
+    type BackgroundKind,
   } from "./lib/project";
+  import {
+    prepareBackgroundImage,
+    BackgroundImageError,
+  } from "./lib/background-image";
   import { createIndexedDbProjectStore } from "./lib/project-store-indexeddb";
   import { createAutosaveController } from "./lib/autosave";
   import { formatLettersHint } from "./lib/i18n/format-letters-hint";
@@ -106,11 +112,16 @@
   let lettersColor = $state("#111111");
   let frameColor = $state("#111111");
   // Background is transparent by default (checkerboard, not white — see
-  // .preview below). `backgroundColor` only takes effect once the user
-  // unchecks "Transparent", and remembers their last pick if they toggle
-  // back and forth.
-  let transparentBackground = $state(true);
+  // .preview below). `backgroundKind` picks which fill is active; the
+  // other kinds' own fields (backgroundColor, backgroundImage) keep their
+  // last-picked value so switching kinds and back doesn't lose it (issue
+  // #63 image, issue #64 gradient — see project.ts's BackgroundKind).
+  let backgroundKind: BackgroundKind = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundKind,
+  );
   let backgroundColor = $state("#ffffff");
+  let backgroundImage: string | null = $state(null);
+  let backgroundImageError: string | null = $state(null);
 
   let onboardingComplete = $state(untrack(() => hasCompletedOnboarding()));
 
@@ -272,7 +283,11 @@
   );
   let resolvedFrameGap = $derived(resolveFrameGap(frameGap));
   let resolvedBackground = $derived(
-    transparentBackground ? "transparent" : backgroundColor,
+    resolveProjectBackground({
+      backgroundKind,
+      backgroundColor,
+      backgroundImage,
+    }),
   );
   // Checkerboard follows the letters color, not the UI theme (issue #46) —
   // near-black default letters were unreadable on the dark-mode board.
@@ -305,8 +320,9 @@
     frameGap,
     lettersColor,
     frameColor,
-    transparentBackground,
+    backgroundKind,
     backgroundColor,
+    backgroundImage,
   });
 
   // Loads every field from `project` into the live editor state and makes
@@ -338,8 +354,10 @@
     frameGap = project.frameGap;
     lettersColor = project.lettersColor;
     frameColor = project.frameColor;
-    transparentBackground = project.transparentBackground;
+    backgroundKind = project.backgroundKind;
     backgroundColor = project.backgroundColor;
+    backgroundImage = project.backgroundImage;
+    backgroundImageError = null;
   }
 
   async function refreshProjects() {
@@ -554,8 +572,10 @@
         frameGap = DEFAULT_PROJECT_SETTINGS.frameGap;
         lettersColor = DEFAULT_PROJECT_SETTINGS.lettersColor;
         frameColor = DEFAULT_PROJECT_SETTINGS.frameColor;
-        transparentBackground = DEFAULT_PROJECT_SETTINGS.transparentBackground;
+        backgroundKind = DEFAULT_PROJECT_SETTINGS.backgroundKind;
         backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
+        backgroundImage = DEFAULT_PROJECT_SETTINGS.backgroundImage;
+        backgroundImageError = null;
       }
     }
     await refreshProjects();
@@ -575,6 +595,44 @@
     // Keep the DOM in sync immediately — a rejected character (e.g. an
     // umlaut) must never render, not even for a frame.
     event.currentTarget.value = result.letters;
+  }
+
+  // Background image (issue #63): reads + downscales the picked file
+  // (src/lib/background-image.ts), storing the resulting data URL directly
+  // in the $state var that already flows into resolvedBackground/
+  // currentProjectSettings above — no separate "pending upload" state.
+  function backgroundImageErrorMessage(message: string): string {
+    switch (message) {
+      case "not-an-image":
+        return t("color.backgroundImageErrorType");
+      case "too-large":
+        return t("color.backgroundImageErrorSize");
+      default:
+        return t("color.backgroundImageErrorDecode");
+    }
+  }
+
+  async function handleBackgroundImageInput(
+    event: Event & { currentTarget: HTMLInputElement },
+  ) {
+    const file = event.currentTarget.files?.[0];
+    // Clear the input's own value so picking the exact same file again
+    // still fires a change event.
+    event.currentTarget.value = "";
+    if (!file) return;
+    try {
+      backgroundImage = await prepareBackgroundImage(file);
+      backgroundImageError = null;
+    } catch (err) {
+      backgroundImageError = backgroundImageErrorMessage(
+        err instanceof BackgroundImageError ? err.message : "decode-failed",
+      );
+    }
+  }
+
+  function handleRemoveBackgroundImage() {
+    backgroundImage = null;
+    backgroundImageError = null;
   }
 
   async function handleExport(format: "svg" | "png" | "jpg" | "pdf") {
@@ -743,18 +801,72 @@
               {t("color.frame")}
               <input type="color" bind:value={frameColor} />
             </label>
-            <label class:disabled={transparentBackground}>
-              {t("color.background")}
-              <input
-                type="color"
-                bind:value={backgroundColor}
-                disabled={transparentBackground}
-              />
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" bind:checked={transparentBackground} />
-              {t("color.transparent")}
-            </label>
+            <fieldset class="background-kind">
+              <legend>{t("color.background")}</legend>
+              <div class="kind-options">
+                <label class="kind-option">
+                  <input
+                    type="radio"
+                    name="background-kind"
+                    value="transparent"
+                    bind:group={backgroundKind}
+                  />
+                  {t("color.backgroundTransparent")}
+                </label>
+                <label class="kind-option">
+                  <input
+                    type="radio"
+                    name="background-kind"
+                    value="color"
+                    bind:group={backgroundKind}
+                  />
+                  {t("color.backgroundSolid")}
+                </label>
+                <label class="kind-option">
+                  <input
+                    type="radio"
+                    name="background-kind"
+                    value="image"
+                    bind:group={backgroundKind}
+                  />
+                  {t("color.backgroundImage")}
+                </label>
+              </div>
+
+              {#if backgroundKind === "color"}
+                <label class="sub-control">
+                  {t("color.backgroundColorInput")}
+                  <input type="color" bind:value={backgroundColor} />
+                </label>
+              {:else if backgroundKind === "image"}
+                <div class="sub-control image-control">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    aria-label={t("color.backgroundImageUpload")}
+                    onchange={handleBackgroundImageInput}
+                  />
+                  {#if backgroundImage}
+                    <div class="image-preview-row">
+                      <img
+                        class="image-preview checkerboard"
+                        src={backgroundImage}
+                        alt=""
+                      />
+                      <button
+                        type="button"
+                        onclick={handleRemoveBackgroundImage}
+                      >
+                        {t("color.backgroundImageRemove")}
+                      </button>
+                    </div>
+                  {/if}
+                  {#if backgroundImageError}
+                    <p class="form-hint" role="alert">{backgroundImageError}</p>
+                  {/if}
+                </div>
+              {/if}
+            </fieldset>
           </div>
         </div>
 
@@ -1173,14 +1285,70 @@
     font-size: 0.875rem;
   }
 
-  .color-controls label.disabled {
-    opacity: 0.5;
+  .background-kind {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    border: none;
   }
 
-  .color-controls label.checkbox-label {
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-    gap: 0.4rem;
+  .background-kind legend {
+    padding: 0;
+    font-size: 0.875rem;
+  }
+
+  .kind-options {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .color-controls .kind-option {
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+  }
+
+  .color-controls .sub-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .image-control {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .image-control input[type="file"] {
+    max-width: 100%;
+    font-size: 0.8125rem;
+  }
+
+  .image-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .image-preview {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: cover;
+    border-radius: 0.35rem;
+    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .form-hint {
+    color: light-dark(#b3261e, #ffb4ab);
+    font-size: 0.8125rem;
+    margin: 0;
   }
 
   .export-size {
