@@ -68,6 +68,24 @@ describe("composeMonogram", () => {
     ).not.toContain("fill-opacity");
   });
 
+  it("cuts the letters' own shape out of a filled Frame (issue #65 second follow-up)", () => {
+    const svg = composeMonogram("A", font, {
+      frame: { id: "circle", fill: "#00ff00" },
+    });
+    expect(svg).toContain("<mask");
+    // The mask's cutout content is the exact same path markup as the
+    // visible glyph paths, so the hole and the letters drawn on top of it
+    // always align pixel-for-pixel — each glyph path appears twice: once
+    // inside the mask (the hole), once in the visible glyph group.
+    const glyphPath = svg.match(/<path d="[^"]+"\/>/)![0];
+    expect(svg.split(glyphPath).length - 1).toBe(2);
+  });
+
+  it("omits the mask/cutout entirely when the Frame has no fill", () => {
+    const svg = composeMonogram("A", font, { frame: { id: "circle" } });
+    expect(svg).not.toContain("<mask");
+  });
+
   it("draws a background rect first when a background color is given", () => {
     const svg = composeMonogram("A", font, { background: "#00ff00" });
     expect(svg).toContain('<rect width="1000" height="1000" fill="#00ff00"/>');
