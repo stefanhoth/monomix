@@ -145,6 +145,7 @@
                       color: project.frameColor,
                     },
                     lettersColor: project.lettersColor,
+                    lettersOpacity: project.lettersOpacity,
                     background: resolveProjectBackground(project),
                   })}
                 {/if}

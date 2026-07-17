@@ -55,6 +55,8 @@ export interface ProjectSettings {
   frameId: string;
   frameGap: number;
   lettersColor: string;
+  /** Issue #65: letter fill opacity, 0-1. Defaults to 1 (fully opaque). */
+  lettersOpacity: number;
   frameColor: string;
   backgroundKind: BackgroundKind;
   backgroundColor: string;
@@ -82,6 +84,7 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   frameId: NO_FRAME_ID,
   frameGap: DEFAULT_FRAME_GAP,
   lettersColor: "#111111",
+  lettersOpacity: 1,
   frameColor: "#111111",
   backgroundKind: "transparent",
   backgroundColor: "#ffffff",
@@ -168,6 +171,12 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     lettersColor: isString(raw.lettersColor)
       ? raw.lettersColor
       : DEFAULT_PROJECT_SETTINGS.lettersColor,
+    lettersOpacity:
+      isFiniteNumber(raw.lettersOpacity) &&
+      raw.lettersOpacity >= 0 &&
+      raw.lettersOpacity <= 1
+        ? raw.lettersOpacity
+        : DEFAULT_PROJECT_SETTINGS.lettersOpacity,
     frameColor: isString(raw.frameColor)
       ? raw.frameColor
       : DEFAULT_PROJECT_SETTINGS.frameColor,
@@ -206,6 +215,7 @@ export function toProjectSettings(project: Project): ProjectSettings {
     frameId: project.frameId,
     frameGap: project.frameGap,
     lettersColor: project.lettersColor,
+    lettersOpacity: project.lettersOpacity,
     frameColor: project.frameColor,
     backgroundKind: project.backgroundKind,
     backgroundColor: project.backgroundColor,
@@ -232,6 +242,7 @@ export function projectSettingsEqual(
     a.frameId === b.frameId &&
     a.frameGap === b.frameGap &&
     a.lettersColor === b.lettersColor &&
+    a.lettersOpacity === b.lettersOpacity &&
     a.frameColor === b.frameColor &&
     a.backgroundKind === b.backgroundKind &&
     a.backgroundColor === b.backgroundColor &&
