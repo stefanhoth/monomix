@@ -37,6 +37,7 @@ export const dictionary = {
   "color.letters": { en: "Letter Color", de: "Buchstabenfarbe" },
   "color.lettersOpacity": { en: "Letter Opacity", de: "Buchstabendeckkraft" },
   "color.frame": { en: "Frame Color", de: "Rahmenfarbe" },
+  "color.frameFilled": { en: "Fill Frame", de: "Rahmen füllen" },
   "color.background": { en: "Background", de: "Hintergrund" },
   "color.backgroundTransparent": { en: "Transparent", de: "Transparent" },
   "color.backgroundSolid": { en: "Solid color", de: "Volltonfarbe" },

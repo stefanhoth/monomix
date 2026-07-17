@@ -58,6 +58,12 @@ export interface ProjectSettings {
   /** Issue #65: letter fill opacity, 0-1. Defaults to 1 (fully opaque). */
   lettersOpacity: number;
   frameColor: string;
+  /** Issue #65 follow-up: fills the Frame's interior with `frameColor`
+   * instead of leaving it an unfilled ring, so reduced Letter Opacity has
+   * something to cut a visible stencil out of even without a Background
+   * set. No-op when `frameId` is "No Frame". Defaults to false — an
+   * unfilled ring is the original look. */
+  frameFilled: boolean;
   backgroundKind: BackgroundKind;
   backgroundColor: string;
   /** A data URL (issue #63), or null when no image has been picked yet. */
@@ -86,6 +92,7 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   lettersColor: "#111111",
   lettersOpacity: 1,
   frameColor: "#111111",
+  frameFilled: false,
   backgroundKind: "transparent",
   backgroundColor: "#ffffff",
   backgroundImage: null,
@@ -180,6 +187,9 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     frameColor: isString(raw.frameColor)
       ? raw.frameColor
       : DEFAULT_PROJECT_SETTINGS.frameColor,
+    frameFilled: isBoolean(raw.frameFilled)
+      ? raw.frameFilled
+      : DEFAULT_PROJECT_SETTINGS.frameFilled,
     backgroundKind: resolveBackgroundKind(raw),
     backgroundColor: isString(raw.backgroundColor)
       ? raw.backgroundColor
@@ -217,6 +227,7 @@ export function toProjectSettings(project: Project): ProjectSettings {
     lettersColor: project.lettersColor,
     lettersOpacity: project.lettersOpacity,
     frameColor: project.frameColor,
+    frameFilled: project.frameFilled,
     backgroundKind: project.backgroundKind,
     backgroundColor: project.backgroundColor,
     backgroundImage: project.backgroundImage,
@@ -244,6 +255,7 @@ export function projectSettingsEqual(
     a.lettersColor === b.lettersColor &&
     a.lettersOpacity === b.lettersOpacity &&
     a.frameColor === b.frameColor &&
+    a.frameFilled === b.frameFilled &&
     a.backgroundKind === b.backgroundKind &&
     a.backgroundColor === b.backgroundColor &&
     a.backgroundImage === b.backgroundImage &&
@@ -298,6 +310,19 @@ export function resolveProjectBackground(
     return { kind: "gradient", gradient: settings.backgroundGradient };
   }
   return "transparent";
+}
+
+/**
+ * Resolves `frameFilled`/`frameColor` into the `fill` value `composeFrame`
+ * (src/engine) accepts — shared the same way `resolveProjectBackground` is,
+ * so the live preview, remix thumbnails, and the Frame gallery all fill a
+ * Frame identically. `undefined` (not "transparent") when off, matching
+ * `composeFrame`'s own "omitted keeps the unfilled look" contract.
+ */
+export function resolveProjectFrameFill(
+  settings: Pick<ProjectSettings, "frameFilled" | "frameColor">,
+): string | undefined {
+  return settings.frameFilled ? settings.frameColor : undefined;
 }
 
 /**

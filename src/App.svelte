@@ -48,6 +48,7 @@
     projectSettingsEqual,
     remixProject,
     resolveProjectBackground,
+    resolveProjectFrameFill,
     toProjectSettings,
     DEFAULT_PROJECT_SETTINGS,
     type Project,
@@ -115,6 +116,10 @@
   // background color/image/gradient show through the letterforms.
   let lettersOpacity = $state(DEFAULT_PROJECT_SETTINGS.lettersOpacity);
   let frameColor = $state("#111111");
+  // Issue #65 follow-up: fills the Frame's interior with frameColor instead
+  // of leaving it an unfilled ring, so reduced Letter Opacity has something
+  // to cut a visible stencil out of even without a Background set.
+  let frameFilled = $state(DEFAULT_PROJECT_SETTINGS.frameFilled);
   // Background is transparent by default (checkerboard, not white — see
   // .preview below). `backgroundKind` picks which fill is active; the
   // other kinds' own fields (backgroundColor, backgroundImage,
@@ -290,6 +295,9 @@
     resolvedDesign && fonts.get(resolvedDesign.fontId),
   );
   let resolvedFrameGap = $derived(resolveFrameGap(frameGap));
+  let resolvedFrameFill = $derived(
+    resolveProjectFrameFill({ frameFilled, frameColor }),
+  );
   let resolvedBackground = $derived(
     resolveProjectBackground({
       backgroundKind,
@@ -310,6 +318,7 @@
             id: selectedFrameId,
             gap: resolvedFrameGap,
             color: frameColor,
+            fill: resolvedFrameFill,
           },
           lettersColor,
           lettersOpacity,
@@ -341,6 +350,7 @@
     lettersColor,
     lettersOpacity,
     frameColor,
+    frameFilled,
     backgroundKind,
     backgroundColor,
     backgroundImage,
@@ -377,6 +387,7 @@
     lettersColor = project.lettersColor;
     lettersOpacity = project.lettersOpacity;
     frameColor = project.frameColor;
+    frameFilled = project.frameFilled;
     backgroundKind = project.backgroundKind;
     backgroundColor = project.backgroundColor;
     backgroundImage = project.backgroundImage;
@@ -597,6 +608,7 @@
         lettersColor = DEFAULT_PROJECT_SETTINGS.lettersColor;
         lettersOpacity = DEFAULT_PROJECT_SETTINGS.lettersOpacity;
         frameColor = DEFAULT_PROJECT_SETTINGS.frameColor;
+        frameFilled = DEFAULT_PROJECT_SETTINGS.frameFilled;
         backgroundKind = DEFAULT_PROJECT_SETTINGS.backgroundKind;
         backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
         backgroundImage = DEFAULT_PROJECT_SETTINGS.backgroundImage;
@@ -829,6 +841,7 @@
             gap={resolvedFrameGap}
             {lettersColor}
             {frameColor}
+            frameFill={resolvedFrameFill}
             selectedId={selectedFrameId}
             onSelect={(id) => (selectedFrameId = id)}
           />
@@ -879,6 +892,14 @@
             <label>
               {t("color.frame")}
               <input type="color" bind:value={frameColor} />
+            </label>
+            <label>
+              {t("color.frameFilled")}
+              <input
+                type="checkbox"
+                bind:checked={frameFilled}
+                disabled={selectedFrameId === NO_FRAME_ID}
+              />
             </label>
             <fieldset class="background-kind">
               <legend>{t("color.background")}</legend>

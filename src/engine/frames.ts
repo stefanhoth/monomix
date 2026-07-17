@@ -50,9 +50,51 @@ export const DEFAULT_STROKE_WIDTH = 20;
 export const DEFAULT_GAP = 40;
 const CENTER = VIEWBOX_SIZE / 2;
 
+/**
+ * The bare geometry for `shape` at half-extent `r`, with `attrs` (fill/
+ * stroke/dash) applied — shared between the stroked ring and the optional
+ * interior fill so both draw from the same shape math. The three dash
+ * variants (dotted/dashed-circle) all share plain "circle" geometry here;
+ * their dash pattern is purely a stroke attribute applied by the caller.
+ */
+function shapeGeometry(
+  shape: FrameShapeKind,
+  r: number,
+  attrs: string,
+): string {
+  switch (shape) {
+    case "circle":
+    case "dotted-circle":
+    case "dashed-circle":
+      return `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs}/>`;
+    case "square":
+      return `<rect x="${CENTER - r}" y="${CENTER - r}" width="${r * 2}" height="${r * 2}" ${attrs}/>`;
+    case "diamond": {
+      const d = `M${CENTER} ${CENTER - r} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - r} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+    case "diamond-narrow": {
+      const rx = r * DIAMOND_ASPECT;
+      const d = `M${CENTER} ${CENTER - r} L${CENTER + rx} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - rx} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+    case "diamond-wide": {
+      const ry = r * DIAMOND_ASPECT;
+      const d = `M${CENTER} ${CENTER - ry} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + ry} L${CENTER - r} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+  }
+}
+
 export interface FrameOptions {
   color?: string;
   strokeWidth?: number;
+  /** Solid interior fill, out to the Frame's outer boundary (issue #65
+   * follow-up: without *some* filled area, reduced Letter Opacity has
+   * nothing to cut a visible hole in — a bare stroked ring plus a
+   * transparent background just disappears). Omitted (or "transparent")
+   * keeps the original unfilled-ring look. */
+  fill?: string;
 }
 
 /** `frameId`'s Shape, or null for "No Frame" — used by the fit stage to pick
@@ -74,8 +116,9 @@ export function frameInnerExtent(
 }
 
 /**
- * Renders `frameId`'s shape as an SVG fragment (a stroked, unfilled ring),
- * or "" for "No Frame" / an id with no shape. Pure function — no DOM.
+ * Renders `frameId`'s shape as an SVG fragment — a stroked ring, optionally
+ * preceded by a solid interior fill (`options.fill`) — or "" for "No Frame"
+ * / an id with no shape. Pure function — no DOM.
  */
 export function composeFrame(
   frameId: string,
@@ -96,36 +139,33 @@ export function composeFrame(
   // Clamped so a pathological custom strokeWidth never produces a negative
   // (invalid) radius.
   const r = Math.max(CENTER - FRAME_MARGIN - strokeWidth / 2, 0);
-  const attrs = `fill="none" stroke="${color}" stroke-width="${strokeWidth}"`;
-  const circle = (extra = "") =>
-    `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs}${extra}/>`;
 
-  switch (frame.shape) {
-    case "circle":
-      return circle();
-    case "square":
-      return `<rect x="${CENTER - r}" y="${CENTER - r}" width="${r * 2}" height="${r * 2}" ${attrs}/>`;
-    case "diamond": {
-      const d = `M${CENTER} ${CENTER - r} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - r} ${CENTER} Z`;
-      return `<path d="${d}" ${attrs}/>`;
-    }
-    case "diamond-narrow": {
-      // Tall: the vertical vertices reach the full radius, the horizontal
-      // ones are compressed to DIAMOND_ASPECT of it.
-      const rx = r * DIAMOND_ASPECT;
-      const d = `M${CENTER} ${CENTER - r} L${CENTER + rx} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - rx} ${CENTER} Z`;
-      return `<path d="${d}" ${attrs}/>`;
-    }
-    case "diamond-wide": {
-      // Broad: the horizontal vertices reach the full radius, the vertical
-      // ones are compressed to DIAMOND_ASPECT of it.
-      const ry = r * DIAMOND_ASPECT;
-      const d = `M${CENTER} ${CENTER - ry} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + ry} L${CENTER - r} ${CENTER} Z`;
-      return `<path d="${d}" ${attrs}/>`;
-    }
-    case "dotted-circle":
-      return circle(' stroke-dasharray="2 14" stroke-linecap="round"');
-    case "dashed-circle":
-      return circle(' stroke-dasharray="50 24"');
-  }
+  const dash =
+    frame.shape === "dotted-circle"
+      ? ' stroke-dasharray="2 14" stroke-linecap="round"'
+      : frame.shape === "dashed-circle"
+        ? ' stroke-dasharray="50 24"'
+        : "";
+  const strokeMarkup = shapeGeometry(
+    frame.shape,
+    r,
+    `fill="none" stroke="${color}" stroke-width="${strokeWidth}"${dash}`,
+  );
+
+  // Fill draws first, at the outer boundary (FRAME_MARGIN, independent of
+  // strokeWidth) rather than the stroke's inner edge — so the stroke sits
+  // on top of the fill as a border rather than leaving an unfilled gap
+  // between them. Omitted entirely (not just "" fill) when unset/
+  // transparent, so every existing Frame's output stays byte-identical.
+  const fillColor = sanitizeColor(options.fill, "transparent");
+  const fillMarkup =
+    fillColor === "transparent"
+      ? ""
+      : shapeGeometry(
+          frame.shape,
+          Math.max(CENTER - FRAME_MARGIN, 0),
+          `fill="${fillColor}"`,
+        );
+
+  return fillMarkup + strokeMarkup;
 }

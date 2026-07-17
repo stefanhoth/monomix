@@ -27,6 +27,7 @@
     gap,
     lettersColor,
     frameColor,
+    frameFill,
     selectedId,
     onSelect,
   }: {
@@ -38,6 +39,7 @@
     gap: number;
     lettersColor: string;
     frameColor: string;
+    frameFill: string | undefined;
     selectedId: string;
     onSelect: (id: string) => void;
   } = $props();
@@ -60,7 +62,7 @@
           {@html composeMonogram(letters, font, {
             arrangement,
             shape,
-            frame: { id: frame.id, gap, color: frameColor },
+            frame: { id: frame.id, gap, color: frameColor, fill: frameFill },
             lettersColor,
           })}
         {/if}

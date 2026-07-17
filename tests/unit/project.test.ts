@@ -6,6 +6,7 @@ import {
   projectSettingsEqual,
   remixProject,
   resolveProjectBackground,
+  resolveProjectFrameFill,
   serializeProject,
   toProjectSettings,
   DEFAULT_PROJECT_SETTINGS,
@@ -25,6 +26,7 @@ function project(overrides: Partial<Project> = {}): Project {
     lettersColor: "#111111",
     lettersOpacity: 1,
     frameColor: "#111111",
+    frameFilled: false,
     backgroundKind: "transparent",
     backgroundColor: "#ffffff",
     backgroundImage: null,
@@ -102,6 +104,17 @@ describe("normalizeProject", () => {
     );
   });
 
+  it("accepts a boolean frameFilled and rejects a non-boolean one (issue #65 follow-up)", () => {
+    expect(normalizeProject({ frameFilled: true }).frameFilled).toBe(true);
+    expect(normalizeProject({ frameFilled: false }).frameFilled).toBe(false);
+    expect(normalizeProject({ frameFilled: "true" }).frameFilled).toBe(
+      DEFAULT_PROJECT_SETTINGS.frameFilled,
+    );
+    expect(normalizeProject({}).frameFilled).toBe(
+      DEFAULT_PROJECT_SETTINGS.frameFilled,
+    );
+  });
+
   it("defaults createdAt/lastEditedAt to now when missing", () => {
     const before = Date.now();
     const result = normalizeProject({});
@@ -132,6 +145,7 @@ describe("createProject", () => {
       lettersColor: "#ff0000",
       lettersOpacity: 0.5,
       frameColor: "#00ff00",
+      frameFilled: true,
       backgroundKind: "color",
       backgroundColor: "#3355ff",
       backgroundImage: null,
@@ -179,6 +193,7 @@ describe("remixProject", () => {
       lettersColor: "#ff0000",
       lettersOpacity: 0.5,
       frameColor: "#00ff00",
+      frameFilled: true,
       backgroundKind: "color",
       backgroundColor: "#0000ff",
     });
@@ -221,6 +236,7 @@ describe("toProjectSettings", () => {
       lettersColor: full.lettersColor,
       lettersOpacity: full.lettersOpacity,
       frameColor: full.frameColor,
+      frameFilled: full.frameFilled,
       backgroundKind: full.backgroundKind,
       backgroundColor: full.backgroundColor,
       backgroundImage: full.backgroundImage,
@@ -301,5 +317,19 @@ describe("resolveProjectBackground (issue #63/#64)", () => {
         backgroundGradient: gradient,
       }),
     ).toEqual({ kind: "gradient", gradient });
+  });
+});
+
+describe("resolveProjectFrameFill (issue #65 follow-up)", () => {
+  it("resolves to frameColor when frameFilled is true", () => {
+    expect(
+      resolveProjectFrameFill({ frameFilled: true, frameColor: "#ff00ff" }),
+    ).toBe("#ff00ff");
+  });
+
+  it("resolves to undefined (not a color string) when frameFilled is false", () => {
+    expect(
+      resolveProjectFrameFill({ frameFilled: false, frameColor: "#ff00ff" }),
+    ).toBeUndefined();
   });
 });

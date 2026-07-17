@@ -70,3 +70,51 @@ describe("composeFrame", () => {
     );
   });
 });
+
+// Issue #65 follow-up: without *some* filled area, reduced Letter Opacity
+// has nothing to cut a visible stencil out of — a bare stroked ring plus a
+// transparent Background just disappears (issue #65 comment).
+describe("composeFrame (interior fill, issue #65 follow-up)", () => {
+  it("omits any fill markup by default, unchanged from before the option existed", () => {
+    expect(composeFrame("circle")).not.toContain('fill="#');
+  });
+
+  it.each(SHAPED_FRAME_IDS)(
+    "%s draws a filled shape before its stroke when fill is set",
+    (id) => {
+      const svg = composeFrame(id, { fill: "#00ff00" });
+      expect(svg.indexOf('fill="#00ff00"')).toBeLessThan(
+        svg.indexOf('fill="none"'),
+      );
+      expect(svg).not.toContain("NaN");
+    },
+  );
+
+  it("leaves the stroked ring exactly as before when fill is added (additive, not a replacement)", () => {
+    const unfilled = composeFrame("circle", { color: "#ff0000" });
+    const filled = composeFrame("circle", {
+      color: "#ff0000",
+      fill: "#00ff00",
+    });
+    expect(filled).toContain(unfilled);
+  });
+
+  it("treats an explicit 'transparent' fill the same as omitting it", () => {
+    expect(composeFrame("circle", { fill: "transparent" })).toBe(
+      composeFrame("circle"),
+    );
+  });
+
+  it("sanitizes an unsafe fill color instead of injecting it", () => {
+    const svg = composeFrame("circle", {
+      fill: 'red" onload="alert(1)',
+    });
+    expect(svg).not.toContain("onload");
+  });
+
+  it("is a pure function with fill set too", () => {
+    expect(composeFrame("square", { fill: "#123456" })).toBe(
+      composeFrame("square", { fill: "#123456" }),
+    );
+  });
+});

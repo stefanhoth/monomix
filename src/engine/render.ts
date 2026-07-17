@@ -155,6 +155,7 @@ export function composeMonogram(
     ? composeFrame(options.frame.id, {
         color: options.frame.color,
         strokeWidth: options.frame.strokeWidth,
+        fill: options.frame.fill,
       })
     : "";
 
