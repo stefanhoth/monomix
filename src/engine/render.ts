@@ -156,6 +156,11 @@ export function composeMonogram(
         color: options.frame.color,
         strokeWidth: options.frame.strokeWidth,
         fill: options.frame.fill,
+        // The letters' own paths, reused as the mask that cuts their
+        // silhouette out of the fill (composeFrame ignores this unless
+        // `fill` is also set) — same coordinate space, since both are
+        // computed from the same fitted `layout` above.
+        cutout: paths,
       })
     : "";
 

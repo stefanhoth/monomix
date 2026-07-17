@@ -841,7 +841,6 @@
             gap={resolvedFrameGap}
             {lettersColor}
             {frameColor}
-            frameFill={resolvedFrameFill}
             selectedId={selectedFrameId}
             onSelect={(id) => (selectedFrameId = id)}
           />

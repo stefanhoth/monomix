@@ -1,4 +1,5 @@
 import { sanitizeColor } from "./color";
+import { fnv1aId } from "./hash";
 
 /** issue #64: linear or radial, kept deliberately small per the issue's own
  * "keep the initial set small and curated" open question — no conic, no
@@ -54,13 +55,7 @@ const SAFE_IMAGE_DATA_URL =
  * identical too.
  */
 function gradientId(gradient: Gradient): string {
-  let hash = 0x811c9dc5;
-  const text = JSON.stringify(gradient);
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return `mm-bg-gradient-${(hash >>> 0).toString(16)}`;
+  return fnv1aId("mm-bg-gradient", JSON.stringify(gradient));
 }
 
 function clampOffset(value: unknown): number {

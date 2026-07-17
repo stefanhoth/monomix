@@ -8,8 +8,8 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
-- A "Letter Opacity" slider in the Colors tab lets the letters' fill go fully or partially transparent, so a background color, image, or gradient — or a filled Frame (see "Fill Frame" below) — shows through the letterforms for a "cut-out" effect. Preserved in every export format.
-- A "Fill Frame" checkbox next to Frame Color fills the Frame's interior with that color, so a low Letter Opacity has something to cut a visible stencil out of even without a Background set.
+- A "Letter Opacity" slider in the Colors tab lets the letters' fill go fully or partially transparent, so a background color, image, or gradient shows through the letterforms for a "cut-out" effect. Preserved in every export format.
+- A "Fill Frame" checkbox next to Frame Color fills the Frame's interior with that color, with the letters actually cut out of the fill as a real stencil hole — so at low Letter Opacity, whatever's set as the Background (or the transparent canvas) shows through the letter shapes, even with no Background set at all.
 - The background can now be a gradient instead of a flat color — pick "Gradient" in the Colors tab, choose linear or radial, and add up to 3 color stops. Linear gradients have an adjustable angle.
 - You can now set a picture as the background, behind the letters and Frame — pick "Image" in the Colors tab and upload one. It's included in every export format (SVG, PNG, JPG, PDF) and falls back to transparent if you switch away without picking a file.
 - Letters now support lowercase, with a case toggle next to the letters field: "ABC" (uppercase, the previous behavior) or "Abc" (keeps each letter's case exactly as typed). Every Design supports both.

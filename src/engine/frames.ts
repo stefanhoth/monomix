@@ -1,6 +1,7 @@
 import { VIEWBOX_SIZE } from "./layout";
 import { sanitizeColor } from "./color";
 import { DIAMOND_ASPECT } from "./shape";
+import { fnv1aId } from "./hash";
 
 /**
  * Frames are independent decorative rings around the letters (CONTEXT.md),
@@ -95,6 +96,16 @@ export interface FrameOptions {
    * transparent background just disappears). Omitted (or "transparent")
    * keeps the original unfilled-ring look. */
   fill?: string;
+  /** Raw SVG markup (the letters' own `<path>` elements) to permanently
+   * subtract from `fill` via an SVG mask (issue #65 second follow-up: fading
+   * the letters' own opacity toward the fill's flat color looked identical
+   * to not drawing them at all — there was nothing *underneath* the fill to
+   * reveal). The letters are still drawn as their own layer on top exactly
+   * as before; this only punches a same-shaped hole through the fill itself
+   * so whatever's beneath it (a Background, or the transparent canvas) is
+   * what actually shows through as the letters fade out, not the fill's own
+   * uniform color. Ignored unless `fill` is also set. */
+  cutout?: string;
 }
 
 /** `frameId`'s Shape, or null for "No Frame" — used by the fit stage to pick
@@ -117,8 +128,9 @@ export function frameInnerExtent(
 
 /**
  * Renders `frameId`'s shape as an SVG fragment — a stroked ring, optionally
- * preceded by a solid interior fill (`options.fill`) — or "" for "No Frame"
- * / an id with no shape. Pure function — no DOM.
+ * preceded by a solid interior fill (`options.fill`, itself optionally
+ * masked by `options.cutout`) — or "" for "No Frame" / an id with no shape.
+ * Pure function — no DOM.
  */
 export function composeFrame(
   frameId: string,
@@ -158,14 +170,29 @@ export function composeFrame(
   // between them. Omitted entirely (not just "" fill) when unset/
   // transparent, so every existing Frame's output stays byte-identical.
   const fillColor = sanitizeColor(options.fill, "transparent");
-  const fillMarkup =
-    fillColor === "transparent"
-      ? ""
-      : shapeGeometry(
-          frame.shape,
-          Math.max(CENTER - FRAME_MARGIN, 0),
-          `fill="${fillColor}"`,
-        );
+  const outerR = Math.max(CENTER - FRAME_MARGIN, 0);
+  let fillMarkup = "";
+  if (fillColor !== "transparent") {
+    if (options.cutout) {
+      // A <mask> is luminance-based: white keeps, black hides. The fill
+      // shape drawn white, with the letters drawn black on top of it,
+      // subtracts their exact silhouette — a real hole, not a color blend.
+      const maskId = fnv1aId(
+        "mm-frame-cutout",
+        `${frameId}|${fillColor}|${options.cutout}`,
+      );
+      const maskedShape = shapeGeometry(frame.shape, outerR, 'fill="white"');
+      const mask = `<mask id="${maskId}">${maskedShape}<g fill="black">${options.cutout}</g></mask>`;
+      const fillShape = shapeGeometry(
+        frame.shape,
+        outerR,
+        `fill="${fillColor}" mask="url(#${maskId})"`,
+      );
+      fillMarkup = mask + fillShape;
+    } else {
+      fillMarkup = shapeGeometry(frame.shape, outerR, `fill="${fillColor}"`);
+    }
+  }
 
   return fillMarkup + strokeMarkup;
 }
