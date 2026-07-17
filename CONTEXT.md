@@ -23,7 +23,7 @@ _Avoid_: Silhouette, envelope, morph, form
 How many letters the Monogram consists of: 1, 2, or 3. The design gallery is filtered by the current Letter Count.
 
 **Letters**:
-The 1–3 characters of the Monogram. Restricted to A–Z (input is uppercased); umlauts and other characters are rejected with a transliteration hint rather than silently replaced.
+The 1–3 characters of the Monogram. Restricted to A–Z/a–z (umlauts and other characters are rejected with a transliteration hint rather than silently replaced) with a per-monogram case toggle (ADR 0008): "ABC" (default) uppercases every letter, "Abc" preserves each letter's case exactly as typed. Every catalog font/Design supports both cases — the toggle is not gated per-Design.
 
 **Frame**:
 A decorative border placed around the lettering, independent of the Design — any Frame combines with any Design. A Frame sits at a fixed position on the canvas and has its own color; the lettering is scaled to fit inside it (see Frame Gap).

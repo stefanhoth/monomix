@@ -22,6 +22,9 @@ export const dictionary = {
     de: "Misch dein Monogramm und nimm es überallhin mit.",
   },
   "letters.label": { en: "Letters", de: "Buchstaben" },
+  "letters.caseLabel": { en: "Case", de: "Groß-/Kleinschreibung" },
+  "letters.caseUpper": { en: "ABC", de: "ABC" },
+  "letters.casePreserve": { en: "Abc", de: "Abc" },
   "letters.hint.generic": {
     en: "Only A-Z letters are supported.",
     de: "Es werden nur die Buchstaben A-Z unterstützt.",

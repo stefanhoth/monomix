@@ -7,6 +7,7 @@ function project(overrides: Partial<Project> = {}): Project {
     id: "p1",
     name: "MX",
     letters: "MX",
+    letterCase: "upper",
     designId: "cinzel-classic",
     frameId: "none",
     frameGap: 40,

@@ -47,3 +47,32 @@ describe("sanitizeLettersInput", () => {
     }
   });
 });
+
+describe("sanitizeLettersInput (case model, issue #62)", () => {
+  it("uppercases by default, same as no caseMode argument at all", () => {
+    expect(sanitizeLettersInput("Max", "upper")).toEqual(
+      sanitizeLettersInput("Max"),
+    );
+    expect(sanitizeLettersInput("Max", "upper").letters).toBe("MAX");
+  });
+
+  it("preserves each valid letter's case exactly as typed", () => {
+    expect(sanitizeLettersInput("Max", "preserve")).toEqual({
+      letters: "Max",
+      hint: null,
+    });
+  });
+
+  it("still caps at 3 characters and rejects non-letters in preserve mode", () => {
+    const result = sanitizeLettersInput("mAxi", "preserve");
+    expect(result.letters).toBe("mAx");
+
+    const rejected = sanitizeLettersInput("mä", "preserve");
+    expect(rejected.letters).toBe("m");
+    expect(rejected.hint).toEqual({
+      kind: "suggestion",
+      invalid: "ä",
+      suggestion: "AE",
+    });
+  });
+});

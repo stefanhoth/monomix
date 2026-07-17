@@ -16,7 +16,11 @@
   import { exportPng, exportJpg } from "./lib/export/raster";
   import { triggerDownload } from "./lib/export/download";
   import { DEFAULT_EXPORT_SIZE } from "./lib/export/options";
-  import { sanitizeLettersInput, type LettersHint } from "./lib/letters-input";
+  import {
+    sanitizeLettersInput,
+    type LettersHint,
+    type LetterCaseMode,
+  } from "./lib/letters-input";
   import {
     resolveFrameGap,
     DEFAULT_FRAME_GAP,
@@ -67,6 +71,11 @@
   import WhatsNewPanel from "./components/WhatsNewPanel.svelte";
 
   let letters = $state("MX");
+  // Case model (issue #62, ADR 0008): "upper" (default) uppercases every
+  // letter as before; "preserve" keeps each letter's case exactly as
+  // typed. Only affects how future keystrokes are sanitized — toggling it
+  // never retroactively recovers case already discarded by "upper".
+  let letterCase: LetterCaseMode = $state(DEFAULT_PROJECT_SETTINGS.letterCase);
   let lettersHintInfo: LettersHint | null = $state(null);
   let lettersHint = $derived(
     lettersHintInfo && formatLettersHint(lettersHintInfo, getLocale()),
@@ -290,6 +299,7 @@
   // autosave effect below.
   let currentProjectSettings: ProjectSettings = $derived({
     letters,
+    letterCase,
     designId: resolvedDesignId,
     frameId: selectedFrameId,
     frameGap,
@@ -322,6 +332,7 @@
     lastSavedSettings = toProjectSettings(project);
     letters = project.letters;
     debouncedLetters = project.letters;
+    letterCase = project.letterCase;
     selectedDesignId = project.designId;
     selectedFrameId = project.frameId;
     frameGap = project.frameGap;
@@ -537,6 +548,7 @@
         lastSavedSettings = undefined;
         letters = DEFAULT_PROJECT_SETTINGS.letters;
         debouncedLetters = DEFAULT_PROJECT_SETTINGS.letters;
+        letterCase = DEFAULT_PROJECT_SETTINGS.letterCase;
         selectedDesignId = undefined;
         selectedFrameId = DEFAULT_PROJECT_SETTINGS.frameId;
         frameGap = DEFAULT_PROJECT_SETTINGS.frameGap;
@@ -557,7 +569,7 @@
   function handleLettersInput(
     event: Event & { currentTarget: HTMLInputElement },
   ) {
-    const result = sanitizeLettersInput(event.currentTarget.value);
+    const result = sanitizeLettersInput(event.currentTarget.value, letterCase);
     letters = result.letters;
     lettersHintInfo = result.hint;
     // Keep the DOM in sync immediately — a rejected character (e.g. an
@@ -784,10 +796,35 @@
     </aside>
 
     <main class="canvas-zone">
-      <label class="letters-field">
-        {t("letters.label")}
-        <input value={letters} oninput={handleLettersInput} />
-      </label>
+      <div class="letters-row">
+        <label class="letters-field">
+          {t("letters.label")}
+          <input value={letters} oninput={handleLettersInput} />
+        </label>
+        <!-- Case toggle (issue #62, ADR 0008): affects only how future
+             keystrokes are sanitized, not a retroactive re-case of the
+             current letters (see letterCase's docstring above). -->
+        <div
+          class="case-toggle"
+          role="group"
+          aria-label={t("letters.caseLabel")}
+        >
+          <button
+            type="button"
+            aria-pressed={letterCase === "upper"}
+            onclick={() => (letterCase = "upper")}
+          >
+            {t("letters.caseUpper")}
+          </button>
+          <button
+            type="button"
+            aria-pressed={letterCase === "preserve"}
+            onclick={() => (letterCase = "preserve")}
+          >
+            {t("letters.casePreserve")}
+          </button>
+        </div>
+      </div>
       <!-- Fixed-height slot so the hint appearing/disappearing never shifts
            the preview (or anything else) around. -->
       <div class="hint-slot">
@@ -1005,6 +1042,13 @@
     padding: 1.5rem;
   }
 
+  .letters-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
   .letters-field {
     display: flex;
     flex-direction: column;
@@ -1012,6 +1056,33 @@
     gap: 0.25rem;
     font-size: 0.875rem;
     color: light-dark(#555, #aaa);
+  }
+
+  .case-toggle {
+    display: flex;
+    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+    border-radius: 0.4rem;
+    overflow: hidden;
+  }
+
+  .case-toggle button {
+    font: inherit;
+    font-size: 0.875rem;
+    padding: 0.35rem 0.6rem;
+    border: none;
+    background: none;
+    color: light-dark(#555, #aaa);
+    cursor: pointer;
+  }
+
+  .case-toggle button + button {
+    border-left: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .case-toggle button[aria-pressed="true"] {
+    background: light-dark(#0b57d0, #a8c7fa);
+    color: light-dark(#fff, #1c1c1e);
+    font-weight: 600;
   }
 
   .letters-field input {
@@ -1176,6 +1247,10 @@
       gap: 0.4rem;
     }
 
+    .letters-row {
+      gap: 0.5rem;
+    }
+
     .letters-field {
       flex-direction: row;
       gap: 0.5rem;
@@ -1184,6 +1259,10 @@
     .letters-field input {
       font-size: 1.1rem;
       width: 7rem;
+    }
+
+    .case-toggle button {
+      padding: 0.3rem 0.45rem;
     }
 
     .hint-slot {
