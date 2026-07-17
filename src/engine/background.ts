@@ -69,15 +69,24 @@ function clampOffset(value: unknown): number {
     : 0;
 }
 
-/** 2-3 stops, each color-sanitized and offset-clamped; falls back to a
- * plain white-to-black pair if fewer than 2 valid stops survive (mirrors
- * sanitizeColor's "never let malformed input reach the SVG string" rule —
- * a gradient with 0-1 stops isn't renderable as a gradient at all). */
+/** 2-3 stops, each color-sanitized and offset-clamped, then sorted by
+ * offset; falls back to a plain white-to-black pair if fewer than 2 valid
+ * stops survive (mirrors sanitizeColor's "never let malformed input reach
+ * the SVG string" rule — a gradient with 0-1 stops isn't renderable as a
+ * gradient at all). The sort matters for correctness, not just tidiness:
+ * SVG clamps an out-of-order stop's offset up to the previous stop's
+ * offset, so e.g. stops arriving as [{0%}, {100%}, {50%}] (array order, not
+ * offset order — this is exactly what naively appending a new middle stop
+ * produces) would render the 50% stop clamped to 100%, collapsing it onto
+ * the previous stop as a hard color break instead of a smooth blend. */
 function sanitizeStops(stops: GradientStop[]): GradientStop[] {
-  const cleaned = stops.slice(0, 3).map((stop) => ({
-    color: sanitizeColor(stop.color, "#ffffff"),
-    offset: clampOffset(stop.offset),
-  }));
+  const cleaned = stops
+    .slice(0, 3)
+    .map((stop) => ({
+      color: sanitizeColor(stop.color, "#ffffff"),
+      offset: clampOffset(stop.offset),
+    }))
+    .sort((a, b) => a.offset - b.offset);
   return cleaned.length >= 2
     ? cleaned
     : [
@@ -130,7 +139,16 @@ export function composeBackgroundLayer(
   if (background.kind === "gradient") {
     const { gradient } = background;
     const stops = sanitizeStops(gradient.stops);
-    const id = gradientId(gradient);
+    // Hashed over the sanitized/sorted stops, not the raw input — two
+    // gradients that sanitize to the same effective content (e.g. stops
+    // given in a different array order) must render with the same id, not
+    // just the same visible output, or the "pure function" guarantee
+    // (same effective input -> byte-identical output) doesn't hold.
+    const id = gradientId({
+      style: gradient.style,
+      angle: gradient.angle,
+      stops,
+    });
     const stopsMarkup = stops
       .map(
         (stop) => `<stop offset="${stop.offset}%" stop-color="${stop.color}"/>`,

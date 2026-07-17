@@ -318,6 +318,16 @@
   // valid, concrete snapshot (uses resolvedDesignId, never the possibly-
   // undefined selectedDesignId) so it's always safe to persist. Read by the
   // autosave effect below.
+  //
+  // backgroundGradient must go through $state.snapshot(): it's the first
+  // object-typed ProjectSettings field, and `backgroundGradient` on its own
+  // is a live Svelte $state proxy, not a plain object. IndexedDB's put()
+  // structured-clones its argument, and a Svelte reactive proxy isn't
+  // structured-cloneable — it throws DataCloneError, silently (the promise
+  // rejection was never surfaced anywhere), so autosave writes never landed
+  // once a Project carried a gradient. $state.snapshot() takes a plain,
+  // non-reactive deep copy safe for structured clone (and for the
+  // `{ ...stored, ...currentProjectSettings }` remix spread below).
   let currentProjectSettings: ProjectSettings = $derived({
     letters,
     letterCase,
@@ -329,7 +339,7 @@
     backgroundKind,
     backgroundColor,
     backgroundImage,
-    backgroundGradient,
+    backgroundGradient: $state.snapshot(backgroundGradient),
   });
 
   // Loads every field from `project` into the live editor state and makes
@@ -647,16 +657,24 @@
   }
 
   // Gradient editor (issue #64): up to 3 stops, matching the issue's own
-  // "keep the initial set small" open question. A new stop starts at the
-  // midpoint offset with the last stop's color — a visible, editable
-  // starting point rather than a jarring default.
+  // "keep the initial set small" open question. Existing stops are
+  // redistributed evenly *before* the new one is appended at 100% — simply
+  // pushing a 50%-offset stop after an existing 100%-offset one would leave
+  // the stops out of offset order (array order [0%, 100%, 50%]), and SVG
+  // clamps an out-of-order stop's offset up to the previous stop's value,
+  // collapsing the new stop invisibly onto the old last stop instead of
+  // blending between all three.
   function handleAddGradientStop() {
-    if (backgroundGradient.stops.length >= 3) return;
-    const last = backgroundGradient.stops.at(-1);
-    backgroundGradient.stops.push({
-      color: last?.color ?? "#000000",
-      offset: 50,
+    const stops = backgroundGradient.stops;
+    if (stops.length >= 3) return;
+    const last = stops.at(-1);
+    // The new stop always lands last, at 100% — space the existing ones
+    // evenly across what's left of [0, 100] (e.g. 2 existing stops become
+    // 0% and 50%, leaving the new one at 100%).
+    stops.forEach((stop, i) => {
+      stop.offset = Math.round((i / stops.length) * 100);
     });
+    stops.push({ color: last?.color ?? "#000000", offset: 100 });
   }
 
   function handleRemoveGradientStop(index: number) {

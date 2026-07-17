@@ -140,6 +140,49 @@ describe("composeBackgroundLayer (gradients, issue #64)", () => {
     expect(layer.defs).toContain('offset="50%"');
   });
 
+  it("sorts stops by offset regardless of array order (issue #64 regression: an out-of-order stop must not collapse onto its neighbor)", () => {
+    // Mirrors exactly what naively appending a new middle stop after an
+    // existing 100%-offset stop produces: array order [0%, 100%, 50%].
+    // SVG clamps an out-of-order stop's offset up to the previous stop's
+    // offset, so without sorting this would render as if the 50% stop
+    // were also at 100% — a hard break between stop 1 and 2, with stop 3
+    // invisibly stacked on top of stop 2 instead of blending between all
+    // three.
+    const outOfOrder = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 0,
+          stops: [
+            { color: "#ff0000", offset: 0 },
+            { color: "#0000ff", offset: 100 },
+            { color: "#00ff00", offset: 50 },
+          ],
+        },
+      },
+      1000,
+    );
+    const inOrder = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 0,
+          stops: [
+            { color: "#ff0000", offset: 0 },
+            { color: "#00ff00", offset: 50 },
+            { color: "#0000ff", offset: 100 },
+          ],
+        },
+      },
+      1000,
+    );
+    // Same id too: the hash is over the (now-sorted) stop content, not
+    // insertion order, so these two equivalent gradients dedupe to one def.
+    expect(outOfOrder.defs).toBe(inOrder.defs);
+  });
+
   it("is deterministic: the same gradient always yields the same id/defs (pure function)", () => {
     const gradient = {
       style: "linear" as const,
