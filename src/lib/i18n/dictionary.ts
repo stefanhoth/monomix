@@ -61,6 +61,26 @@ export const dictionary = {
     en: "Couldn't read that image. Try a different file.",
     de: "Das Bild konnte nicht gelesen werden. Versuche eine andere Datei.",
   },
+  "color.backgroundGradient": { en: "Gradient", de: "Verlauf" },
+  "color.gradientLinear": { en: "Linear", de: "Linear" },
+  "color.gradientRadial": { en: "Radial", de: "Radial" },
+  "color.gradientAngle": { en: "Angle", de: "Winkel" },
+  "color.gradientStopColor": {
+    en: "Color stop {n}",
+    de: "Farbstopp {n}",
+  },
+  "color.gradientStopPosition": {
+    en: "Color stop {n} position",
+    de: "Position von Farbstopp {n}",
+  },
+  "color.gradientAddStop": {
+    en: "Add color stop",
+    de: "Farbstopp hinzufügen",
+  },
+  "color.gradientRemoveStop": {
+    en: "Remove color stop {n}",
+    de: "Farbstopp {n} entfernen",
+  },
   "export.sizeLabel": { en: "PNG/JPG size (px)", de: "PNG/JPG-Größe (px)" },
   "export.svg": { en: "Export SVG", de: "SVG exportieren" },
   "export.png": { en: "Export PNG", de: "PNG exportieren" },

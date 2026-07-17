@@ -27,6 +27,7 @@ function project(overrides: Partial<Project> = {}): Project {
     backgroundKind: "transparent",
     backgroundColor: "#ffffff",
     backgroundImage: null,
+    backgroundGradient: DEFAULT_PROJECT_SETTINGS.backgroundGradient,
     createdAt: 1000,
     lastEditedAt: 2000,
     ...overrides,
@@ -117,6 +118,7 @@ describe("createProject", () => {
       backgroundKind: "color",
       backgroundColor: "#3355ff",
       backgroundImage: null,
+      backgroundGradient: DEFAULT_PROJECT_SETTINGS.backgroundGradient,
     };
     const created = createProject(settings);
     expect(created).toMatchObject(settings);
@@ -203,6 +205,7 @@ describe("toProjectSettings", () => {
       backgroundKind: full.backgroundKind,
       backgroundColor: full.backgroundColor,
       backgroundImage: full.backgroundImage,
+      backgroundGradient: full.backgroundGradient,
     });
     expect(settings).not.toHaveProperty("id");
     expect(settings).not.toHaveProperty("name");
@@ -224,12 +227,15 @@ describe("projectSettingsEqual", () => {
 });
 
 describe("resolveProjectBackground (issue #63/#64)", () => {
+  const gradient = DEFAULT_PROJECT_SETTINGS.backgroundGradient;
+
   it("resolves 'transparent' to the plain transparent string", () => {
     expect(
       resolveProjectBackground({
         backgroundKind: "transparent",
         backgroundColor: "#3355ff",
         backgroundImage: "data:image/png;base64,abc",
+        backgroundGradient: gradient,
       }),
     ).toBe("transparent");
   });
@@ -240,6 +246,7 @@ describe("resolveProjectBackground (issue #63/#64)", () => {
         backgroundKind: "color",
         backgroundColor: "#3355ff",
         backgroundImage: null,
+        backgroundGradient: gradient,
       }),
     ).toBe("#3355ff");
   });
@@ -250,6 +257,7 @@ describe("resolveProjectBackground (issue #63/#64)", () => {
         backgroundKind: "image",
         backgroundColor: "#3355ff",
         backgroundImage: "data:image/png;base64,abc",
+        backgroundGradient: gradient,
       }),
     ).toEqual({ kind: "image", dataUrl: "data:image/png;base64,abc" });
   });
@@ -260,7 +268,19 @@ describe("resolveProjectBackground (issue #63/#64)", () => {
         backgroundKind: "image",
         backgroundColor: "#3355ff",
         backgroundImage: null,
+        backgroundGradient: gradient,
       }),
     ).toBe("transparent");
+  });
+
+  it("resolves 'gradient' to a BackgroundFill object carrying the Gradient", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "gradient",
+        backgroundColor: "#3355ff",
+        backgroundImage: null,
+        backgroundGradient: gradient,
+      }),
+    ).toEqual({ kind: "gradient", gradient });
   });
 });
