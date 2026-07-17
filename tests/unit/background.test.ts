@@ -72,3 +72,172 @@ describe("composeMonogram with an image background", () => {
     expect(svg).not.toContain("javascript:");
   });
 });
+
+describe("composeBackgroundLayer (gradients, issue #64)", () => {
+  it("renders a linear gradient as defs + a rect filled via url(#id)", () => {
+    const layer = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 45,
+          stops: [
+            { color: "#ff0000", offset: 0 },
+            { color: "#0000ff", offset: 100 },
+          ],
+        },
+      },
+      1000,
+    );
+    expect(layer.defs).toContain("<linearGradient");
+    expect(layer.defs).toContain('gradientTransform="rotate(45 0.5 0.5)"');
+    expect(layer.defs).toContain('stop-color="#ff0000"');
+    expect(layer.defs).toContain('stop-color="#0000ff"');
+    const idMatch = layer.defs.match(/id="([^"]+)"/);
+    expect(idMatch).not.toBeNull();
+    expect(layer.markup).toBe(
+      `<rect width="1000" height="1000" fill="url(#${idMatch![1]})"/>`,
+    );
+  });
+
+  it("renders a radial gradient with a corner-covering radius, ignoring angle", () => {
+    const layer = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "radial",
+          angle: 999,
+          stops: [
+            { color: "#ffffff", offset: 0 },
+            { color: "#000000", offset: 100 },
+          ],
+        },
+      },
+      1000,
+    );
+    expect(layer.defs).toContain("<radialGradient");
+    expect(layer.defs).toContain('r="70.7%"');
+    expect(layer.defs).not.toContain("rotate");
+  });
+
+  it("supports a third color stop", () => {
+    const layer = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 0,
+          stops: [
+            { color: "#ff0000", offset: 0 },
+            { color: "#00ff00", offset: 50 },
+            { color: "#0000ff", offset: 100 },
+          ],
+        },
+      },
+      1000,
+    );
+    expect((layer.defs.match(/<stop /g) ?? []).length).toBe(3);
+    expect(layer.defs).toContain('offset="50%"');
+  });
+
+  it("is deterministic: the same gradient always yields the same id/defs (pure function)", () => {
+    const gradient = {
+      style: "linear" as const,
+      angle: 90,
+      stops: [
+        { color: "#ff0000", offset: 0 },
+        { color: "#0000ff", offset: 100 },
+      ],
+    };
+    const a = composeBackgroundLayer({ kind: "gradient", gradient }, 1000);
+    const b = composeBackgroundLayer({ kind: "gradient", gradient }, 1000);
+    expect(a).toEqual(b);
+  });
+
+  it("gives two different gradients different ids, so multiple gradient SVGs in one document don't collide", () => {
+    const a = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 0,
+          stops: [
+            { color: "#ff0000", offset: 0 },
+            { color: "#0000ff", offset: 100 },
+          ],
+        },
+      },
+      1000,
+    );
+    const b = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 180,
+          stops: [
+            { color: "#ff0000", offset: 0 },
+            { color: "#0000ff", offset: 100 },
+          ],
+        },
+      },
+      1000,
+    );
+    expect(a.markup).not.toBe(b.markup);
+  });
+
+  it("falls back to a white-to-black gradient when fewer than 2 valid stops are given", () => {
+    const layer = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: { style: "linear", angle: 0, stops: [] },
+      },
+      1000,
+    );
+    expect(layer.defs).toContain('stop-color="#ffffff"');
+    expect(layer.defs).toContain('stop-color="#000000"');
+  });
+
+  it("sanitizes each stop's color and clamps its offset instead of injecting malformed input", () => {
+    const layer = composeBackgroundLayer(
+      {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 0,
+          stops: [
+            { color: 'red" onload="alert(1)', offset: -50 },
+            { color: "#0000ff", offset: 500 },
+          ],
+        },
+      },
+      1000,
+    );
+    expect(layer.defs).not.toContain("onload");
+    expect(layer.defs).toContain('stop-color="#ffffff"'); // sanitizeColor's fallback
+    expect(layer.defs).toContain('offset="0%"');
+    expect(layer.defs).toContain('offset="100%"');
+  });
+});
+
+describe("composeMonogram with a gradient background", () => {
+  it("draws the gradient defs+rect before the letters", () => {
+    const svg = composeMonogram("A", font, {
+      background: {
+        kind: "gradient",
+        gradient: {
+          style: "linear",
+          angle: 0,
+          stops: [
+            { color: "#ff0000", offset: 0 },
+            { color: "#0000ff", offset: 100 },
+          ],
+        },
+      },
+    });
+    expect(svg).toContain("<defs>");
+    expect(svg).toContain("<linearGradient");
+    expect(svg.indexOf("<defs>")).toBeLessThan(svg.indexOf("<path"));
+    expect(svg).toContain("</svg>");
+  });
+});

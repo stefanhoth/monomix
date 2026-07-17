@@ -1,4 +1,9 @@
-import { DESIGNS, NO_FRAME_ID, type BackgroundFill } from "../engine";
+import {
+  DESIGNS,
+  NO_FRAME_ID,
+  type BackgroundFill,
+  type Gradient,
+} from "../engine";
 import { DEFAULT_FRAME_GAP } from "./frame-gap";
 import type { LetterCaseMode } from "./letters-input";
 
@@ -7,12 +12,31 @@ import type { LetterCaseMode } from "./letters-input";
  * this replaces the old standalone `transparentBackground` boolean, which
  * could only ever express "off/on" for a single flat color). Exactly one
  * kind is ever active; the fields below it (`backgroundColor`,
- * `backgroundImage`, ...) hold every kind's settings at once so switching
- * kinds in the UI doesn't lose the other kinds' last-picked values.
+ * `backgroundImage`, `backgroundGradient`) hold every kind's settings at
+ * once so switching kinds in the UI doesn't lose the other kinds'
+ * last-picked values.
  */
-export type BackgroundKind = "transparent" | "color" | "image";
+export type BackgroundKind = "transparent" | "color" | "image" | "gradient";
 
-const BACKGROUND_KINDS: BackgroundKind[] = ["transparent", "color", "image"];
+const BACKGROUND_KINDS: BackgroundKind[] = [
+  "transparent",
+  "color",
+  "image",
+  "gradient",
+];
+
+/** The Gradient a Project starts with once "Gradient" is first picked — the
+ * app's own accent blue (matches the active-tab/badge color elsewhere in
+ * the UI), so the first gradient a user sees already looks intentional
+ * rather than a plain placeholder black-to-white ramp. */
+export const DEFAULT_GRADIENT: Gradient = {
+  style: "linear",
+  angle: 180,
+  stops: [
+    { color: "#a8c7fa", offset: 0 },
+    { color: "#0b57d0", offset: 100 },
+  ],
+};
 
 /**
  * A Project (CONTEXT.md) captures the full editor state that #12's core
@@ -36,6 +60,9 @@ export interface ProjectSettings {
   backgroundColor: string;
   /** A data URL (issue #63), or null when no image has been picked yet. */
   backgroundImage: string | null;
+  /** Issue #64. Always populated (never null) so the gradient editor UI
+   * never has to synthesize a starting value on the fly. */
+  backgroundGradient: Gradient;
 }
 
 export interface Project extends ProjectSettings {
@@ -59,6 +86,7 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   backgroundKind: "transparent",
   backgroundColor: "#ffffff",
   backgroundImage: null,
+  backgroundGradient: DEFAULT_GRADIENT,
 };
 
 function isString(value: unknown): value is string {
@@ -76,6 +104,24 @@ function isBoolean(value: unknown): value is boolean {
 function isBackgroundKind(value: unknown): value is BackgroundKind {
   return (
     typeof value === "string" && (BACKGROUND_KINDS as string[]).includes(value)
+  );
+}
+
+function isGradientStop(value: unknown): value is Gradient["stops"][number] {
+  if (typeof value !== "object" || value === null) return false;
+  const stop = value as Record<string, unknown>;
+  return isString(stop.color) && isFiniteNumber(stop.offset);
+}
+
+function isGradient(value: unknown): value is Gradient {
+  if (typeof value !== "object" || value === null) return false;
+  const gradient = value as Record<string, unknown>;
+  return (
+    (gradient.style === "linear" || gradient.style === "radial") &&
+    isFiniteNumber(gradient.angle) &&
+    Array.isArray(gradient.stops) &&
+    gradient.stops.length >= 2 &&
+    gradient.stops.every(isGradientStop)
   );
 }
 
@@ -132,6 +178,9 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     backgroundImage: isString(raw.backgroundImage)
       ? raw.backgroundImage
       : DEFAULT_PROJECT_SETTINGS.backgroundImage,
+    backgroundGradient: isGradient(raw.backgroundGradient)
+      ? raw.backgroundGradient
+      : DEFAULT_PROJECT_SETTINGS.backgroundGradient,
     createdAt: isFiniteNumber(raw.createdAt) ? raw.createdAt : now,
     lastEditedAt: isFiniteNumber(raw.lastEditedAt) ? raw.lastEditedAt : now,
   };
@@ -161,12 +210,17 @@ export function toProjectSettings(project: Project): ProjectSettings {
     backgroundKind: project.backgroundKind,
     backgroundColor: project.backgroundColor,
     backgroundImage: project.backgroundImage,
+    backgroundGradient: project.backgroundGradient,
   };
 }
 
 /** Whether two ProjectSettings are equivalent — used to skip a redundant
  * autosave write when nothing actually changed (e.g. switching the active
- * Project reassigns every field to values that already match). */
+ * Project reassigns every field to values that already match). Gradients
+ * are compared via JSON.stringify rather than a field-by-field diff: a
+ * Gradient is small, plain, serializable data (the same shape it's stored
+ * in), so this is a proportionate check, not a swap-in for a general deep-
+ * equal dependency. */
 export function projectSettingsEqual(
   a: ProjectSettings,
   b: ProjectSettings,
@@ -181,7 +235,9 @@ export function projectSettingsEqual(
     a.frameColor === b.frameColor &&
     a.backgroundKind === b.backgroundKind &&
     a.backgroundColor === b.backgroundColor &&
-    a.backgroundImage === b.backgroundImage
+    a.backgroundImage === b.backgroundImage &&
+    JSON.stringify(a.backgroundGradient) ===
+      JSON.stringify(b.backgroundGradient)
   );
 }
 
@@ -217,12 +273,18 @@ export function createProject(
 export function resolveProjectBackground(
   settings: Pick<
     ProjectSettings,
-    "backgroundKind" | "backgroundColor" | "backgroundImage"
+    | "backgroundKind"
+    | "backgroundColor"
+    | "backgroundImage"
+    | "backgroundGradient"
   >,
 ): string | BackgroundFill {
   if (settings.backgroundKind === "color") return settings.backgroundColor;
   if (settings.backgroundKind === "image" && settings.backgroundImage) {
     return { kind: "image", dataUrl: settings.backgroundImage };
+  }
+  if (settings.backgroundKind === "gradient") {
+    return { kind: "gradient", gradient: settings.backgroundGradient };
   }
   return "transparent";
 }

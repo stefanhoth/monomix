@@ -10,6 +10,7 @@
     FRAMES,
     NO_FRAME_ID,
     type LetterCount,
+    type Gradient,
   } from "./engine";
   import { loadFont } from "./lib/font-loader";
   import { exportSvg } from "./lib/export/svg";
@@ -113,15 +114,19 @@
   let frameColor = $state("#111111");
   // Background is transparent by default (checkerboard, not white — see
   // .preview below). `backgroundKind` picks which fill is active; the
-  // other kinds' own fields (backgroundColor, backgroundImage) keep their
-  // last-picked value so switching kinds and back doesn't lose it (issue
-  // #63 image, issue #64 gradient — see project.ts's BackgroundKind).
+  // other kinds' own fields (backgroundColor, backgroundImage,
+  // backgroundGradient) keep their last-picked value so switching kinds
+  // and back doesn't lose it (issue #63 image, issue #64 gradient — see
+  // project.ts's BackgroundKind).
   let backgroundKind: BackgroundKind = $state(
     DEFAULT_PROJECT_SETTINGS.backgroundKind,
   );
   let backgroundColor = $state("#ffffff");
   let backgroundImage: string | null = $state(null);
   let backgroundImageError: string | null = $state(null);
+  let backgroundGradient: Gradient = $state(
+    structuredClone(DEFAULT_PROJECT_SETTINGS.backgroundGradient),
+  );
 
   let onboardingComplete = $state(untrack(() => hasCompletedOnboarding()));
 
@@ -287,6 +292,7 @@
       backgroundKind,
       backgroundColor,
       backgroundImage,
+      backgroundGradient,
     }),
   );
   // Checkerboard follows the letters color, not the UI theme (issue #46) —
@@ -323,6 +329,7 @@
     backgroundKind,
     backgroundColor,
     backgroundImage,
+    backgroundGradient,
   });
 
   // Loads every field from `project` into the live editor state and makes
@@ -358,6 +365,7 @@
     backgroundColor = project.backgroundColor;
     backgroundImage = project.backgroundImage;
     backgroundImageError = null;
+    backgroundGradient = structuredClone(project.backgroundGradient);
   }
 
   async function refreshProjects() {
@@ -576,6 +584,9 @@
         backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
         backgroundImage = DEFAULT_PROJECT_SETTINGS.backgroundImage;
         backgroundImageError = null;
+        backgroundGradient = structuredClone(
+          DEFAULT_PROJECT_SETTINGS.backgroundGradient,
+        );
       }
     }
     await refreshProjects();
@@ -633,6 +644,24 @@
   function handleRemoveBackgroundImage() {
     backgroundImage = null;
     backgroundImageError = null;
+  }
+
+  // Gradient editor (issue #64): up to 3 stops, matching the issue's own
+  // "keep the initial set small" open question. A new stop starts at the
+  // midpoint offset with the last stop's color — a visible, editable
+  // starting point rather than a jarring default.
+  function handleAddGradientStop() {
+    if (backgroundGradient.stops.length >= 3) return;
+    const last = backgroundGradient.stops.at(-1);
+    backgroundGradient.stops.push({
+      color: last?.color ?? "#000000",
+      offset: 50,
+    });
+  }
+
+  function handleRemoveGradientStop(index: number) {
+    if (backgroundGradient.stops.length <= 2) return;
+    backgroundGradient.stops.splice(index, 1);
   }
 
   async function handleExport(format: "svg" | "png" | "jpg" | "pdf") {
@@ -831,6 +860,15 @@
                   />
                   {t("color.backgroundImage")}
                 </label>
+                <label class="kind-option">
+                  <input
+                    type="radio"
+                    name="background-kind"
+                    value="gradient"
+                    bind:group={backgroundKind}
+                  />
+                  {t("color.backgroundGradient")}
+                </label>
               </div>
 
               {#if backgroundKind === "color"}
@@ -864,6 +902,89 @@
                   {#if backgroundImageError}
                     <p class="form-hint" role="alert">{backgroundImageError}</p>
                   {/if}
+                </div>
+              {:else if backgroundKind === "gradient"}
+                <div class="sub-control gradient-control">
+                  <div class="kind-options">
+                    <label class="kind-option">
+                      <input
+                        type="radio"
+                        name="gradient-style"
+                        value="linear"
+                        bind:group={backgroundGradient.style}
+                      />
+                      {t("color.gradientLinear")}
+                    </label>
+                    <label class="kind-option">
+                      <input
+                        type="radio"
+                        name="gradient-style"
+                        value="radial"
+                        bind:group={backgroundGradient.style}
+                      />
+                      {t("color.gradientRadial")}
+                    </label>
+                  </div>
+
+                  {#if backgroundGradient.style === "linear"}
+                    <label class="sub-control angle-control">
+                      {t("color.gradientAngle")}
+                      <input
+                        type="range"
+                        min="0"
+                        max="360"
+                        step="1"
+                        bind:value={backgroundGradient.angle}
+                      />
+                      <output>{backgroundGradient.angle}°</output>
+                    </label>
+                  {/if}
+
+                  <div class="gradient-stops">
+                    {#each backgroundGradient.stops as stop, i (i)}
+                      <div class="gradient-stop">
+                        <input
+                          type="color"
+                          aria-label={t("color.gradientStopColor", {
+                            n: String(i + 1),
+                          })}
+                          bind:value={stop.color}
+                        />
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="1"
+                          aria-label={t("color.gradientStopPosition", {
+                            n: String(i + 1),
+                          })}
+                          bind:value={stop.offset}
+                        />
+                        <output>{stop.offset}%</output>
+                        {#if backgroundGradient.stops.length > 2}
+                          <button
+                            type="button"
+                            class="remove-stop"
+                            aria-label={t("color.gradientRemoveStop", {
+                              n: String(i + 1),
+                            })}
+                            onclick={() => handleRemoveGradientStop(i)}
+                          >
+                            ×
+                          </button>
+                        {/if}
+                      </div>
+                    {/each}
+                    {#if backgroundGradient.stops.length < 3}
+                      <button
+                        type="button"
+                        class="add-stop"
+                        onclick={handleAddGradientStop}
+                      >
+                        {t("color.gradientAddStop")}
+                      </button>
+                    {/if}
+                  </div>
                 </div>
               {/if}
             </fieldset>
@@ -1349,6 +1470,76 @@
     color: light-dark(#b3261e, #ffb4ab);
     font-size: 0.8125rem;
     margin: 0;
+  }
+
+  .gradient-control {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.6rem;
+  }
+
+  .angle-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .angle-control input[type="range"] {
+    flex: 1;
+  }
+
+  .angle-control output {
+    font-variant-numeric: tabular-nums;
+    min-width: 2.5rem;
+    text-align: right;
+  }
+
+  .gradient-stops {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .gradient-stop {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .gradient-stop input[type="range"] {
+    flex: 1;
+  }
+
+  .gradient-stop output {
+    font-variant-numeric: tabular-nums;
+    min-width: 2.25rem;
+    text-align: right;
+    font-size: 0.8125rem;
+  }
+
+  .remove-stop {
+    font:
+      1rem/1 inherit,
+      sans-serif;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+    border-radius: 0.3rem;
+    background: none;
+    cursor: pointer;
+  }
+
+  .add-stop {
+    align-self: flex-start;
+    font: inherit;
+    font-size: 0.8125rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px dashed light-dark(#bbb, #555);
+    border-radius: 0.3rem;
+    background: none;
+    color: light-dark(#555, #aaa);
+    cursor: pointer;
   }
 
   .export-size {

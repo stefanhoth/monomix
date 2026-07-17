@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createAutosaveController } from "../../src/lib/autosave";
 import { createMemoryProjectStore } from "../../src/lib/project-store-memory";
-import type { Project } from "../../src/lib/project";
+import { DEFAULT_GRADIENT, type Project } from "../../src/lib/project";
 
 function project(overrides: Partial<Project> = {}): Project {
   return {
@@ -17,6 +17,7 @@ function project(overrides: Partial<Project> = {}): Project {
     backgroundKind: "transparent",
     backgroundColor: "#ffffff",
     backgroundImage: null,
+    backgroundGradient: DEFAULT_GRADIENT,
     createdAt: 1000,
     lastEditedAt: 1000,
     ...overrides,
