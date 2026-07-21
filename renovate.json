@@ -19,6 +19,12 @@
       "automerge": false
     },
     {
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+      "description": "TypeScript 7 changed internals (the native/Go-based rewrite) that svelte-check@4.7.3 (latest published release) hasn't been updated for — it crashes with `TypeError: Cannot read properties of undefined (reading 'useCaseSensitiveFileNames')` in its bundled FileMap/ConfigLoader code. Re-enable once svelte-check ships TS 7 support."
+    },
+    {
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions"
     }
