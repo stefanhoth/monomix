@@ -59,6 +59,12 @@
     prepareBackgroundImage,
     BackgroundImageError,
   } from "./lib/background-image";
+  import {
+    buildShareUrl,
+    decodeShareSettings,
+    readSharePayload,
+    shareOmitsBackgroundImage,
+  } from "./lib/share-link";
   import { createIndexedDbProjectStore } from "./lib/project-store-indexeddb";
   import { createAutosaveController } from "./lib/autosave";
   import { formatLettersHint } from "./lib/i18n/format-letters-hint";
@@ -216,10 +222,17 @@
   // instantly rather than waiting on the IndexedDB Project check.
   let aboutOpen = $state(location.hash === "#about");
 
-  function setAboutHash(open: boolean) {
+  // The single place the URL hash is ever written. Always replaceState,
+  // never pushState, so neither the About panel (issue #55) nor a followed
+  // share link (issue #121) grows browser history — see docs/DECISIONS.md.
+  function replaceHash(value: string) {
     const url = new URL(location.href);
-    url.hash = open ? "about" : "";
+    url.hash = value;
     history.replaceState(null, "", url);
+  }
+
+  function setAboutHash(open: boolean) {
+    replaceHash(open ? "about" : "");
   }
 
   function openAbout() {
@@ -400,10 +413,107 @@
     projects = list.slice().sort((a, b) => b.lastEditedAt - a.lastEditedAt);
   }
 
+  // Shareable links (issue #121): the hash also carries a whole monogram as
+  // `#m=<payload>` (src/lib/share-link.ts). Same non-polluting-history
+  // approach as #about above — replaceState only, never pushState.
+  //
+  // `shareNotice` reports what a link couldn't carry (a background image) or
+  // that it couldn't be read at all; `shareLink` is only populated as the
+  // manual-copy fallback when the Clipboard API is unavailable or denied.
+  let shareCopied = $state(false);
+  let shareLink: string | null = $state(null);
+  let shareNotice: "image-dropped" | "unreadable" | null = $state(null);
+  // The one thing a link genuinely can't carry — surfaced on the *sending*
+  // side too, so nobody shares a background image believing it travelled.
+  // Same predicate the payload's own `bi` flag is written from, so the
+  // warning and what actually gets dropped can never disagree.
+  let shareDropsImage = $derived(
+    shareOmitsBackgroundImage({ backgroundKind, backgroundImage }),
+  );
+
+  async function handleCopyShareLink() {
+    const url = buildShareUrl(location.href, currentProjectSettings);
+    try {
+      await navigator.clipboard.writeText(url);
+      shareCopied = true;
+      shareLink = null;
+    } catch {
+      // Clipboard unavailable (insecure context, permission denied, older
+      // browser) — show the link for manual copying rather than leaving the
+      // button looking like it did nothing.
+      shareCopied = false;
+      shareLink = url;
+    }
+  }
+
+  // Any edit invalidates an already-copied link: leaving "Link copied"
+  // on screen would imply the clipboard still matches what's on the canvas.
+  // Writes only (never reads `shareCopied`/`shareLink`), so this can't loop.
+  $effect(() => {
+    void currentProjectSettings;
+    shareCopied = false;
+    shareLink = null;
+  });
+
+  /**
+   * Loads a shared monogram into a brand-new local Project — own id and
+   * timestamps, exactly like Remix. A link is a starting point to build on,
+   * not a document two people co-own; the alternative (transient state that
+   * isn't saved) would be the only thing in the app that autosave doesn't
+   * cover, and would vanish on reload.
+   *
+   * Returns whether the payload was readable, so the caller can fall back to
+   * the normal "hydrate the last-edited Project" path for a broken link.
+   */
+  async function importSharedMonogram(payload: string): Promise<boolean> {
+    const shared = decodeShareSettings(payload);
+    // Drop the payload from the URL either way: a reload must not import a
+    // second copy of the same monogram (nor re-raise the same error), and
+    // the #about sync above owns the hash from here on.
+    replaceHash("");
+    if (!shared) {
+      shareNotice = "unreadable";
+      return false;
+    }
+    const project = createProject(shared.settings);
+    switchToProject(project);
+    shareNotice = shared.backgroundImageOmitted ? "image-dropped" : null;
+    // A shared link is a finished monogram to look at — never gate it behind
+    // the first-run initials prompt (#13), which would hide the very thing
+    // the link was sent for.
+    if (!onboardingComplete) {
+      markOnboardingComplete();
+      onboardingComplete = true;
+    }
+    await projectStore.put(project);
+    return true;
+  }
+
+  // Pasting a share link into the address bar of an already-open tab changes
+  // the hash without reloading, so the import has to hang off hashchange as
+  // well as the initial load. Our own replaceState calls don't fire this.
+  function handleHashChange() {
+    syncAboutFromHash();
+    const payload = readSharePayload(location.hash);
+    if (payload) void importSharedFromHash(payload);
+  }
+
+  async function importSharedFromHash(payload: string) {
+    if (await importSharedMonogram(payload)) await refreshProjects();
+  }
+
   async function initProject() {
-    const lastEdited = await projectStore.getLastEdited();
-    if (lastEdited) {
-      switchToProject(lastEdited);
+    // A share link wins over the last-edited Project: someone following a
+    // link came to see *that* monogram. Resolved before `projectReady` flips
+    // so the shared monogram is what the first rendered frame shows —
+    // neither the onboarding prompt nor the outgoing Project flashes first.
+    const payload = readSharePayload(location.hash);
+    const imported = payload ? await importSharedMonogram(payload) : false;
+    if (!imported) {
+      const lastEdited = await projectStore.getLastEdited();
+      if (lastEdited) {
+        switchToProject(lastEdited);
+      }
     }
     await refreshProjects();
     projectReady = true;
@@ -735,7 +845,7 @@
   }
 </script>
 
-<svelte:window onhashchange={syncAboutFromHash} />
+<svelte:window onhashchange={handleHashChange} />
 
 {#if !projectReady}
   <!-- Briefly blank while the initial "does a Project already exist?"
@@ -1087,6 +1197,35 @@
               {t("export.pdf")}
             </button>
           </div>
+
+          <!-- Share (issue #121): lives with Export because it's an output —
+               the same "take it with you" job as the file formats above,
+               except the recipient gets something still editable. Not
+               gated on `preview`: a link needs no rendered SVG, so it works
+               even while the Design's font is still loading. -->
+          <div class="share-control">
+            <h3 class="share-heading">{t("share.heading")}</h3>
+            <p class="share-description">{t("share.description")}</p>
+            <button type="button" onclick={() => void handleCopyShareLink()}>
+              {t("share.copy")}
+            </button>
+            {#if shareCopied}
+              <p class="share-status" role="status">{t("share.copied")}</p>
+            {/if}
+            {#if shareLink}
+              <input
+                class="share-link"
+                type="text"
+                readonly
+                value={shareLink}
+                aria-label={t("share.linkLabel")}
+                onfocus={(event) => event.currentTarget.select()}
+              />
+            {/if}
+            {#if shareDropsImage}
+              <p class="share-description">{t("share.imageOmitted")}</p>
+            {/if}
+          </div>
         </div>
         <button
           type="button"
@@ -1099,6 +1238,27 @@
     </aside>
 
     <main class="canvas-zone">
+      <!-- Import feedback for a followed share link (issue #121) — what the
+           link couldn't carry, or that it couldn't be read at all. Sits above
+           the letters row rather than in the fixed-height hint slot below,
+           which belongs to the letters field's own validation. -->
+      {#if shareNotice}
+        <p class="share-notice" role="status">
+          <span>
+            {shareNotice === "unreadable"
+              ? t("share.noticeUnreadable")
+              : t("share.noticeImageDropped")}
+          </span>
+          <button
+            type="button"
+            class="dismiss-notice"
+            aria-label={t("share.noticeDismiss")}
+            onclick={() => (shareNotice = null)}
+          >
+            ×
+          </button>
+        </p>
+      {/if}
       <div class="letters-row">
         <label class="letters-field">
           {t("letters.label")}
@@ -1653,6 +1813,72 @@
     gap: 0.5rem;
     margin-top: 0.75rem;
     padding: 0 0.25rem;
+  }
+
+  /* Share (issue #121) — separated from the export buttons by a rule: it
+     produces a link, not a file, so it shouldn't read as a fifth format. */
+  .share-control {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding: 1rem 0.25rem 0;
+    border-top: 1px solid light-dark(#e2e2e2, #2a2a2c);
+  }
+
+  .share-heading {
+    margin: 0;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: light-dark(#555, #aaa);
+  }
+
+  .share-description {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: light-dark(#555, #aaa);
+  }
+
+  .share-status {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: light-dark(#1a7f37, #6fdc8c);
+  }
+
+  .share-link {
+    font-size: 0.75rem;
+    font-family: ui-monospace, monospace;
+    padding: 0.35rem 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .share-notice {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.4rem;
+    background: light-dark(#eef3fd, #1b2436);
+    color: light-dark(#0b3b8c, #a8c7fa);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .dismiss-notice {
+    font: inherit;
+    flex-shrink: 0;
+    line-height: 1;
+    background: none;
+    border: none;
+    padding: 0 0.25rem;
+    color: inherit;
+    cursor: pointer;
   }
 
   /* Mobile (issue #47): fixed vertical split — canvas zone on top, tab bar

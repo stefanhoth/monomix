@@ -8,6 +8,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
+- A "Copy link" button in the Export tab produces a link that recreates your monogram — everything except a background image travels in the link itself, so there's still no upload and no account. Whoever opens it gets their own editable copy saved in their browser, and if your background was an image, both of you are told it couldn't come along.
 - A "Letter Opacity" slider in the Colors tab lets the letters' fill go fully or partially transparent, so a background color, image, or gradient shows through the letterforms for a "cut-out" effect. Preserved in every export format.
 - A "Fill Frame" checkbox next to Frame Color fills the Frame's interior with that color, with the letters actually cut out of the fill as a real stencil hole — so at low Letter Opacity, whatever's set as the Background (or the transparent canvas) shows through the letter shapes, even with no Background set at all.
 - The background can now be a gradient instead of a flat color — pick "Gradient" in the Colors tab, choose linear or radial, and add up to 3 color stops. Linear gradients have an adjustable angle.

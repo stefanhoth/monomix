@@ -88,6 +88,29 @@ export const dictionary = {
   "export.png": { en: "Export PNG", de: "PNG exportieren" },
   "export.jpg": { en: "Export JPG", de: "JPG exportieren" },
   "export.pdf": { en: "Export PDF", de: "PDF exportieren" },
+  // Shareable links (issue #121). "Link" is the ordinary German word too, so
+  // it stays as-is rather than being forced into "Verweis".
+  "share.heading": { en: "Share", de: "Teilen" },
+  "share.description": {
+    en: "Copy a link that recreates this monogram. Whoever opens it gets their own editable copy — nothing is uploaded.",
+    de: "Kopiere einen Link, der dieses Monogramm wiederherstellt. Wer ihn öffnet, bekommt eine eigene bearbeitbare Kopie — nichts wird hochgeladen.",
+  },
+  "share.copy": { en: "Copy link", de: "Link kopieren" },
+  "share.copied": { en: "Link copied.", de: "Link kopiert." },
+  "share.linkLabel": { en: "Share link", de: "Link zum Teilen" },
+  "share.imageOmitted": {
+    en: "The background image is too large for a link and won't be included.",
+    de: "Das Hintergrundbild ist zu groß für einen Link und wird nicht mitgeschickt.",
+  },
+  "share.noticeImageDropped": {
+    en: "Shared monogram opened. Its background image couldn't travel in the link — pick your own under Colors.",
+    de: "Geteiltes Monogramm geöffnet. Das Hintergrundbild ließ sich nicht per Link übertragen — wähle unter Farben dein eigenes.",
+  },
+  "share.noticeUnreadable": {
+    en: "That share link couldn't be read — it may have been cut short on the way here.",
+    de: "Dieser Link konnte nicht gelesen werden — er wurde unterwegs vielleicht abgeschnitten.",
+  },
+  "share.noticeDismiss": { en: "Dismiss", de: "Ausblenden" },
   "gallery.designsLabel": { en: "Designs", de: "Designs" },
   "gallery.framesLabel": { en: "Frames", de: "Rahmen" },
   "tabs.label": { en: "Editor sections", de: "Editor-Bereiche" },
