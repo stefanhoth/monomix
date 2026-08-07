@@ -10,6 +10,8 @@
     FRAMES,
     NO_FRAME_ID,
     paintSolidColor,
+    imagePlacement,
+    clampImageOffset,
     MIN_IMAGE_ZOOM,
     MAX_IMAGE_ZOOM,
     type LetterCount,
@@ -384,6 +386,19 @@
   // covers the canvas, so there is no slack to move it into. Gates both the
   // drag handler and the offset sliders, which is also the honest answer to
   // "why does dragging do nothing?".
+  // The sidebar thumbnail reuses the engine's own placement, in percent
+  // units, so it can't drift from what the canvas renders — the alternative
+  // was restating the zoom/pan math in CSS.
+  let thumbPlacement = $derived(
+    imagePlacement(
+      {
+        zoom: backgroundImageZoom,
+        offsetX: backgroundImageOffsetX,
+        offsetY: backgroundImageOffsetY,
+      },
+      100,
+    ),
+  );
   let canPanBackground = $derived(
     backgroundKind === "image" &&
       backgroundImage !== null &&
@@ -878,9 +893,7 @@
       backgroundImage = await prepareBackgroundImage(file);
       // A new picture gets a clean framing rather than inheriting the crop
       // that happened to suit the previous one.
-      backgroundImageZoom = DEFAULT_PROJECT_SETTINGS.backgroundImageZoom;
-      backgroundImageOffsetX = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX;
-      backgroundImageOffsetY = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY;
+      resetBackgroundImageFraming();
       backgroundImageError = null;
     } catch (err) {
       backgroundImageError = backgroundImageErrorMessage(
@@ -891,7 +904,17 @@
 
   function handleRemoveBackgroundImage() {
     backgroundImage = null;
+    // Symmetric with picking one: a crop belongs to the picture it was
+    // tuned for, so removing the picture must not leave a stale 3x zoom
+    // persisted (and encoded into share links) with nothing to apply it to.
+    resetBackgroundImageFraming();
     backgroundImageError = null;
+  }
+
+  function resetBackgroundImageFraming() {
+    backgroundImageZoom = DEFAULT_PROJECT_SETTINGS.backgroundImageZoom;
+    backgroundImageOffsetX = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX;
+    backgroundImageOffsetY = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY;
   }
 
   // Drag-to-pan on the live preview (issue #123). Direct manipulation is the
@@ -921,17 +944,20 @@
   ) {
     if (event.pointerId !== panPointerId) return;
     event.preventDefault();
-    const rect = event.currentTarget.getBoundingClientRect();
-    // A drag of the full preview width sweeps the whole pan range twice
-    // over (offsets run -1..1), scaled by how much slack the zoom opened up
-    // — so panning feels the same regardless of zoom level.
+    // The *SVG's* box, not the wrapper's: `.preview` carries padding, and
+    // measuring that instead would make the image lag the cursor by the
+    // padding's share of the width (~6% at the desktop cap, more on a
+    // phone). Inside the content box the gain below is exact 1:1 tracking —
+    // the image follows the pointer pixel for pixel at any zoom.
+    const svg = event.currentTarget.querySelector("svg");
+    const rect = (svg ?? event.currentTarget).getBoundingClientRect();
     const range = backgroundImageZoom - MIN_IMAGE_ZOOM;
     if (range <= 0 || rect.width === 0 || rect.height === 0) return;
-    backgroundImageOffsetX = clampOffset(
+    backgroundImageOffsetX = clampImageOffset(
       backgroundImageOffsetX +
         ((event.clientX - panLastX) * 2) / (rect.width * range),
     );
-    backgroundImageOffsetY = clampOffset(
+    backgroundImageOffsetY = clampImageOffset(
       backgroundImageOffsetY +
         ((event.clientY - panLastY) * 2) / (rect.height * range),
     );
@@ -939,16 +965,25 @@
     panLastY = event.clientY;
   }
 
+  /**
+   * Ends a drag. Also bound to `lostpointercapture`, which is the only
+   * signal that arrives when the preview is destroyed mid-drag — it sits
+   * inside `{#key resolvedDesignId}`, so picking a Design while panning
+   * (two fingers on a touch screen) tears it down. Without this,
+   * `panPointerId` would stay set and every later drag would be refused,
+   * leaving a grab cursor that promises an interaction that's dead until
+   * reload (Design Principle 3: no dead ends).
+   */
   function handlePreviewPointerUp(
     event: PointerEvent & { currentTarget: HTMLElement },
   ) {
     if (event.pointerId !== panPointerId) return;
     panPointerId = null;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-  }
-
-  function clampOffset(value: number): number {
-    return Math.min(1, Math.max(-1, value));
+    // Capture may already be gone (pointercancel, element torn down), and
+    // releasing a pointer that isn't captured throws.
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }
 
   async function handleExport(format: "svg" | "png" | "jpg" | "pdf") {
@@ -1207,11 +1242,16 @@
                   />
                   {#if backgroundImage}
                     <div class="image-preview-row">
-                      <img
-                        class="image-preview checkerboard"
-                        src={backgroundImage}
-                        alt=""
-                      />
+                      <span class="image-preview checkerboard">
+                        <img
+                          src={backgroundImage}
+                          alt=""
+                          style:left={`${thumbPlacement.x}%`}
+                          style:top={`${thumbPlacement.y}%`}
+                          style:width={`${thumbPlacement.size}%`}
+                          style:height={`${thumbPlacement.size}%`}
+                        />
+                      </span>
                       <button
                         type="button"
                         onclick={handleRemoveBackgroundImage}
@@ -1219,8 +1259,6 @@
                         {t("color.backgroundImageRemove")}
                       </button>
                     </div>
-                  {/if}
-                  {#if backgroundImage}
                     <!-- Zoom + pan (issue #123). Sliders are the accessible
                          path to the same fields drag-to-pan writes; the
                          offset pair is disabled at 1x because there is no
@@ -1424,11 +1462,14 @@
           class="preview checkerboard"
           class:pannable={canPanBackground}
           role="img"
-          aria-label={t("preview.label")}
+          aria-label={canPanBackground
+            ? `${t("preview.label")} — ${t("color.backgroundImageDragHint")}`
+            : t("preview.label")}
           onpointerdown={handlePreviewPointerDown}
           onpointermove={handlePreviewPointerMove}
           onpointerup={handlePreviewPointerUp}
           onpointercancel={handlePreviewPointerUp}
+          onlostpointercapture={handlePreviewPointerUp}
           transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
         >
           {#if preview}
@@ -1841,11 +1882,19 @@
   }
 
   .image-preview {
+    position: relative;
+    display: block;
+    flex-shrink: 0;
     width: 3.5rem;
     height: 3.5rem;
-    object-fit: cover;
+    overflow: hidden;
     border-radius: 0.35rem;
     border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .image-preview img {
+    position: absolute;
+    object-fit: cover;
   }
 
   .image-transform {

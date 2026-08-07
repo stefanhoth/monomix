@@ -1,6 +1,8 @@
 import {
   DESIGNS,
   NO_FRAME_ID,
+  clampImageOffset,
+  clampImageZoom,
   DEFAULT_IMAGE_TRANSFORM,
   type BackgroundFill,
   type Gradient,
@@ -254,17 +256,14 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     backgroundImage: isString(raw.backgroundImage)
       ? raw.backgroundImage
       : DEFAULT_PROJECT_SETTINGS.backgroundImage,
-    // Ranges are re-clamped in the engine (`imagePlacement`) too; this only
-    // has to reject non-numbers so a stored Project can't carry NaN.
-    backgroundImageZoom: isFiniteNumber(raw.backgroundImageZoom)
-      ? raw.backgroundImageZoom
-      : DEFAULT_PROJECT_SETTINGS.backgroundImageZoom,
-    backgroundImageOffsetX: isFiniteNumber(raw.backgroundImageOffsetX)
-      ? raw.backgroundImageOffsetX
-      : DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX,
-    backgroundImageOffsetY: isFiniteNumber(raw.backgroundImageOffsetY)
-      ? raw.backgroundImageOffsetY
-      : DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY,
+    // Narrowed to range here, not just checked for NaN: the engine clamps
+    // again before rendering, but an out-of-range value reaching the editor
+    // state (via a share link or a hand-edited record) would still show a
+    // "9900%" zoom slider and skew the drag gain, which reads the raw value.
+    // Same posture as `lettersOpacity` above.
+    backgroundImageZoom: clampImageZoom(raw.backgroundImageZoom),
+    backgroundImageOffsetX: clampImageOffset(raw.backgroundImageOffsetX),
+    backgroundImageOffsetY: clampImageOffset(raw.backgroundImageOffsetY),
     backgroundGradient: isGradient(raw.backgroundGradient)
       ? raw.backgroundGradient
       : DEFAULT_PROJECT_SETTINGS.backgroundGradient,

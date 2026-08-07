@@ -112,6 +112,31 @@ describe("normalizeProject", () => {
     );
   });
 
+  it("narrows an out-of-range image zoom/offset rather than only rejecting NaN (issue #123)", () => {
+    // A share link or hand-edited record can carry anything. The engine
+    // clamps again before rendering, but an out-of-range value reaching the
+    // editor's own state would show a nonsense slider and skew the drag gain.
+    expect(
+      normalizeProject({ backgroundImageZoom: 99 }).backgroundImageZoom,
+    ).toBe(4);
+    expect(
+      normalizeProject({ backgroundImageZoom: 0.1 }).backgroundImageZoom,
+    ).toBe(1);
+    expect(
+      normalizeProject({ backgroundImageOffsetX: 50 }).backgroundImageOffsetX,
+    ).toBe(1);
+    expect(
+      normalizeProject({ backgroundImageOffsetY: -50 }).backgroundImageOffsetY,
+    ).toBe(-1);
+    // In-range values pass through untouched.
+    expect(
+      normalizeProject({ backgroundImageZoom: 2.5 }).backgroundImageZoom,
+    ).toBe(2.5);
+    expect(
+      normalizeProject({ backgroundImageZoom: "2" }).backgroundImageZoom,
+    ).toBe(DEFAULT_PROJECT_SETTINGS.backgroundImageZoom);
+  });
+
   it("accepts a boolean frameFilled and rejects a non-boolean one (issue #65 follow-up)", () => {
     expect(normalizeProject({ frameFilled: true }).frameFilled).toBe(true);
     expect(normalizeProject({ frameFilled: false }).frameFilled).toBe(false);

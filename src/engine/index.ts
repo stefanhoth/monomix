@@ -6,6 +6,8 @@
 export { composeMonogram, type ComposeOptions } from "./render";
 export {
   imagePlacement,
+  clampImageZoom,
+  clampImageOffset,
   DEFAULT_IMAGE_TRANSFORM,
   MIN_IMAGE_ZOOM,
   MAX_IMAGE_ZOOM,

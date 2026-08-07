@@ -50,6 +50,19 @@ function clampRange(
 }
 
 /**
+ * The bounds as named functions, so the engine, `normalizeProject`, and the
+ * drag handler all narrow to the same range instead of restating `-1`/`1`
+ * and `1`/`4` in three separate places.
+ */
+export function clampImageZoom(value: unknown): number {
+  return clampRange(value, MIN_IMAGE_ZOOM, MAX_IMAGE_ZOOM, MIN_IMAGE_ZOOM);
+}
+
+export function clampImageOffset(value: unknown): number {
+  return clampRange(value, -1, 1, 0);
+}
+
+/**
  * Where the `<image>` rect goes, in viewBox units, for a given transform.
  *
  * Offsets are **relative to the pan range the zoom actually opens up**
@@ -68,14 +81,9 @@ export function imagePlacement(
   transform: ImageTransform | undefined,
   size: number,
 ): { x: number; y: number; size: number } {
-  const zoom = clampRange(
-    transform?.zoom,
-    MIN_IMAGE_ZOOM,
-    MAX_IMAGE_ZOOM,
-    MIN_IMAGE_ZOOM,
-  );
-  const offsetX = clampRange(transform?.offsetX, -1, 1, 0);
-  const offsetY = clampRange(transform?.offsetY, -1, 1, 0);
+  const zoom = clampImageZoom(transform?.zoom);
+  const offsetX = clampImageOffset(transform?.offsetX);
+  const offsetY = clampImageOffset(transform?.offsetY);
 
   const scaled = size * zoom;
   // Total slack in each axis once zoomed in; 0 at zoom 1.
