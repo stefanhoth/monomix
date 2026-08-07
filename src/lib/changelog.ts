@@ -22,8 +22,8 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
     id: "2026-08-07-share-links",
     date: "2026-08-07",
-    en: "You can now share a monogram as a link: hit “Copy link” under Export and send it on. Whoever opens it gets their own editable copy — still no upload, no account, no server; the whole design travels inside the link itself.",
-    de: "Monogramme lassen sich jetzt als Link teilen: unter Export auf „Link kopieren“ tippen und verschicken. Wer ihn öffnet, bekommt eine eigene bearbeitbare Kopie — weiterhin ohne Upload, ohne Konto, ohne Server; das ganze Design steckt im Link selbst.",
+    en: "You can now share a monogram as a link: hit “Copy link” under Export and send it on. Whoever opens it gets their own editable copy — still no upload, no account, no server; the whole monogram travels inside the link itself.",
+    de: "Monogramme lassen sich jetzt als Link teilen: unter Export auf „Link kopieren“ tippen und verschicken. Wer ihn öffnet, bekommt eine eigene bearbeitbare Kopie — weiterhin ohne Upload, ohne Konto, ohne Server; das ganze Monogramm steckt im Link selbst.",
   },
   {
     id: "2026-07-16-diamond-variants",

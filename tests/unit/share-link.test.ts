@@ -60,6 +60,18 @@ describe("encode/decode round-trip", () => {
     );
   });
 
+  it("preserves mixed-case letters left behind by the ABC toggle", () => {
+    // Reachable state: type "Max" in Abc mode, then switch back to ABC.
+    // The toggle deliberately doesn't re-case existing letters (ADR 0008),
+    // so the sender sees "Max" with letterCase "upper" — and the recipient
+    // must too, rather than "MAX".
+    const source = settings({ letters: "Max", letterCase: "upper" });
+    const decoded = decodeShareSettings(encodeShareSettings(source));
+
+    expect(decoded?.settings.letters).toBe("Max");
+    expect(decoded?.settings).toEqual(source);
+  });
+
   it("survives a URL round-trip through the hash", () => {
     const source = settings({ letters: "ZZ", lettersColor: "#010203" });
     const url = new URL(buildShareUrl("https://monomix.app/", source));
@@ -67,6 +79,31 @@ describe("encode/decode round-trip", () => {
 
     expect(payload).not.toBeNull();
     expect(decodeShareSettings(payload!)?.settings).toEqual(source);
+  });
+});
+
+describe("field coverage", () => {
+  // The short-key <-> long-key mapping is spelled out twice in share-link.ts
+  // (once per direction), so a newly added ProjectSettings field can silently
+  // stop travelling in links. This canary fails the moment the shape changes:
+  // decide whether the new field belongs in a share link, then update this
+  // list and both directions of the encoder.
+  it("knows about every ProjectSettings field", () => {
+    expect(Object.keys(DEFAULT_PROJECT_SETTINGS).sort()).toEqual([
+      "backgroundColor",
+      "backgroundGradient",
+      "backgroundImage",
+      "backgroundKind",
+      "designId",
+      "frameColor",
+      "frameFilled",
+      "frameGap",
+      "frameId",
+      "letterCase",
+      "letters",
+      "lettersColor",
+      "lettersOpacity",
+    ]);
   });
 });
 
@@ -166,16 +203,18 @@ describe("untrusted payloads", () => {
     expect(decoded?.settings.letters).toBe("M");
   });
 
-  it("uppercases smuggled lowercase unless the payload asks to preserve case", () => {
-    const upper = decodeShareSettings(
+  it("keeps letters exactly as sent, whatever letterCase the payload carries", () => {
+    // letterCase governs future keystrokes only, never a retroactive re-case
+    // (ADR 0008) — so decoding must not fold case either way.
+    const upperMode = decodeShareSettings(
       btoa(JSON.stringify({ v: SHARE_VERSION, l: "abc" })),
     );
-    expect(upper?.settings.letters).toBe("ABC");
+    expect(upperMode?.settings.letters).toBe("abc");
 
-    const preserved = decodeShareSettings(
-      btoa(JSON.stringify({ v: SHARE_VERSION, l: "abc", c: "preserve" })),
+    const preserveMode = decodeShareSettings(
+      btoa(JSON.stringify({ v: SHARE_VERSION, l: "ABC", c: "preserve" })),
     );
-    expect(preserved?.settings.letters).toBe("abc");
+    expect(preserveMode?.settings.letters).toBe("ABC");
   });
 
   it("falls back to defaults for malformed individual fields", () => {

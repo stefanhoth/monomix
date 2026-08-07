@@ -63,6 +63,7 @@
     buildShareUrl,
     decodeShareSettings,
     readSharePayload,
+    shareOmitsBackgroundImage,
   } from "./lib/share-link";
   import { createIndexedDbProjectStore } from "./lib/project-store-indexeddb";
   import { createAutosaveController } from "./lib/autosave";
@@ -221,10 +222,17 @@
   // instantly rather than waiting on the IndexedDB Project check.
   let aboutOpen = $state(location.hash === "#about");
 
-  function setAboutHash(open: boolean) {
+  // The single place the URL hash is ever written. Always replaceState,
+  // never pushState, so neither the About panel (issue #55) nor a followed
+  // share link (issue #121) grows browser history — see docs/DECISIONS.md.
+  function replaceHash(value: string) {
     const url = new URL(location.href);
-    url.hash = open ? "about" : "";
+    url.hash = value;
     history.replaceState(null, "", url);
+  }
+
+  function setAboutHash(open: boolean) {
+    replaceHash(open ? "about" : "");
   }
 
   function openAbout() {
@@ -417,15 +425,11 @@
   let shareNotice: "image-dropped" | "unreadable" | null = $state(null);
   // The one thing a link genuinely can't carry — surfaced on the *sending*
   // side too, so nobody shares a background image believing it travelled.
+  // Same predicate the payload's own `bi` flag is written from, so the
+  // warning and what actually gets dropped can never disagree.
   let shareDropsImage = $derived(
-    backgroundKind === "image" && backgroundImage !== null,
+    shareOmitsBackgroundImage({ backgroundKind, backgroundImage }),
   );
-
-  function clearShareHash() {
-    const url = new URL(location.href);
-    url.hash = "";
-    history.replaceState(null, "", url);
-  }
 
   async function handleCopyShareLink() {
     const url = buildShareUrl(location.href, currentProjectSettings);
@@ -466,7 +470,7 @@
     // Drop the payload from the URL either way: a reload must not import a
     // second copy of the same monogram (nor re-raise the same error), and
     // the #about sync above owns the hash from here on.
-    clearShareHash();
+    replaceHash("");
     if (!shared) {
       shareNotice = "unreadable";
       return false;

@@ -45,6 +45,24 @@ export const SHARE_VERSION = 1;
  */
 export const SHARE_HASH_KEY = "m";
 
+/**
+ * Whether sharing these settings loses a background image — the one thing a
+ * link genuinely can't carry (see the module docstring). Exported so the
+ * sender-side warning in the UI and the `bi` flag written into the payload
+ * are decided by the same predicate and can never disagree.
+ *
+ * True only when the image is the *active* fill: that's the visible loss.
+ * An image stashed behind another background kind isn't part of what's
+ * being shared, so warning about it would be noise.
+ */
+export function shareOmitsBackgroundImage(
+  settings: Pick<ProjectSettings, "backgroundKind" | "backgroundImage">,
+): boolean {
+  return (
+    settings.backgroundKind === "image" && settings.backgroundImage !== null
+  );
+}
+
 /** A decoded share link: the settings plus what the link couldn't carry. */
 export interface SharedMonogram {
   settings: ProjectSettings;
@@ -134,12 +152,7 @@ export function encodeShareSettings(settings: ProjectSettings): string {
   if (settings.backgroundColor !== defaults.backgroundColor) {
     payload.bc = settings.backgroundColor;
   }
-  // Only flagged when the image is the *active* fill — that's the visible
-  // loss the recipient needs told about. An image stashed behind another
-  // background kind isn't part of what's being shared.
-  if (settings.backgroundKind === "image" && settings.backgroundImage) {
-    payload.bi = 1;
-  }
+  if (shareOmitsBackgroundImage(settings)) payload.bi = 1;
   if (
     JSON.stringify(settings.backgroundGradient) !==
     JSON.stringify(defaults.backgroundGradient)
@@ -196,15 +209,21 @@ export function decodeShareSettings(payload: string): SharedMonogram | null {
   if (raw.v !== SHARE_VERSION) return null;
   if (typeof raw.l !== "string") return null;
 
-  // Letters get the same sanitization a keystroke does, not just
+  // Letters get the structural half of the letters field's own sanitization
+  // — strip anything outside A-Z/a-z, cap at 3 — rather than just
   // `normalizeProject`'s "is it a string?" check: a link is the one way
-  // letters can reach the editor without passing through the letters field,
-  // and nothing downstream re-enforces the 1-3 A-Z cap (the engine would
-  // happily lay out 50 glyphs). The hint is dropped — there's no keystroke
-  // to explain, and the recipient didn't type anything.
-  const letterCase = raw.c === "preserve" ? "preserve" : "upper";
+  // letters can reach the editor without passing through that field, and
+  // nothing downstream re-enforces the cap (the engine would happily lay out
+  // 50 glyphs). The hint is dropped; the recipient didn't type anything.
+  //
+  // Always "preserve", deliberately, whatever `letterCase` the payload
+  // carries: `letterCase` only governs how *future keystrokes* are
+  // sanitized, never a retroactive re-case of existing letters (ADR 0008).
+  // "Max" with letterCase "upper" is a genuinely reachable state — type it
+  // in Abc mode, then switch to ABC — so folding case here would hand the
+  // recipient "MAX" for a monogram the sender sees as "Max".
   const record: Record<string, unknown> = {
-    letters: sanitizeLettersInput(raw.l, letterCase).letters,
+    letters: sanitizeLettersInput(raw.l, "preserve").letters,
   };
   if (raw.c !== undefined) record.letterCase = raw.c;
   if (raw.d !== undefined) record.designId = raw.d;
