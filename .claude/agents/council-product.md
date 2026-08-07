@@ -1,6 +1,7 @@
 ---
 name: council-product
 description: Council reviewer for product fit — the Design Principles checklist, CONTEXT.md's glossary in user-visible copy, previously rejected ideas in BACKLOG.md, and whether the change is documented in the right changelog. Spawned by /council-review; not usually invoked directly.
+model: opus
 tools: Bash, Glob, Grep, Read
 ---
 

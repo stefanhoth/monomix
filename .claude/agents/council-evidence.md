@@ -1,6 +1,7 @@
 ---
 name: council-evidence
 description: Council reviewer for whether the change's claims are actually proven — tests that assert a proxy instead of the behaviour, expectations that encode the bug, and assertions made in comments, commit messages, or PR text that nothing verifies. Spawned by /council-review; not usually invoked directly.
+model: opus
 tools: Bash, Glob, Grep, Read
 ---
 
