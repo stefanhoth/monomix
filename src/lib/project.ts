@@ -1,6 +1,9 @@
 import {
   DESIGNS,
   NO_FRAME_ID,
+  clampImageOffset,
+  clampImageZoom,
+  DEFAULT_IMAGE_TRANSFORM,
   type BackgroundFill,
   type Gradient,
   type Paint,
@@ -92,6 +95,15 @@ export interface ProjectSettings {
   backgroundColor: string;
   /** A data URL (issue #63), or null when no image has been picked yet. */
   backgroundImage: string | null;
+  /** Issue #123: zoom + pan for the background image. Deliberately three
+   * flat primitives rather than one nested object — that keeps them clear
+   * of the `$state.snapshot()` requirement every object-typed field carries
+   * (docs/DECISIONS.md, 2026-07-17), which the issue itself flagged.
+   * Defaults reproduce the original centered `cover` fit exactly. */
+  backgroundImageZoom: number;
+  /** -1 … 1, relative to the pan range the current zoom opens up. */
+  backgroundImageOffsetX: number;
+  backgroundImageOffsetY: number;
   /** Issue #64. Always populated (never null) so the gradient editor UI
    * never has to synthesize a starting value on the fly. */
   backgroundGradient: Gradient;
@@ -124,6 +136,9 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   backgroundKind: "transparent",
   backgroundColor: "#ffffff",
   backgroundImage: null,
+  backgroundImageZoom: DEFAULT_IMAGE_TRANSFORM.zoom,
+  backgroundImageOffsetX: DEFAULT_IMAGE_TRANSFORM.offsetX,
+  backgroundImageOffsetY: DEFAULT_IMAGE_TRANSFORM.offsetY,
   backgroundGradient: DEFAULT_GRADIENT,
 };
 
@@ -241,6 +256,14 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     backgroundImage: isString(raw.backgroundImage)
       ? raw.backgroundImage
       : DEFAULT_PROJECT_SETTINGS.backgroundImage,
+    // Narrowed to range here, not just checked for NaN: the engine clamps
+    // again before rendering, but an out-of-range value reaching the editor
+    // state (via a share link or a hand-edited record) would still show a
+    // "9900%" zoom slider and skew the drag gain, which reads the raw value.
+    // Same posture as `lettersOpacity` above.
+    backgroundImageZoom: clampImageZoom(raw.backgroundImageZoom),
+    backgroundImageOffsetX: clampImageOffset(raw.backgroundImageOffsetX),
+    backgroundImageOffsetY: clampImageOffset(raw.backgroundImageOffsetY),
     backgroundGradient: isGradient(raw.backgroundGradient)
       ? raw.backgroundGradient
       : DEFAULT_PROJECT_SETTINGS.backgroundGradient,
@@ -279,6 +302,9 @@ export function toProjectSettings(project: Project): ProjectSettings {
     backgroundKind: project.backgroundKind,
     backgroundColor: project.backgroundColor,
     backgroundImage: project.backgroundImage,
+    backgroundImageZoom: project.backgroundImageZoom,
+    backgroundImageOffsetX: project.backgroundImageOffsetX,
+    backgroundImageOffsetY: project.backgroundImageOffsetY,
     backgroundGradient: project.backgroundGradient,
   };
 }
@@ -311,6 +337,9 @@ export function projectSettingsEqual(
     a.backgroundKind === b.backgroundKind &&
     a.backgroundColor === b.backgroundColor &&
     a.backgroundImage === b.backgroundImage &&
+    a.backgroundImageZoom === b.backgroundImageZoom &&
+    a.backgroundImageOffsetX === b.backgroundImageOffsetX &&
+    a.backgroundImageOffsetY === b.backgroundImageOffsetY &&
     JSON.stringify(a.backgroundGradient) ===
       JSON.stringify(b.backgroundGradient)
   );
@@ -351,12 +380,23 @@ export function resolveProjectBackground(
     | "backgroundKind"
     | "backgroundColor"
     | "backgroundImage"
+    | "backgroundImageZoom"
+    | "backgroundImageOffsetX"
+    | "backgroundImageOffsetY"
     | "backgroundGradient"
   >,
 ): string | BackgroundFill {
   if (settings.backgroundKind === "color") return settings.backgroundColor;
   if (settings.backgroundKind === "image" && settings.backgroundImage) {
-    return { kind: "image", dataUrl: settings.backgroundImage };
+    return {
+      kind: "image",
+      dataUrl: settings.backgroundImage,
+      transform: {
+        zoom: settings.backgroundImageZoom,
+        offsetX: settings.backgroundImageOffsetX,
+        offsetY: settings.backgroundImageOffsetY,
+      },
+    };
   }
   if (settings.backgroundKind === "gradient") {
     return { kind: "gradient", gradient: settings.backgroundGradient };

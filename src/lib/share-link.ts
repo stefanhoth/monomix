@@ -93,6 +93,9 @@ interface SharePayload {
   bk?: string; // backgroundKind
   bc?: string; // backgroundColor
   bi?: 1; // sender's background was an image (the image itself is dropped)
+  iz?: number; // backgroundImageZoom
+  ix?: number; // backgroundImageOffsetX
+  iy?: number; // backgroundImageOffsetY
   bg?: WireGradient; // backgroundGradient
   lk?: "gradient"; // lettersColorKind (absent = the "color" default)
   lg?: WireGradient; // lettersGradient
@@ -206,6 +209,19 @@ export function encodeShareSettings(settings: ProjectSettings): string {
     payload.bc = settings.backgroundColor;
   }
   if (shareOmitsBackgroundImage(settings)) payload.bi = 1;
+  // Zoom/pan (issue #123) travel even though the image itself can't: the
+  // recipient who picks their own picture then gets the sender's framing,
+  // and a Project that merely *stashes* an image keeps its crop intact.
+  // Rounded to 3 decimals, finer than the sliders' own steps.
+  if (settings.backgroundImageZoom !== defaults.backgroundImageZoom) {
+    payload.iz = round3(settings.backgroundImageZoom);
+  }
+  if (settings.backgroundImageOffsetX !== defaults.backgroundImageOffsetX) {
+    payload.ix = round3(settings.backgroundImageOffsetX);
+  }
+  if (settings.backgroundImageOffsetY !== defaults.backgroundImageOffsetY) {
+    payload.iy = round3(settings.backgroundImageOffsetY);
+  }
   if (
     gradientDiffers(settings.backgroundGradient, defaults.backgroundGradient)
   ) {
@@ -213,6 +229,10 @@ export function encodeShareSettings(settings: ProjectSettings): string {
   }
 
   return toBase64Url(JSON.stringify(payload));
+}
+
+function round3(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 function isStopPair(value: unknown): value is [string, number] {
@@ -278,6 +298,9 @@ export function decodeShareSettings(payload: string): SharedMonogram | null {
   if (raw.ff !== undefined) record.frameFilled = raw.ff === 1;
   if (raw.bk !== undefined) record.backgroundKind = raw.bk;
   if (raw.bc !== undefined) record.backgroundColor = raw.bc;
+  if (raw.iz !== undefined) record.backgroundImageZoom = raw.iz;
+  if (raw.ix !== undefined) record.backgroundImageOffsetX = raw.ix;
+  if (raw.iy !== undefined) record.backgroundImageOffsetY = raw.iy;
   if (raw.lk !== undefined) record.lettersColorKind = raw.lk;
   if (raw.fk !== undefined) record.frameColorKind = raw.fk;
 

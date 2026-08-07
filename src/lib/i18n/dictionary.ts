@@ -34,6 +34,9 @@ export const dictionary = {
     de: 'Es werden nur die Buchstaben A-Z unterstützt. Verwende "{suggestion}" statt "{invalid}".',
   },
   "frameGap.label": { en: "Frame Gap", de: "Abstand" },
+  // The live preview is an inline SVG with no text of its own; without a
+  // name assistive tech announces nothing at all for the app's hero element.
+  "preview.label": { en: "Monogram preview", de: "Monogramm-Vorschau" },
   "color.letters": { en: "Letter Color", de: "Buchstabenfarbe" },
   // Issue #122: letters and Frame gained the same solid/gradient chooser the
   // Background already had. The fieldset legend names the *target* and the
@@ -63,6 +66,19 @@ export const dictionary = {
     de: "Hintergrundbild hochladen",
   },
   "color.backgroundImageRemove": { en: "Remove image", de: "Bild entfernen" },
+  // Issue #123: zoom + pan, so the interesting part of a photo can be moved
+  // into frame instead of accepting whatever crop `cover` picked.
+  "color.backgroundImageZoom": { en: "Zoom", de: "Zoom" },
+  "color.backgroundImageOffsetX": { en: "Horizontal", de: "Horizontal" },
+  "color.backgroundImageOffsetY": { en: "Vertical", de: "Vertikal" },
+  "color.backgroundImageDragHint": {
+    en: "Drag the preview to reposition the image.",
+    de: "Ziehe die Vorschau, um das Bild zu verschieben.",
+  },
+  "color.backgroundImageZoomHint": {
+    en: "Zoom in to reposition the image.",
+    de: "Zoome hinein, um das Bild zu verschieben.",
+  },
   "color.backgroundImageErrorType": {
     en: "Please choose an image file.",
     de: "Bitte wähle eine Bilddatei.",
