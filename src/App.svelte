@@ -10,6 +10,8 @@
     FRAMES,
     NO_FRAME_ID,
     paintSolidColor,
+    MIN_IMAGE_ZOOM,
+    MAX_IMAGE_ZOOM,
     type LetterCount,
     type Gradient,
   } from "./engine";
@@ -160,6 +162,18 @@
   let backgroundColor = $state("#ffffff");
   let backgroundImage: string | null = $state(null);
   let backgroundImageError: string | null = $state(null);
+  // Issue #123: zoom + pan for the background image. At the defaults
+  // (1x, centered) the engine reproduces the original `cover` fit exactly,
+  // so every existing Project renders byte-identically.
+  let backgroundImageZoom = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundImageZoom,
+  );
+  let backgroundImageOffsetX = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX,
+  );
+  let backgroundImageOffsetY = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY,
+  );
   let backgroundGradient: Gradient = $state(
     structuredClone(DEFAULT_PROJECT_SETTINGS.backgroundGradient),
   );
@@ -360,8 +374,20 @@
       backgroundKind,
       backgroundColor,
       backgroundImage,
+      backgroundImageZoom,
+      backgroundImageOffsetX,
+      backgroundImageOffsetY,
       backgroundGradient,
     }),
+  );
+  // Panning only means something once zoomed in — at 1x the image exactly
+  // covers the canvas, so there is no slack to move it into. Gates both the
+  // drag handler and the offset sliders, which is also the honest answer to
+  // "why does dragging do nothing?".
+  let canPanBackground = $derived(
+    backgroundKind === "image" &&
+      backgroundImage !== null &&
+      backgroundImageZoom > MIN_IMAGE_ZOOM,
   );
   // Checkerboard follows the letters color, not the UI theme (issue #46) —
   // near-black default letters were unreadable on the dark-mode board.
@@ -415,6 +441,9 @@
     backgroundKind,
     backgroundColor,
     backgroundImage,
+    backgroundImageZoom,
+    backgroundImageOffsetX,
+    backgroundImageOffsetY,
     backgroundGradient: $state.snapshot(backgroundGradient),
   });
 
@@ -456,6 +485,9 @@
     backgroundKind = project.backgroundKind;
     backgroundColor = project.backgroundColor;
     backgroundImage = project.backgroundImage;
+    backgroundImageZoom = project.backgroundImageZoom;
+    backgroundImageOffsetX = project.backgroundImageOffsetX;
+    backgroundImageOffsetY = project.backgroundImageOffsetY;
     backgroundImageError = null;
     backgroundGradient = structuredClone(project.backgroundGradient);
   }
@@ -780,6 +812,11 @@
         backgroundKind = DEFAULT_PROJECT_SETTINGS.backgroundKind;
         backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
         backgroundImage = DEFAULT_PROJECT_SETTINGS.backgroundImage;
+        backgroundImageZoom = DEFAULT_PROJECT_SETTINGS.backgroundImageZoom;
+        backgroundImageOffsetX =
+          DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX;
+        backgroundImageOffsetY =
+          DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY;
         backgroundImageError = null;
         backgroundGradient = structuredClone(
           DEFAULT_PROJECT_SETTINGS.backgroundGradient,
@@ -839,6 +876,11 @@
     if (!file) return;
     try {
       backgroundImage = await prepareBackgroundImage(file);
+      // A new picture gets a clean framing rather than inheriting the crop
+      // that happened to suit the previous one.
+      backgroundImageZoom = DEFAULT_PROJECT_SETTINGS.backgroundImageZoom;
+      backgroundImageOffsetX = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX;
+      backgroundImageOffsetY = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY;
       backgroundImageError = null;
     } catch (err) {
       backgroundImageError = backgroundImageErrorMessage(
@@ -850,6 +892,63 @@
   function handleRemoveBackgroundImage() {
     backgroundImage = null;
     backgroundImageError = null;
+  }
+
+  // Drag-to-pan on the live preview (issue #123). Direct manipulation is the
+  // point — Design Principle 1 puts the monogram, not a sidebar widget, at
+  // the centre — but it is deliberately *not* the only way in: the offset
+  // sliders below do the same job for keyboard and assistive-tech users.
+  //
+  // Pointer (not mouse) events, with capture, so a drag that leaves the
+  // preview still tracks and still ends cleanly; touch panning is the same
+  // code path.
+  let panPointerId: number | null = null;
+  let panLastX = 0;
+  let panLastY = 0;
+
+  function handlePreviewPointerDown(
+    event: PointerEvent & { currentTarget: HTMLElement },
+  ) {
+    if (!canPanBackground || panPointerId !== null) return;
+    panPointerId = event.pointerId;
+    panLastX = event.clientX;
+    panLastY = event.clientY;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePreviewPointerMove(
+    event: PointerEvent & { currentTarget: HTMLElement },
+  ) {
+    if (event.pointerId !== panPointerId) return;
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    // A drag of the full preview width sweeps the whole pan range twice
+    // over (offsets run -1..1), scaled by how much slack the zoom opened up
+    // — so panning feels the same regardless of zoom level.
+    const range = backgroundImageZoom - MIN_IMAGE_ZOOM;
+    if (range <= 0 || rect.width === 0 || rect.height === 0) return;
+    backgroundImageOffsetX = clampOffset(
+      backgroundImageOffsetX +
+        ((event.clientX - panLastX) * 2) / (rect.width * range),
+    );
+    backgroundImageOffsetY = clampOffset(
+      backgroundImageOffsetY +
+        ((event.clientY - panLastY) * 2) / (rect.height * range),
+    );
+    panLastX = event.clientX;
+    panLastY = event.clientY;
+  }
+
+  function handlePreviewPointerUp(
+    event: PointerEvent & { currentTarget: HTMLElement },
+  ) {
+    if (event.pointerId !== panPointerId) return;
+    panPointerId = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function clampOffset(value: number): number {
+    return Math.min(1, Math.max(-1, value));
   }
 
   async function handleExport(format: "svg" | "png" | "jpg" | "pdf") {
@@ -1121,6 +1220,65 @@
                       </button>
                     </div>
                   {/if}
+                  {#if backgroundImage}
+                    <!-- Zoom + pan (issue #123). Sliders are the accessible
+                         path to the same fields drag-to-pan writes; the
+                         offset pair is disabled at 1x because there is no
+                         slack to move into. -->
+                    <div class="image-transform">
+                      <div class="transform-row">
+                        <label>
+                          {t("color.backgroundImageZoom")}
+                          <input
+                            type="range"
+                            min={MIN_IMAGE_ZOOM}
+                            max={MAX_IMAGE_ZOOM}
+                            step="0.05"
+                            bind:value={backgroundImageZoom}
+                          />
+                        </label>
+                        <output>{Math.round(backgroundImageZoom * 100)}%</output
+                        >
+                      </div>
+                      <div class="transform-row">
+                        <label>
+                          {t("color.backgroundImageOffsetX")}
+                          <input
+                            type="range"
+                            min="-1"
+                            max="1"
+                            step="0.01"
+                            disabled={!canPanBackground}
+                            bind:value={backgroundImageOffsetX}
+                          />
+                        </label>
+                        <output>
+                          {Math.round(backgroundImageOffsetX * 100)}%
+                        </output>
+                      </div>
+                      <div class="transform-row">
+                        <label>
+                          {t("color.backgroundImageOffsetY")}
+                          <input
+                            type="range"
+                            min="-1"
+                            max="1"
+                            step="0.01"
+                            disabled={!canPanBackground}
+                            bind:value={backgroundImageOffsetY}
+                          />
+                        </label>
+                        <output>
+                          {Math.round(backgroundImageOffsetY * 100)}%
+                        </output>
+                      </div>
+                      <p class="form-note">
+                        {canPanBackground
+                          ? t("color.backgroundImageDragHint")
+                          : t("color.backgroundImageZoomHint")}
+                      </p>
+                    </div>
+                  {/if}
                   {#if backgroundImageError}
                     <p class="form-hint" role="alert">{backgroundImageError}</p>
                   {/if}
@@ -1264,6 +1422,13 @@
       {#key resolvedDesignId}
         <div
           class="preview checkerboard"
+          class:pannable={canPanBackground}
+          role="img"
+          aria-label={t("preview.label")}
+          onpointerdown={handlePreviewPointerDown}
+          onpointermove={handlePreviewPointerMove}
+          onpointerup={handlePreviewPointerUp}
+          onpointercancel={handlePreviewPointerUp}
           transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
         >
           {#if preview}
@@ -1681,6 +1846,61 @@
     object-fit: cover;
     border-radius: 0.35rem;
     border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .image-transform {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  /* Output sits outside the <label> — inside, its live value would become
+     part of the control's accessible name ("Zoom 235%"). Same shape as the
+     Frame Gap and Letter Opacity rows. */
+  .transform-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .transform-row label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .transform-row input[type="range"] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .image-transform output {
+    font-variant-numeric: tabular-nums;
+    min-width: 3rem;
+    text-align: right;
+    font-size: 0.8125rem;
+  }
+
+  .form-note {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: light-dark(#555, #aaa);
+  }
+
+  /* Drag-to-pan is only live while there is slack to pan into, so the
+     grab cursor never promises an interaction that does nothing. */
+  .pannable {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .pannable:active {
+    cursor: grabbing;
   }
 
   .form-hint {

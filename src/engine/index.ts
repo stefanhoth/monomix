@@ -4,7 +4,14 @@
  * every Design/Frame combination unit-testable without a browser.
  */
 export { composeMonogram, type ComposeOptions } from "./render";
-export { type BackgroundFill } from "./background";
+export {
+  imagePlacement,
+  DEFAULT_IMAGE_TRANSFORM,
+  MIN_IMAGE_ZOOM,
+  MAX_IMAGE_ZOOM,
+  type BackgroundFill,
+  type ImageTransform,
+} from "./background";
 export {
   paintSolidColor,
   type Gradient,

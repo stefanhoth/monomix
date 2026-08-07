@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-08-07-background-image-framing",
+    date: "2026-08-07",
+    en: "Background photos are no longer stuck at whatever crop they landed on: drag the preview to move the picture around, and zoom in to pick exactly the part you want behind your letters.",
+    de: "Hintergrundfotos hängen nicht mehr an dem Ausschnitt fest, der zufällig herauskam: Zieh die Vorschau, um das Bild zu verschieben, und zoome hinein, um genau den Teil hinter deine Buchstaben zu holen.",
+  },
+  {
     id: "2026-08-07-letter-frame-gradients",
     date: "2026-08-07",
     en: "Letters and Frames can now be filled with a gradient, not just a flat color — the same linear and radial controls the background already had. Great for metallic and sunset looks.",

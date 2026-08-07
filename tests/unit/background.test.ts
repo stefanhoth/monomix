@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { composeMonogram } from "../../src/engine";
-import { composeBackgroundLayer } from "../../src/engine/background";
+import {
+  composeBackgroundLayer,
+  imagePlacement,
+  DEFAULT_IMAGE_TRANSFORM,
+  MIN_IMAGE_ZOOM,
+  MAX_IMAGE_ZOOM,
+} from "../../src/engine/background";
 import { loadTestFont } from "./helpers/load-test-font";
 
 const font = loadTestFont("archivo-black");
@@ -282,5 +288,81 @@ describe("composeMonogram with a gradient background", () => {
     expect(svg).toContain("<linearGradient");
     expect(svg.indexOf("<defs>")).toBeLessThan(svg.indexOf("<path"));
     expect(svg).toContain("</svg>");
+  });
+});
+
+// Zoom + pan for image backgrounds (issue #123).
+describe("imagePlacement", () => {
+  const SIZE = 1000;
+
+  it("reproduces the original centered cover fit at the defaults", () => {
+    // The byte-identical guarantee: these are exactly the numbers the
+    // pre-#123 markup hardcoded.
+    expect(imagePlacement(DEFAULT_IMAGE_TRANSFORM, SIZE)).toEqual({
+      x: 0,
+      y: 0,
+      size: SIZE,
+    });
+    expect(imagePlacement(undefined, SIZE)).toEqual({ x: 0, y: 0, size: SIZE });
+  });
+
+  it("grows the rect and keeps it centered when zooming with no offset", () => {
+    expect(imagePlacement({ zoom: 2, offsetX: 0, offsetY: 0 }, SIZE)).toEqual({
+      x: -500,
+      y: -500,
+      size: 2000,
+    });
+  });
+
+  it("pins the image's edges at the extremes of the offset range", () => {
+    const zoomed = { zoom: 2, offsetX: 0, offsetY: 0 };
+    // offset -1 puts the rect's right edge on the canvas's right edge...
+    const min = imagePlacement({ ...zoomed, offsetX: -1 }, SIZE);
+    expect(min.x + min.size).toBe(SIZE);
+    // ...and +1 puts its left edge on the canvas's left edge.
+    expect(imagePlacement({ ...zoomed, offsetX: 1 }, SIZE).x).toBe(0);
+  });
+
+  it("never lets an offset expose a gap, because zoom 1 has no pan range", () => {
+    // The issue's "should pan be clamped so the image can never under-fill
+    // the canvas?" — answered by construction: offsets scale with the slack
+    // the zoom opened up, and at zoom 1 that slack is zero.
+    for (const offset of [-1, -0.5, 0.5, 1]) {
+      expect(
+        imagePlacement({ zoom: 1, offsetX: offset, offsetY: offset }, SIZE),
+      ).toEqual({ x: 0, y: 0, size: SIZE });
+    }
+  });
+
+  it("clamps zoom below 1 and above the maximum", () => {
+    expect(
+      imagePlacement({ zoom: 0.2, offsetX: 0, offsetY: 0 }, SIZE).size,
+    ).toBe(SIZE * MIN_IMAGE_ZOOM);
+    expect(
+      imagePlacement({ zoom: 99, offsetX: 0, offsetY: 0 }, SIZE).size,
+    ).toBe(SIZE * MAX_IMAGE_ZOOM);
+  });
+
+  it("clamps offsets outside -1..1 rather than sliding the image off-canvas", () => {
+    const far = imagePlacement({ zoom: 2, offsetX: 50, offsetY: -50 }, SIZE);
+    expect(far).toEqual(
+      imagePlacement({ zoom: 2, offsetX: 1, offsetY: -1 }, SIZE),
+    );
+  });
+
+  it("falls back to the default fit for non-finite values", () => {
+    expect(
+      imagePlacement({ zoom: NaN, offsetX: NaN, offsetY: NaN }, SIZE),
+    ).toEqual({ x: 0, y: 0, size: SIZE });
+  });
+
+  it("rounds to 3 decimals so exported SVG carries no float noise", () => {
+    const placed = imagePlacement(
+      { zoom: 1.333, offsetX: 0.1, offsetY: 0 },
+      SIZE,
+    );
+    for (const value of [placed.x, placed.y, placed.size]) {
+      expect(String(value)).toMatch(/^-?\d+(\.\d{1,3})?$/);
+    }
   });
 });
