@@ -42,6 +42,24 @@ describe("encode/decode round-trip", () => {
       lettersOpacity: 0.42,
       frameColor: "#00ff00",
       frameFilled: true,
+      lettersColorKind: "gradient",
+      lettersGradient: {
+        style: "linear",
+        angle: 30,
+        stops: [
+          { color: "#ff0000", offset: 0 },
+          { color: "#0000ff", offset: 100 },
+        ],
+      },
+      frameColorKind: "gradient",
+      frameGradient: {
+        style: "radial",
+        angle: 0,
+        stops: [
+          { color: "#111111", offset: 0 },
+          { color: "#eeeeee", offset: 100 },
+        ],
+      },
       backgroundKind: "gradient",
       backgroundColor: "#123456",
       backgroundGradient: {
@@ -96,12 +114,16 @@ describe("field coverage", () => {
       "backgroundKind",
       "designId",
       "frameColor",
+      "frameColorKind",
       "frameFilled",
       "frameGap",
+      "frameGradient",
       "frameId",
       "letterCase",
       "letters",
       "lettersColor",
+      "lettersColorKind",
+      "lettersGradient",
       "lettersOpacity",
     ]);
   });

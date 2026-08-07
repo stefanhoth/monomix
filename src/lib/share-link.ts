@@ -22,6 +22,7 @@
  * tells both sides. That leaves the recipient one file-pick away from their
  * own image rather than silently handing them a corrupt link.
  */
+import type { Gradient } from "../engine";
 import { sanitizeLettersInput } from "./letters-input";
 import {
   DEFAULT_PROJECT_SETTINGS,
@@ -92,7 +93,51 @@ interface SharePayload {
   bk?: string; // backgroundKind
   bc?: string; // backgroundColor
   bi?: 1; // sender's background was an image (the image itself is dropped)
-  bg?: { s: string; a: number; p: [string, number][] }; // backgroundGradient
+  bg?: WireGradient; // backgroundGradient
+  lk?: "gradient"; // lettersColorKind (absent = the "color" default)
+  lg?: WireGradient; // lettersGradient
+  fk?: "gradient"; // frameColorKind
+  fg?: WireGradient; // frameGradient
+}
+
+/**
+ * A Gradient on the wire. Stops become [color, offset] pairs rather than
+ * objects: same data, ~40% fewer characters once base64'd. Shared by all
+ * three gradients a monogram can carry (background, letters, Frame) so the
+ * three can't drift into different encodings.
+ */
+interface WireGradient {
+  s: string;
+  a: number;
+  p: [string, number][];
+}
+
+function encodeGradient(gradient: Gradient): WireGradient {
+  return {
+    s: gradient.style,
+    a: Math.round(gradient.angle),
+    p: gradient.stops.map((stop) => [stop.color, Math.round(stop.offset)]),
+  };
+}
+
+/**
+ * Back into the shape `normalizeProject`'s own `isGradient` validates, or
+ * `undefined` when the payload carried nothing usable — leaving the field
+ * absent so the default applies, rather than fabricating a partial gradient.
+ */
+function decodeGradient(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return undefined;
+  const { s, a, p } = raw as Record<string, unknown>;
+  if (!Array.isArray(p)) return undefined;
+  return {
+    style: s,
+    angle: a,
+    stops: p.filter(isStopPair).map(([color, offset]) => ({ color, offset })),
+  };
+}
+
+function gradientDiffers(a: Gradient, b: Gradient): boolean {
+  return JSON.stringify(a) !== JSON.stringify(b);
 }
 
 function toBase64Url(text: string): string {
@@ -137,6 +182,10 @@ export function encodeShareSettings(settings: ProjectSettings): string {
   if (settings.lettersColor !== defaults.lettersColor) {
     payload.lc = settings.lettersColor;
   }
+  if (settings.lettersColorKind === "gradient") payload.lk = "gradient";
+  if (gradientDiffers(settings.lettersGradient, defaults.lettersGradient)) {
+    payload.lg = encodeGradient(settings.lettersGradient);
+  }
   if (settings.lettersOpacity !== defaults.lettersOpacity) {
     // Two decimals is finer than the UI's own whole-percent slider, so this
     // never loses a value a user could actually have picked.
@@ -144,6 +193,10 @@ export function encodeShareSettings(settings: ProjectSettings): string {
   }
   if (settings.frameColor !== defaults.frameColor) {
     payload.fc = settings.frameColor;
+  }
+  if (settings.frameColorKind === "gradient") payload.fk = "gradient";
+  if (gradientDiffers(settings.frameGradient, defaults.frameGradient)) {
+    payload.fg = encodeGradient(settings.frameGradient);
   }
   if (settings.frameFilled) payload.ff = 1;
   if (settings.backgroundKind !== defaults.backgroundKind) {
@@ -154,19 +207,9 @@ export function encodeShareSettings(settings: ProjectSettings): string {
   }
   if (shareOmitsBackgroundImage(settings)) payload.bi = 1;
   if (
-    JSON.stringify(settings.backgroundGradient) !==
-    JSON.stringify(defaults.backgroundGradient)
+    gradientDiffers(settings.backgroundGradient, defaults.backgroundGradient)
   ) {
-    payload.bg = {
-      s: settings.backgroundGradient.style,
-      a: Math.round(settings.backgroundGradient.angle),
-      // Stops as [color, offset] pairs rather than objects: same data, ~40%
-      // fewer characters once base64'd.
-      p: settings.backgroundGradient.stops.map((stop) => [
-        stop.color,
-        Math.round(stop.offset),
-      ]),
-    };
+    payload.bg = encodeGradient(settings.backgroundGradient);
   }
 
   return toBase64Url(JSON.stringify(payload));
@@ -235,19 +278,16 @@ export function decodeShareSettings(payload: string): SharedMonogram | null {
   if (raw.ff !== undefined) record.frameFilled = raw.ff === 1;
   if (raw.bk !== undefined) record.backgroundKind = raw.bk;
   if (raw.bc !== undefined) record.backgroundColor = raw.bc;
+  if (raw.lk !== undefined) record.lettersColorKind = raw.lk;
+  if (raw.fk !== undefined) record.frameColorKind = raw.fk;
 
-  const gradient = raw.bg;
-  if (typeof gradient === "object" && gradient !== null) {
-    const { s, a, p } = gradient as Record<string, unknown>;
-    if (Array.isArray(p)) {
-      record.backgroundGradient = {
-        style: s,
-        angle: a,
-        stops: p
-          .filter(isStopPair)
-          .map(([color, offset]) => ({ color, offset })),
-      };
-    }
+  for (const [wireKey, field] of [
+    ["bg", "backgroundGradient"],
+    ["lg", "lettersGradient"],
+    ["fg", "frameGradient"],
+  ] as const) {
+    const decoded = decodeGradient(raw[wireKey]);
+    if (decoded !== undefined) record[field] = decoded;
   }
 
   return {

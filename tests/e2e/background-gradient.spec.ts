@@ -1,8 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { skipOnboarding } from "./helpers/onboarding";
 import { openTab } from "./helpers/tabs";
 import { readPersistedField } from "./helpers/storage";
+
+// Letters and the Frame gained their own solid/gradient choosers (issue
+// #122), so "Gradient"/"Linear"/"Radial" now appear three times over —
+// scope every pick to the Background group.
+const backgroundGroup = (page: Page) =>
+  page.getByRole("group", { name: "Background", exact: true });
 
 test.beforeEach(async ({ page }) => {
   await skipOnboarding(page);
@@ -16,11 +22,13 @@ test("picking a gradient background renders a linear gradient by default, switch
   await expect(preview).toBeVisible();
 
   await openTab(page, "Colors");
-  await page.getByRole("radio", { name: "Gradient" }).check();
+  await backgroundGroup(page).getByRole("radio", { name: "Gradient" }).check();
 
   await expect(preview.locator("linearGradient")).toHaveCount(1);
   await expect(preview.locator("linearGradient stop")).toHaveCount(2);
-  await expect(page.getByRole("radio", { name: "Linear" })).toBeChecked();
+  await expect(
+    backgroundGroup(page).getByRole("radio", { name: "Linear" }),
+  ).toBeChecked();
 
   // Add a third stop.
   await page.getByRole("button", { name: "Add color stop" }).click();
@@ -38,7 +46,7 @@ test("picking a gradient background renders a linear gradient by default, switch
   ).toHaveCount(0);
 
   // Switch to radial.
-  await page.getByRole("radio", { name: "Radial" }).check();
+  await backgroundGroup(page).getByRole("radio", { name: "Radial" }).check();
   await expect(preview.locator("radialGradient")).toHaveCount(1);
   await expect(preview.locator("linearGradient")).toHaveCount(0);
   // The angle control only makes sense for linear.
@@ -50,7 +58,7 @@ test("a gradient background round-trips into SVG and PNG exports", async ({
 }) => {
   await page.goto("/");
   await openTab(page, "Colors");
-  await page.getByRole("radio", { name: "Gradient" }).check();
+  await backgroundGroup(page).getByRole("radio", { name: "Gradient" }).check();
   await expect(
     page.locator(".preview:not([inert]) svg linearGradient"),
   ).toHaveCount(1);
@@ -87,7 +95,7 @@ test("picking a gradient background still autosaves — a Project doesn't silent
 }) => {
   await page.goto("/");
   await openTab(page, "Colors");
-  await page.getByRole("radio", { name: "Gradient" }).check();
+  await backgroundGroup(page).getByRole("radio", { name: "Gradient" }).check();
 
   // Prove the write actually reached IndexedDB, not just that the preview
   // updated — a broken autosave write would leave this undefined forever.
@@ -104,5 +112,7 @@ test("picking a gradient background still autosaves — a Project doesn't silent
     page.locator(".preview:not([inert]) svg linearGradient"),
   ).toHaveCount(1);
   await openTab(page, "Colors");
-  await expect(page.getByRole("radio", { name: "Gradient" })).toBeChecked();
+  await expect(
+    backgroundGroup(page).getByRole("radio", { name: "Gradient" }),
+  ).toBeChecked();
 });

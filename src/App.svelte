@@ -9,6 +9,7 @@
     FONTS,
     FRAMES,
     NO_FRAME_ID,
+    paintSolidColor,
     type LetterCount,
     type Gradient,
   } from "./engine";
@@ -49,11 +50,14 @@
     remixProject,
     resolveProjectBackground,
     resolveProjectFrameFill,
+    resolveProjectFramePaint,
+    resolveProjectLettersPaint,
     toProjectSettings,
     DEFAULT_PROJECT_SETTINGS,
     type Project,
     type ProjectSettings,
     type BackgroundKind,
+    type PaintKind,
   } from "./lib/project";
   import {
     prepareBackgroundImage,
@@ -77,6 +81,8 @@
   import { getLastSeenEntryId, markEntrySeen } from "./lib/changelog-storage";
   import AboutPanel from "./components/AboutPanel.svelte";
   import DesignGallery from "./components/DesignGallery.svelte";
+  import GradientEditor from "./components/GradientEditor.svelte";
+  import PaintPicker from "./components/PaintPicker.svelte";
   import FontCreditsPanel from "./components/FontCreditsPanel.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
   import NewProjectSurface from "./components/NewProjectSurface.svelte";
@@ -118,10 +124,26 @@
   // look the preview had before explicit color controls existed, without
   // trying to track the system color scheme dynamically.
   let lettersColor = $state("#111111");
+  // Issue #122: letters and Frame can each be painted with a Gradient
+  // instead of their solid color. Same "kind picks which, both values stay
+  // put" shape the Background already uses, so toggling to Gradient and
+  // back doesn't discard the solid color.
+  let lettersColorKind: PaintKind = $state(
+    DEFAULT_PROJECT_SETTINGS.lettersColorKind,
+  );
+  let lettersGradient: Gradient = $state(
+    structuredClone(DEFAULT_PROJECT_SETTINGS.lettersGradient),
+  );
   // Issue #65: 0-1, 1 = fully opaque (the original, default look). Lets a
   // background color/image/gradient show through the letterforms.
   let lettersOpacity = $state(DEFAULT_PROJECT_SETTINGS.lettersOpacity);
   let frameColor = $state("#111111");
+  let frameColorKind: PaintKind = $state(
+    DEFAULT_PROJECT_SETTINGS.frameColorKind,
+  );
+  let frameGradient: Gradient = $state(
+    structuredClone(DEFAULT_PROJECT_SETTINGS.frameGradient),
+  );
   // Issue #65 follow-up: fills the Frame's interior with frameColor instead
   // of leaving it an unfilled ring, so reduced Letter Opacity has something
   // to cut a visible stencil out of even without a Background set.
@@ -308,9 +330,31 @@
     resolvedDesign && fonts.get(resolvedDesign.fontId),
   );
   let resolvedFrameGap = $derived(resolveFrameGap(frameGap));
-  let resolvedFrameFill = $derived(
-    resolveProjectFrameFill({ frameFilled, frameColor }),
+  let lettersPaint = $derived(
+    resolveProjectLettersPaint({
+      lettersColorKind,
+      lettersColor,
+      lettersGradient,
+    }),
   );
+  let framePaint = $derived(
+    resolveProjectFramePaint({ frameColorKind, frameColor, frameGradient }),
+  );
+  let resolvedFrameFill = $derived(
+    resolveProjectFrameFill({
+      frameFilled,
+      frameColorKind,
+      frameColor,
+      frameGradient,
+    }),
+  );
+  // Gallery tiles paint with one representative solid, never the gradient
+  // itself: their panels stay mounted-but-hidden when another tab is
+  // active, and a <defs id> inside a display:none subtree corrupts every
+  // other reference to that id in the document (docs/DECISIONS.md,
+  // 2026-07-17 — the same hazard issue #65's <mask> hit).
+  let lettersTileColor = $derived(paintSolidColor(lettersPaint, "#111111"));
+  let frameTileColor = $derived(paintSolidColor(framePaint, "#111111"));
   let resolvedBackground = $derived(
     resolveProjectBackground({
       backgroundKind,
@@ -321,7 +365,7 @@
   );
   // Checkerboard follows the letters color, not the UI theme (issue #46) —
   // near-black default letters were unreadable on the dark-mode board.
-  let backdrop = $derived(BACKDROP_COLORS[backdropTone(lettersColor)]);
+  let backdrop = $derived(BACKDROP_COLORS[backdropTone(lettersTileColor)]);
   let preview = $derived(
     resolvedFont && resolvedDesign && letters.length > 0
       ? composeMonogram(letters, resolvedFont, {
@@ -330,10 +374,10 @@
           frame: {
             id: selectedFrameId,
             gap: resolvedFrameGap,
-            color: frameColor,
+            color: framePaint,
             fill: resolvedFrameFill,
           },
-          lettersColor,
+          lettersColor: lettersPaint,
           lettersOpacity,
           background: resolvedBackground,
         })
@@ -361,8 +405,12 @@
     frameId: selectedFrameId,
     frameGap,
     lettersColor,
+    lettersColorKind,
+    lettersGradient: $state.snapshot(lettersGradient),
     lettersOpacity,
     frameColor,
+    frameColorKind,
+    frameGradient: $state.snapshot(frameGradient),
     frameFilled,
     backgroundKind,
     backgroundColor,
@@ -398,8 +446,12 @@
     selectedFrameId = project.frameId;
     frameGap = project.frameGap;
     lettersColor = project.lettersColor;
+    lettersColorKind = project.lettersColorKind;
+    lettersGradient = structuredClone(project.lettersGradient);
     lettersOpacity = project.lettersOpacity;
     frameColor = project.frameColor;
+    frameColorKind = project.frameColorKind;
+    frameGradient = structuredClone(project.frameGradient);
     frameFilled = project.frameFilled;
     backgroundKind = project.backgroundKind;
     backgroundColor = project.backgroundColor;
@@ -716,8 +768,14 @@
         selectedFrameId = DEFAULT_PROJECT_SETTINGS.frameId;
         frameGap = DEFAULT_PROJECT_SETTINGS.frameGap;
         lettersColor = DEFAULT_PROJECT_SETTINGS.lettersColor;
+        lettersColorKind = DEFAULT_PROJECT_SETTINGS.lettersColorKind;
+        lettersGradient = structuredClone(
+          DEFAULT_PROJECT_SETTINGS.lettersGradient,
+        );
         lettersOpacity = DEFAULT_PROJECT_SETTINGS.lettersOpacity;
         frameColor = DEFAULT_PROJECT_SETTINGS.frameColor;
+        frameColorKind = DEFAULT_PROJECT_SETTINGS.frameColorKind;
+        frameGradient = structuredClone(DEFAULT_PROJECT_SETTINGS.frameGradient);
         frameFilled = DEFAULT_PROJECT_SETTINGS.frameFilled;
         backgroundKind = DEFAULT_PROJECT_SETTINGS.backgroundKind;
         backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
@@ -792,32 +850,6 @@
   function handleRemoveBackgroundImage() {
     backgroundImage = null;
     backgroundImageError = null;
-  }
-
-  // Gradient editor (issue #64): up to 3 stops, matching the issue's own
-  // "keep the initial set small" open question. Existing stops are
-  // redistributed evenly *before* the new one is appended at 100% — simply
-  // pushing a 50%-offset stop after an existing 100%-offset one would leave
-  // the stops out of offset order (array order [0%, 100%, 50%]), and SVG
-  // clamps an out-of-order stop's offset up to the previous stop's value,
-  // collapsing the new stop invisibly onto the old last stop instead of
-  // blending between all three.
-  function handleAddGradientStop() {
-    const stops = backgroundGradient.stops;
-    if (stops.length >= 3) return;
-    const last = stops.at(-1);
-    // The new stop always lands last, at 100% — space the existing ones
-    // evenly across what's left of [0, 100] (e.g. 2 existing stops become
-    // 0% and 50%, leaving the new one at 100%).
-    stops.forEach((stop, i) => {
-      stop.offset = Math.round((i / stops.length) * 100);
-    });
-    stops.push({ color: last?.color ?? "#000000", offset: 100 });
-  }
-
-  function handleRemoveGradientStop(index: number) {
-    if (backgroundGradient.stops.length <= 2) return;
-    backgroundGradient.stops.splice(index, 1);
   }
 
   async function handleExport(format: "svg" | "png" | "jpg" | "pdf") {
@@ -928,7 +960,7 @@
             designs={availableDesigns}
             letters={debouncedLetters}
             {fonts}
-            {lettersColor}
+            lettersColor={lettersTileColor}
             selectedId={resolvedDesignId}
             onSelect={(id) => (selectedDesignId = id)}
             {reducedMotion}
@@ -949,8 +981,8 @@
             arrangement={resolvedDesign?.arrangement}
             shape={resolvedDesign?.shape}
             gap={resolvedFrameGap}
-            {lettersColor}
-            {frameColor}
+            lettersColor={lettersTileColor}
+            frameColor={frameTileColor}
             selectedId={selectedFrameId}
             onSelect={(id) => (selectedFrameId = id)}
           />
@@ -978,10 +1010,15 @@
           hidden={activeTab !== "colors"}
         >
           <div class="color-controls">
-            <label>
-              {t("color.letters")}
-              <input type="color" bind:value={lettersColor} />
-            </label>
+            <PaintPicker
+              legend={t("color.lettersSection")}
+              name="letters"
+              gradientLabel={t("color.lettersGradient")}
+              colorLabel={t("color.letters")}
+              bind:kind={lettersColorKind}
+              bind:color={lettersColor}
+              bind:gradient={lettersGradient}
+            />
             <div class="opacity-control">
               <label>
                 {t("color.lettersOpacity")}
@@ -998,10 +1035,15 @@
                 >{Math.round(lettersOpacity * 100)}%</output
               >
             </div>
-            <label>
-              {t("color.frame")}
-              <input type="color" bind:value={frameColor} />
-            </label>
+            <PaintPicker
+              legend={t("color.frameSection")}
+              name="frame"
+              gradientLabel={t("color.frameGradient")}
+              colorLabel={t("color.frame")}
+              bind:kind={frameColorKind}
+              bind:color={frameColor}
+              bind:gradient={frameGradient}
+            />
             <label>
               {t("color.frameFilled")}
               <input
@@ -1010,7 +1052,7 @@
                 disabled={selectedFrameId === NO_FRAME_ID}
               />
             </label>
-            <fieldset class="background-kind">
+            <fieldset class="paint-kind background-kind">
               <legend>{t("color.background")}</legend>
               <div class="kind-options">
                 <label class="kind-option">
@@ -1084,88 +1126,11 @@
                   {/if}
                 </div>
               {:else if backgroundKind === "gradient"}
-                <div class="sub-control gradient-control">
-                  <div class="kind-options">
-                    <label class="kind-option">
-                      <input
-                        type="radio"
-                        name="gradient-style"
-                        value="linear"
-                        bind:group={backgroundGradient.style}
-                      />
-                      {t("color.gradientLinear")}
-                    </label>
-                    <label class="kind-option">
-                      <input
-                        type="radio"
-                        name="gradient-style"
-                        value="radial"
-                        bind:group={backgroundGradient.style}
-                      />
-                      {t("color.gradientRadial")}
-                    </label>
-                  </div>
-
-                  {#if backgroundGradient.style === "linear"}
-                    <label class="sub-control angle-control">
-                      {t("color.gradientAngle")}
-                      <input
-                        type="range"
-                        min="0"
-                        max="360"
-                        step="1"
-                        bind:value={backgroundGradient.angle}
-                      />
-                      <output>{backgroundGradient.angle}°</output>
-                    </label>
-                  {/if}
-
-                  <div class="gradient-stops">
-                    {#each backgroundGradient.stops as stop, i (i)}
-                      <div class="gradient-stop">
-                        <input
-                          type="color"
-                          aria-label={t("color.gradientStopColor", {
-                            n: String(i + 1),
-                          })}
-                          bind:value={stop.color}
-                        />
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="1"
-                          aria-label={t("color.gradientStopPosition", {
-                            n: String(i + 1),
-                          })}
-                          bind:value={stop.offset}
-                        />
-                        <output>{stop.offset}%</output>
-                        {#if backgroundGradient.stops.length > 2}
-                          <button
-                            type="button"
-                            class="remove-stop"
-                            aria-label={t("color.gradientRemoveStop", {
-                              n: String(i + 1),
-                            })}
-                            onclick={() => handleRemoveGradientStop(i)}
-                          >
-                            ×
-                          </button>
-                        {/if}
-                      </div>
-                    {/each}
-                    {#if backgroundGradient.stops.length < 3}
-                      <button
-                        type="button"
-                        class="add-stop"
-                        onclick={handleAddGradientStop}
-                      >
-                        {t("color.gradientAddStop")}
-                      </button>
-                    {/if}
-                  </div>
-                </div>
+                <GradientEditor
+                  bind:gradient={backgroundGradient}
+                  name="background"
+                  label={t("color.backgroundGradient")}
+                />
               {/if}
             </fieldset>
           </div>
@@ -1724,74 +1689,22 @@
     margin: 0;
   }
 
-  .gradient-control {
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    gap: 0.6rem;
-  }
-
-  .angle-control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-  }
-
-  .angle-control input[type="range"] {
-    flex: 1;
-  }
-
-  .angle-control output {
-    font-variant-numeric: tabular-nums;
-    min-width: 2.5rem;
-    text-align: right;
-  }
-
-  .gradient-stops {
+  /* Letters / Frame / Background fill pickers (issue #122): the same
+     solid-vs-gradient chooser three times over, so they share one class. */
+  .paint-kind {
+    border: 1px solid light-dark(#e2e2e2, #2a2a2c);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.75rem 0.75rem;
+    margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .gradient-stop {
-    display: flex;
-    align-items: center;
     gap: 0.5rem;
   }
 
-  .gradient-stop input[type="range"] {
-    flex: 1;
-  }
-
-  .gradient-stop output {
-    font-variant-numeric: tabular-nums;
-    min-width: 2.25rem;
-    text-align: right;
+  .paint-kind legend {
     font-size: 0.8125rem;
-  }
-
-  .remove-stop {
-    font:
-      1rem/1 inherit,
-      sans-serif;
-    padding: 0.15rem 0.5rem;
-    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
-    border-radius: 0.3rem;
-    background: none;
-    cursor: pointer;
-  }
-
-  .add-stop {
-    align-self: flex-start;
-    font: inherit;
-    font-size: 0.8125rem;
-    padding: 0.3rem 0.6rem;
-    border: 1px dashed light-dark(#bbb, #555);
-    border-radius: 0.3rem;
-    background: none;
+    padding: 0 0.25rem;
     color: light-dark(#555, #aaa);
-    cursor: pointer;
   }
 
   .export-size {

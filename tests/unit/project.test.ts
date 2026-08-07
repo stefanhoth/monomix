@@ -9,6 +9,7 @@ import {
   resolveProjectFrameFill,
   serializeProject,
   toProjectSettings,
+  DEFAULT_GRADIENT,
   DEFAULT_PROJECT_SETTINGS,
   type Project,
   type ProjectSettings,
@@ -24,8 +25,12 @@ function project(overrides: Partial<Project> = {}): Project {
     frameId: "circle",
     frameGap: 40,
     lettersColor: "#111111",
+    lettersColorKind: "color",
+    lettersGradient: DEFAULT_GRADIENT,
     lettersOpacity: 1,
     frameColor: "#111111",
+    frameColorKind: "color",
+    frameGradient: DEFAULT_GRADIENT,
     frameFilled: false,
     backgroundKind: "transparent",
     backgroundColor: "#ffffff",
@@ -143,8 +148,12 @@ describe("createProject", () => {
       frameId: "diamond",
       frameGap: 120,
       lettersColor: "#ff0000",
+      lettersColorKind: "gradient",
+      lettersGradient: DEFAULT_GRADIENT,
       lettersOpacity: 0.5,
       frameColor: "#00ff00",
+      frameColorKind: "color",
+      frameGradient: DEFAULT_GRADIENT,
       frameFilled: true,
       backgroundKind: "color",
       backgroundColor: "#3355ff",
@@ -191,8 +200,12 @@ describe("remixProject", () => {
       frameId: "diamond",
       frameGap: 80,
       lettersColor: "#ff0000",
+      lettersColorKind: "gradient",
+      lettersGradient: DEFAULT_GRADIENT,
       lettersOpacity: 0.5,
       frameColor: "#00ff00",
+      frameColorKind: "color",
+      frameGradient: DEFAULT_GRADIENT,
       frameFilled: true,
       backgroundKind: "color",
       backgroundColor: "#0000ff",
@@ -234,8 +247,12 @@ describe("toProjectSettings", () => {
       frameId: full.frameId,
       frameGap: full.frameGap,
       lettersColor: full.lettersColor,
+      lettersColorKind: full.lettersColorKind,
+      lettersGradient: full.lettersGradient,
       lettersOpacity: full.lettersOpacity,
       frameColor: full.frameColor,
+      frameColorKind: full.frameColorKind,
+      frameGradient: full.frameGradient,
       frameFilled: full.frameFilled,
       backgroundKind: full.backgroundKind,
       backgroundColor: full.backgroundColor,
@@ -323,13 +340,23 @@ describe("resolveProjectBackground (issue #63/#64)", () => {
 describe("resolveProjectFrameFill (issue #65 follow-up)", () => {
   it("resolves to frameColor when frameFilled is true", () => {
     expect(
-      resolveProjectFrameFill({ frameFilled: true, frameColor: "#ff00ff" }),
+      resolveProjectFrameFill({
+        frameFilled: true,
+        frameColorKind: "color",
+        frameColor: "#ff00ff",
+        frameGradient: DEFAULT_GRADIENT,
+      }),
     ).toBe("#ff00ff");
   });
 
   it("resolves to undefined (not a color string) when frameFilled is false", () => {
     expect(
-      resolveProjectFrameFill({ frameFilled: false, frameColor: "#ff00ff" }),
+      resolveProjectFrameFill({
+        frameFilled: false,
+        frameColorKind: "color",
+        frameColor: "#ff00ff",
+        frameGradient: DEFAULT_GRADIENT,
+      }),
     ).toBeUndefined();
   });
 });
