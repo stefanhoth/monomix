@@ -7,4 +7,5 @@ package-lock.json
 
 # Third-party Claude Code skills — not our source, not ours to reformat
 .claude/
+.agents/
 skills-lock.json
