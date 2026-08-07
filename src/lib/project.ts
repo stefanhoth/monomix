@@ -3,6 +3,7 @@ import {
   NO_FRAME_ID,
   type BackgroundFill,
   type Gradient,
+  type Paint,
 } from "../engine";
 import { DEFAULT_FRAME_GAP } from "./frame-gap";
 import type { LetterCaseMode } from "./letters-input";
@@ -17,6 +18,20 @@ import type { LetterCaseMode } from "./letters-input";
  * last-picked values.
  */
 export type BackgroundKind = "transparent" | "color" | "image" | "gradient";
+
+/**
+ * Which fill is active for the letters and for the Frame (issue #122).
+ * Deliberately the same "kind enum + one field per kind" shape as
+ * `BackgroundKind` above rather than making `lettersColor` itself a
+ * `string | Gradient` union: switching a fill to Gradient and back must not
+ * throw away the solid color it had, exactly as switching Background kinds
+ * doesn't. The engine still takes the union (`Paint`) — the resolvers at
+ * the bottom of this file are the one place that turns these fields into
+ * it, mirroring `resolveProjectBackground`.
+ */
+export type PaintKind = "color" | "gradient";
+
+const PAINT_KINDS: PaintKind[] = ["color", "gradient"];
 
 const BACKGROUND_KINDS: BackgroundKind[] = [
   "transparent",
@@ -55,9 +70,18 @@ export interface ProjectSettings {
   frameId: string;
   frameGap: number;
   lettersColor: string;
+  /** Issue #122. Defaults to "color" — a solid `lettersColor`, as before. */
+  lettersColorKind: PaintKind;
+  /** Issue #122. Always populated (never null), like `backgroundGradient`,
+   * so the gradient editor always has something concrete to mutate. */
+  lettersGradient: Gradient;
   /** Issue #65: letter fill opacity, 0-1. Defaults to 1 (fully opaque). */
   lettersOpacity: number;
   frameColor: string;
+  /** Issue #122. Applies to both the Frame's stroke and, when
+   * `frameFilled` is on, its interior. */
+  frameColorKind: PaintKind;
+  frameGradient: Gradient;
   /** Issue #65 follow-up: fills the Frame's interior with `frameColor`
    * instead of leaving it an unfilled ring, so reduced Letter Opacity has
    * something to cut a visible stencil out of even without a Background
@@ -90,8 +114,12 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   frameId: NO_FRAME_ID,
   frameGap: DEFAULT_FRAME_GAP,
   lettersColor: "#111111",
+  lettersColorKind: "color",
+  lettersGradient: DEFAULT_GRADIENT,
   lettersOpacity: 1,
   frameColor: "#111111",
+  frameColorKind: "color",
+  frameGradient: DEFAULT_GRADIENT,
   frameFilled: false,
   backgroundKind: "transparent",
   backgroundColor: "#ffffff",
@@ -109,6 +137,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isBoolean(value: unknown): value is boolean {
   return typeof value === "boolean";
+}
+
+function isPaintKind(value: unknown): value is PaintKind {
+  return typeof value === "string" && (PAINT_KINDS as string[]).includes(value);
 }
 
 function isBackgroundKind(value: unknown): value is BackgroundKind {
@@ -178,6 +210,12 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     lettersColor: isString(raw.lettersColor)
       ? raw.lettersColor
       : DEFAULT_PROJECT_SETTINGS.lettersColor,
+    lettersColorKind: isPaintKind(raw.lettersColorKind)
+      ? raw.lettersColorKind
+      : DEFAULT_PROJECT_SETTINGS.lettersColorKind,
+    lettersGradient: isGradient(raw.lettersGradient)
+      ? raw.lettersGradient
+      : DEFAULT_PROJECT_SETTINGS.lettersGradient,
     lettersOpacity:
       isFiniteNumber(raw.lettersOpacity) &&
       raw.lettersOpacity >= 0 &&
@@ -187,6 +225,12 @@ export function normalizeProject(raw: Record<string, unknown>): Project {
     frameColor: isString(raw.frameColor)
       ? raw.frameColor
       : DEFAULT_PROJECT_SETTINGS.frameColor,
+    frameColorKind: isPaintKind(raw.frameColorKind)
+      ? raw.frameColorKind
+      : DEFAULT_PROJECT_SETTINGS.frameColorKind,
+    frameGradient: isGradient(raw.frameGradient)
+      ? raw.frameGradient
+      : DEFAULT_PROJECT_SETTINGS.frameGradient,
     frameFilled: isBoolean(raw.frameFilled)
       ? raw.frameFilled
       : DEFAULT_PROJECT_SETTINGS.frameFilled,
@@ -225,8 +269,12 @@ export function toProjectSettings(project: Project): ProjectSettings {
     frameId: project.frameId,
     frameGap: project.frameGap,
     lettersColor: project.lettersColor,
+    lettersColorKind: project.lettersColorKind,
+    lettersGradient: project.lettersGradient,
     lettersOpacity: project.lettersOpacity,
     frameColor: project.frameColor,
+    frameColorKind: project.frameColorKind,
+    frameGradient: project.frameGradient,
     frameFilled: project.frameFilled,
     backgroundKind: project.backgroundKind,
     backgroundColor: project.backgroundColor,
@@ -253,8 +301,12 @@ export function projectSettingsEqual(
     a.frameId === b.frameId &&
     a.frameGap === b.frameGap &&
     a.lettersColor === b.lettersColor &&
+    a.lettersColorKind === b.lettersColorKind &&
+    JSON.stringify(a.lettersGradient) === JSON.stringify(b.lettersGradient) &&
     a.lettersOpacity === b.lettersOpacity &&
     a.frameColor === b.frameColor &&
+    a.frameColorKind === b.frameColorKind &&
+    JSON.stringify(a.frameGradient) === JSON.stringify(b.frameGradient) &&
     a.frameFilled === b.frameFilled &&
     a.backgroundKind === b.backgroundKind &&
     a.backgroundColor === b.backgroundColor &&
@@ -313,16 +365,54 @@ export function resolveProjectBackground(
 }
 
 /**
- * Resolves `frameFilled`/`frameColor` into the `fill` value `composeFrame`
- * (src/engine) accepts — shared the same way `resolveProjectBackground` is,
- * so the live preview, remix thumbnails, and the Frame gallery all fill a
- * Frame identically. `undefined` (not "transparent") when off, matching
- * `composeFrame`'s own "omitted keeps the unfilled look" contract.
+ * Resolves the letters' fill fields into the `Paint` `composeMonogram`
+ * accepts (issue #122) — the letters' counterpart to
+ * `resolveProjectBackground`, and the one place the kind enum is turned
+ * into an engine value.
+ */
+export function resolveProjectLettersPaint(
+  settings: Pick<
+    ProjectSettings,
+    "lettersColorKind" | "lettersColor" | "lettersGradient"
+  >,
+): Paint {
+  return settings.lettersColorKind === "gradient"
+    ? settings.lettersGradient
+    : settings.lettersColor;
+}
+
+/**
+ * The same for the Frame. Applies to the Frame's stroke; `frameFilled` then
+ * decides whether the *same* Paint also fills its interior — matching the
+ * issue #65 follow-up decision to reuse `frameColor` rather than introduce
+ * a second, mostly-redundant color control.
+ */
+export function resolveProjectFramePaint(
+  settings: Pick<
+    ProjectSettings,
+    "frameColorKind" | "frameColor" | "frameGradient"
+  >,
+): Paint {
+  return settings.frameColorKind === "gradient"
+    ? settings.frameGradient
+    : settings.frameColor;
+}
+
+/**
+ * Resolves `frameFilled`/the Frame's Paint into the `fill` value
+ * `composeFrame` (src/engine) accepts — shared the same way
+ * `resolveProjectBackground` is, so the live preview, remix thumbnails, and
+ * the Frame gallery all fill a Frame identically. `undefined` (not
+ * "transparent") when off, matching `composeFrame`'s own "omitted keeps the
+ * unfilled look" contract.
  */
 export function resolveProjectFrameFill(
-  settings: Pick<ProjectSettings, "frameFilled" | "frameColor">,
-): string | undefined {
-  return settings.frameFilled ? settings.frameColor : undefined;
+  settings: Pick<
+    ProjectSettings,
+    "frameFilled" | "frameColorKind" | "frameColor" | "frameGradient"
+  >,
+): Paint | undefined {
+  return settings.frameFilled ? resolveProjectFramePaint(settings) : undefined;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { VIEWBOX_SIZE } from "./layout";
-import { sanitizeColor } from "./color";
 import { DIAMOND_ASPECT } from "./shape";
 import { fnv1aId } from "./hash";
+import { resolvePaint, type Paint } from "./paint";
 
 /**
  * Frames are independent decorative rings around the letters (CONTEXT.md),
@@ -88,14 +88,15 @@ function shapeGeometry(
 }
 
 export interface FrameOptions {
-  color?: string;
+  /** Stroke paint: a color string, or a Gradient (issue #122). */
+  color?: Paint;
   strokeWidth?: number;
-  /** Solid interior fill, out to the Frame's outer boundary (issue #65
-   * follow-up: without *some* filled area, reduced Letter Opacity has
-   * nothing to cut a visible hole in — a bare stroked ring plus a
-   * transparent background just disappears). Omitted (or "transparent")
-   * keeps the original unfilled-ring look. */
-  fill?: string;
+  /** Interior fill — a color string or a Gradient (issue #122) — out to the
+   * Frame's outer boundary (issue #65 follow-up: without *some* filled area,
+   * reduced Letter Opacity has nothing to cut a visible hole in — a bare
+   * stroked ring plus a transparent background just disappears). Omitted (or
+   * "transparent") keeps the original unfilled-ring look. */
+  fill?: Paint;
   /** Raw SVG markup (the letters' own `<path>` elements) to permanently
    * subtract from `fill` via an SVG mask (issue #65 second follow-up: fading
    * the letters' own opacity toward the fill's flat color looked identical
@@ -145,7 +146,14 @@ export function composeFrame(
   }
 
   const strokeWidth = options.strokeWidth ?? DEFAULT_STROKE_WIDTH;
-  const color = sanitizeColor(options.color, "currentColor");
+  // Distinct id scopes for stroke vs. fill so painting both with the same
+  // Gradient can't emit two colliding <defs id>s (see paint.ts). Both are
+  // "" for a solid color, keeping existing Frames byte-identical.
+  const stroke = resolvePaint(
+    options.color,
+    "currentColor",
+    "mm-frame-gradient",
+  );
 
   // Radius/half-extent of the stroke centerline, at its fixed position.
   // Clamped so a pathological custom strokeWidth never produces a negative
@@ -161,7 +169,7 @@ export function composeFrame(
   const strokeMarkup = shapeGeometry(
     frame.shape,
     r,
-    `fill="none" stroke="${color}" stroke-width="${strokeWidth}"${dash}`,
+    `fill="none" stroke="${stroke.value}" stroke-width="${strokeWidth}"${dash}`,
   );
 
   // Fill draws first, at the outer boundary (FRAME_MARGIN, independent of
@@ -169,7 +177,12 @@ export function composeFrame(
   // on top of the fill as a border rather than leaving an unfilled gap
   // between them. Omitted entirely (not just "" fill) when unset/
   // transparent, so every existing Frame's output stays byte-identical.
-  const fillColor = sanitizeColor(options.fill, "transparent");
+  const fill = resolvePaint(
+    options.fill,
+    "transparent",
+    "mm-frame-fill-gradient",
+  );
+  const fillColor = fill.value;
   const outerR = Math.max(CENTER - FRAME_MARGIN, 0);
   let fillMarkup = "";
   if (fillColor !== "transparent") {
@@ -194,5 +207,7 @@ export function composeFrame(
     }
   }
 
-  return fillMarkup + strokeMarkup;
+  // Defs first, then fill, then stroke on top — same order as before, with
+  // the paint servers hoisted ahead of everything that references them.
+  return stroke.defs + fill.defs + fillMarkup + strokeMarkup;
 }

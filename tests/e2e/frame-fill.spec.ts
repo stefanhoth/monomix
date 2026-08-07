@@ -147,7 +147,10 @@ test("a filled Frame's cutout reveals a set Background through the letter shapes
   await openTab(page, "Colors");
   await page.getByLabel("Frame Color").fill("#00ff00");
   await page.getByLabel("Fill Frame").check();
-  await page.getByRole("radio", { name: "Solid color" }).check();
+  await page
+    .getByRole("group", { name: "Background", exact: true })
+    .getByRole("radio", { name: "Solid color" })
+    .check();
   await page.getByLabel("Background Color").fill("#ff0000");
 
   const slider = page.getByLabel("Letter Opacity");

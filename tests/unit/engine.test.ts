@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeMonogram } from "../../src/engine";
+import { composeMonogram, type Gradient } from "../../src/engine";
 import { loadTestFont } from "./helpers/load-test-font";
 
 const font = loadTestFont("archivo-black");
@@ -380,3 +380,73 @@ describe.each(["diamond-narrow", "diamond-wide"] as const)(
     );
   },
 );
+
+// Gradient fills for letters and Frames (issue #122). The engine-level
+// contract is: a solid color emits exactly what it always did, and a
+// Gradient adds a <defs> paint server the element references by id.
+describe("gradient paints for letters and Frames (issue #122)", () => {
+  const gradient: Gradient = {
+    style: "linear",
+    angle: 90,
+    stops: [
+      { color: "#ff0000", offset: 0 },
+      { color: "#0000ff", offset: 100 },
+    ],
+  };
+
+  it("paints the glyph group from a <defs> gradient", () => {
+    const svg = composeMonogram("AB", font, { lettersColor: gradient });
+    const id = svg.match(
+      /<linearGradient id="(mm-letters-gradient-[^"]+)"/,
+    )?.[1];
+
+    expect(id).toBeDefined();
+    expect(svg).toContain(`<g fill="url(#${id})">`);
+  });
+
+  it("paints a Frame's stroke from its own <defs> gradient", () => {
+    const svg = composeMonogram("AB", font, {
+      frame: { id: "circle", color: gradient },
+    });
+    const id = svg.match(/<linearGradient id="(mm-frame-gradient-[^"]+)"/)?.[1];
+
+    expect(id).toBeDefined();
+    expect(svg).toContain(`stroke="url(#${id})"`);
+  });
+
+  it("gives letters and Frame distinct ids even for the identical gradient", () => {
+    // A <defs id> is document-global; two identical ids in one SVG is the
+    // failure mode issue #65's <mask> hit (docs/DECISIONS.md, 2026-07-17).
+    const svg = composeMonogram("AB", font, {
+      lettersColor: gradient,
+      frame: { id: "circle", color: gradient, fill: gradient },
+    });
+    const ids = [
+      ...svg.matchAll(/<(?:linear|radial)Gradient id="([^"]+)"/g),
+    ].map((m) => m[1]);
+
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it("still cuts the letters out of a gradient-filled Frame", () => {
+    const svg = composeMonogram("AB", font, {
+      frame: { id: "circle", color: "#111111", fill: gradient },
+    });
+    const fillId = svg.match(/id="(mm-frame-fill-gradient-[^"]+)"/)?.[1];
+    const maskId = svg.match(/<mask id="(mm-frame-cutout-[^"]+)"/)?.[1];
+
+    expect(fillId).toBeDefined();
+    expect(maskId).toBeDefined();
+    expect(svg).toContain(`fill="url(#${fillId})" mask="url(#${maskId})"`);
+  });
+
+  it("emits no defs at all for solid colors, keeping output byte-identical", () => {
+    const svg = composeMonogram("AB", font, {
+      lettersColor: "#ff0000",
+      frame: { id: "circle", color: "#00ff00" },
+    });
+    expect(svg).not.toContain("<defs>");
+    expect(svg).toContain('<g fill="#ff0000">');
+  });
+});

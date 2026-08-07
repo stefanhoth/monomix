@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-08-07-letter-frame-gradients",
+    date: "2026-08-07",
+    en: "Letters and Frames can now be filled with a gradient, not just a flat color — the same linear and radial controls the background already had. Great for metallic and sunset looks.",
+    de: "Buchstaben und Rahmen lassen sich jetzt mit einem Verlauf füllen statt nur mit einer Volltonfarbe — mit denselben linearen und radialen Reglern wie beim Hintergrund. Ideal für Metallic- und Sonnenuntergangs-Effekte.",
+  },
+  {
     id: "2026-08-07-share-links",
     date: "2026-08-07",
     en: "You can now share a monogram as a link: hit “Copy link” under Export and send it on. Whoever opens it gets their own editable copy — still no upload, no account, no server; the whole monogram travels inside the link itself.",

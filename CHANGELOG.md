@@ -8,6 +8,7 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Added
 
+- Letters and the Frame can now be filled with a **gradient**, not just a flat color — the same linear/radial control the background already had, with up to 3 stops and an adjustable angle. Pick "Gradient" under Letters or Frame in the Colors tab. A filled Frame still cuts the letters out as a real stencil hole, and gradients survive every export format.
 - A "Copy link" button in the Export tab produces a link that recreates your monogram — everything except a background image travels in the link itself, so there's still no upload and no account. Whoever opens it gets their own editable copy saved in their browser, and if your background was an image, both of you are told it couldn't come along.
 - A "Letter Opacity" slider in the Colors tab lets the letters' fill go fully or partially transparent, so a background color, image, or gradient shows through the letterforms for a "cut-out" effect. Preserved in every export format.
 - A "Fill Frame" checkbox next to Frame Color fills the Frame's interior with that color, with the letters actually cut out of the fill as a real stencil hole — so at low Letter Opacity, whatever's set as the Background (or the transparent canvas) shows through the letter shapes, even with no Background set at all.

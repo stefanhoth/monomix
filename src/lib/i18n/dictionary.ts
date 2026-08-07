@@ -35,6 +35,14 @@ export const dictionary = {
   },
   "frameGap.label": { en: "Frame Gap", de: "Abstand" },
   "color.letters": { en: "Letter Color", de: "Buchstabenfarbe" },
+  // Issue #122: letters and Frame gained the same solid/gradient chooser the
+  // Background already had. The fieldset legend names the *target* and the
+  // input inside it names the color — mirroring Background/"Background
+  // Color", so a group and its own input never share an accessible name.
+  "color.lettersSection": { en: "Letters", de: "Buchstaben" },
+  "color.lettersGradient": { en: "Letter gradient", de: "Buchstabenverlauf" },
+  "color.frameSection": { en: "Frame", de: "Rahmen" },
+  "color.frameGradient": { en: "Frame gradient", de: "Rahmenverlauf" },
   "color.lettersOpacity": { en: "Letter Opacity", de: "Buchstabendeckkraft" },
   "color.frame": { en: "Frame Color", de: "Rahmenfarbe" },
   "color.frameFilled": { en: "Fill Frame", de: "Rahmen füllen" },
