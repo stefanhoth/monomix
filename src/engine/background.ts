@@ -1,8 +1,6 @@
 import { sanitizeColor } from "./color";
 import { resolvePaint, type Gradient } from "./paint";
 
-export type { Gradient, GradientStop, GradientStyle } from "./paint";
-
 /**
  * A background beyond a flat color (issue #63 image, issue #64 gradient).
  * Kept as an explicit `kind` variant rather than several optional fields on

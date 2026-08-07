@@ -39,6 +39,10 @@ export const dictionary = {
   // Background already had. The fieldset legend names the *target* and the
   // input inside it names the color — mirroring Background/"Background
   // Color", so a group and its own input never share an accessible name.
+  // Target-agnostic, so the Letters and Frame choosers don't label
+  // themselves with Background-scoped keys.
+  "color.paintSolid": { en: "Solid color", de: "Volltonfarbe" },
+  "color.paintGradient": { en: "Gradient", de: "Verlauf" },
   "color.lettersSection": { en: "Letters", de: "Buchstaben" },
   "color.lettersGradient": { en: "Letter gradient", de: "Buchstabenverlauf" },
   "color.frameSection": { en: "Frame", de: "Rahmen" },

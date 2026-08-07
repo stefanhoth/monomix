@@ -82,6 +82,7 @@
   import AboutPanel from "./components/AboutPanel.svelte";
   import DesignGallery from "./components/DesignGallery.svelte";
   import GradientEditor from "./components/GradientEditor.svelte";
+  import PaintPicker from "./components/PaintPicker.svelte";
   import FontCreditsPanel from "./components/FontCreditsPanel.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
   import NewProjectSurface from "./components/NewProjectSurface.svelte";
@@ -1009,41 +1010,15 @@
           hidden={activeTab !== "colors"}
         >
           <div class="color-controls">
-            <fieldset class="paint-kind">
-              <legend>{t("color.lettersSection")}</legend>
-              <div class="kind-options">
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="letters-paint-kind"
-                    value="color"
-                    bind:group={lettersColorKind}
-                  />
-                  {t("color.backgroundSolid")}
-                </label>
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="letters-paint-kind"
-                    value="gradient"
-                    bind:group={lettersColorKind}
-                  />
-                  {t("color.backgroundGradient")}
-                </label>
-              </div>
-              {#if lettersColorKind === "gradient"}
-                <GradientEditor
-                  gradient={lettersGradient}
-                  name="letters"
-                  label={t("color.lettersGradient")}
-                />
-              {:else}
-                <label class="sub-control">
-                  {t("color.letters")}
-                  <input type="color" bind:value={lettersColor} />
-                </label>
-              {/if}
-            </fieldset>
+            <PaintPicker
+              legend={t("color.lettersSection")}
+              name="letters"
+              gradientLabel={t("color.lettersGradient")}
+              colorLabel={t("color.letters")}
+              bind:kind={lettersColorKind}
+              bind:color={lettersColor}
+              bind:gradient={lettersGradient}
+            />
             <div class="opacity-control">
               <label>
                 {t("color.lettersOpacity")}
@@ -1060,41 +1035,15 @@
                 >{Math.round(lettersOpacity * 100)}%</output
               >
             </div>
-            <fieldset class="paint-kind">
-              <legend>{t("color.frameSection")}</legend>
-              <div class="kind-options">
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="frame-paint-kind"
-                    value="color"
-                    bind:group={frameColorKind}
-                  />
-                  {t("color.backgroundSolid")}
-                </label>
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="frame-paint-kind"
-                    value="gradient"
-                    bind:group={frameColorKind}
-                  />
-                  {t("color.backgroundGradient")}
-                </label>
-              </div>
-              {#if frameColorKind === "gradient"}
-                <GradientEditor
-                  gradient={frameGradient}
-                  name="frame"
-                  label={t("color.frameGradient")}
-                />
-              {:else}
-                <label class="sub-control">
-                  {t("color.frame")}
-                  <input type="color" bind:value={frameColor} />
-                </label>
-              {/if}
-            </fieldset>
+            <PaintPicker
+              legend={t("color.frameSection")}
+              name="frame"
+              gradientLabel={t("color.frameGradient")}
+              colorLabel={t("color.frame")}
+              bind:kind={frameColorKind}
+              bind:color={frameColor}
+              bind:gradient={frameGradient}
+            />
             <label>
               {t("color.frameFilled")}
               <input
@@ -1178,7 +1127,7 @@
                 </div>
               {:else if backgroundKind === "gradient"}
                 <GradientEditor
-                  gradient={backgroundGradient}
+                  bind:gradient={backgroundGradient}
                   name="background"
                   label={t("color.backgroundGradient")}
                 />

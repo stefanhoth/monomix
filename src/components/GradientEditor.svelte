@@ -7,13 +7,15 @@
   // this markup was the point where duplicating it stopped being cheaper
   // than a component.
   //
-  // `gradient` is mutated in place rather than emitted through a callback:
-  // it's a $state proxy owned by App.svelte, so deep mutation propagates
-  // back on its own. `name` must be unique per instance — with three editors
-  // mounted at once, a shared radio `name` would make all three style
-  // toggles one radio group.
+  // `gradient` is $bindable: this component deep-mutates it (stops pushed,
+  // spliced, offsets rewritten) but the state itself belongs to App.svelte.
+  // Declaring the two-way intent is what makes that legal, rather than a
+  // child quietly mutating another component's $state proxy.
+  // `name` must be unique per instance — with several editors mounted at
+  // once, a shared radio `name` would merge their style toggles into one
+  // radio group.
   let {
-    gradient,
+    gradient = $bindable(),
     name,
     label,
   }: {

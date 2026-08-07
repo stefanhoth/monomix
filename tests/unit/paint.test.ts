@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  isGradient,
+  isGradientPaint,
   paintSolidColor,
   resolvePaint,
   sanitizeStops,
@@ -17,12 +17,12 @@ const gradient = (overrides: Partial<Gradient> = {}): Gradient => ({
   ...overrides,
 });
 
-describe("isGradient", () => {
+describe("isGradientPaint", () => {
   it("separates gradients from color strings and absent paints", () => {
-    expect(isGradient(gradient())).toBe(true);
-    expect(isGradient("#ff0000")).toBe(false);
-    expect(isGradient("currentColor")).toBe(false);
-    expect(isGradient(undefined)).toBe(false);
+    expect(isGradientPaint(gradient())).toBe(true);
+    expect(isGradientPaint("#ff0000")).toBe(false);
+    expect(isGradientPaint("currentColor")).toBe(false);
+    expect(isGradientPaint(undefined)).toBe(false);
   });
 });
 

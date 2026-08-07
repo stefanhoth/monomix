@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Download, type Page } from "@playwright/test";
 import { skipOnboarding } from "./helpers/onboarding";
 import { readPersistedField } from "./helpers/storage";
 import { openTab } from "./helpers/tabs";
@@ -11,6 +11,14 @@ test.beforeEach(async ({ page }) => {
 });
 
 const preview = (page: Page) => page.locator(".preview:not([inert]) svg");
+
+async function readDownload(download: Download): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of await download.createReadStream()) {
+    chunks.push(chunk as Buffer);
+  }
+  return Buffer.concat(chunks);
+}
 
 /** The Colors tab's three fill choosers, each a fieldset named after its
  * target ("Letters", "Frame", "Background"). */
@@ -149,12 +157,16 @@ test("no two gradient defs share an id across the whole page, even with gallerie
   expect(new Set(ids).size).toBe(ids.length);
 });
 
-test("a gradient-painted monogram round-trips into SVG export", async ({
+test("a gradient-painted monogram round-trips into every export format", async ({
   page,
 }) => {
   await page.goto("/");
   await openTab(page, "Colors");
   await pickGradient(page, "Letters");
+  // Red -> blue, so each stop is unmistakable in the rasterized output.
+  const stops = page.getByRole("group", { name: "Letter gradient" });
+  await stops.getByLabel("Color stop 1", { exact: true }).fill("#ff0000");
+  await stops.getByLabel("Color stop 2", { exact: true }).fill("#0000ff");
   await expect(
     preview(page).locator("g[fill^='url(#mm-letters-gradient']"),
   ).toHaveCount(1);
@@ -164,11 +176,49 @@ test("a gradient-painted monogram round-trips into SVG export", async ({
     page.waitForEvent("download"),
     page.getByRole("button", { name: "Export SVG" }).click(),
   ]);
-  const stream = await download.createReadStream();
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(chunk as Buffer);
-  const svg = Buffer.concat(chunks).toString("utf8");
+  const svg = (await readDownload(download)).toString("utf8");
 
   expect(svg).toContain("<linearGradient");
   expect(svg).toMatch(/<g fill="url\(#mm-letters-gradient-[^"]+\)"/);
+
+  // The raster and PDF paths don't carry that markup through — canvas
+  // rasterizes it and svg2pdf re-draws it — so "it's in the SVG" is no
+  // evidence for either. Both stops must actually survive, or a silently
+  // flattened gradient would pass unnoticed.
+  const [png] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export PNG" }).click(),
+  ]);
+  const pngBytes = [...(await readDownload(png))];
+  const spread = await page.evaluate(async (bytes) => {
+    const bmp = await createImageBitmap(
+      new Blob([new Uint8Array(bytes)], { type: "image/png" }),
+    );
+    const canvas = new OffscreenCanvas(bmp.width, bmp.height);
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(bmp, 0, 0);
+    const data = ctx.getImageData(0, 0, bmp.width, bmp.height).data;
+    let reddish = 0;
+    let bluish = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3]! < 128) continue;
+      if (data[i]! > 150 && data[i + 2]! < 100) reddish++;
+      if (data[i + 2]! > 150 && data[i]! < 100) bluish++;
+    }
+    return { reddish, bluish };
+  }, pngBytes);
+  // Both ends of the ramp are present, so this is a real gradient rather
+  // than either stop's color applied flat.
+  expect(spread.reddish).toBeGreaterThan(100);
+  expect(spread.bluish).toBeGreaterThan(100);
+
+  const [pdf] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export PDF" }).click(),
+  ]);
+  // svg2pdf emits a genuine PDF shading pattern rather than dropping the
+  // fill or flattening it to one color.
+  const pdfText = (await readDownload(pdf)).toString("latin1");
+  expect(pdfText).toContain("/Shading");
+  expect(pdfText).toContain("/Pattern");
 });

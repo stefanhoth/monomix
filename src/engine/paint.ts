@@ -39,7 +39,13 @@ export interface Gradient {
  */
 export type Paint = string | Gradient;
 
-export function isGradient(paint: Paint | undefined): paint is Gradient {
+/**
+ * Discriminates the union — it does *not* validate a gradient's shape.
+ * `normalizeProject`'s own `isGradient` (src/lib/project.ts) is the
+ * structural validator for untrusted input; `sanitizeStops` below is what
+ * makes a malformed gradient safe to render.
+ */
+export function isGradientPaint(paint: Paint | undefined): paint is Gradient {
   return typeof paint === "object" && paint !== null;
 }
 
@@ -101,7 +107,7 @@ export function resolvePaint(
   fallback: string,
   idScope: string,
 ): ResolvedPaint {
-  if (!isGradient(paint)) {
+  if (!isGradientPaint(paint)) {
     return { defs: "", value: sanitizeColor(paint, fallback) };
   }
 
@@ -153,6 +159,6 @@ export function paintSolidColor(
   paint: Paint | undefined,
   fallback: string,
 ): string {
-  if (!isGradient(paint)) return sanitizeColor(paint, fallback);
+  if (!isGradientPaint(paint)) return sanitizeColor(paint, fallback);
   return sanitizeStops(paint.stops)[0]?.color ?? fallback;
 }
