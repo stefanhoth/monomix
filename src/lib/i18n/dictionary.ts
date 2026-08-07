@@ -173,6 +173,55 @@ export const dictionary = {
     de: "Mein Monogramm ansehen",
   },
   "onboarding.skip": { en: "Just browsing", de: "Nur stöbern" },
+  // The jump-off gallery (impeccable shape brief, 2026-08-07): shown once,
+  // right after the initials prompt, before the full Design grid.
+  "jumpOff.heading": {
+    en: "Here's what your initials can look like",
+    de: "So können deine Initialen aussehen",
+  },
+  "jumpOff.intro": {
+    en: "Pick one to start from, or explore every Design yourself.",
+    de: "Wähle eins als Ausgangspunkt oder entdecke alle Designs selbst.",
+  },
+  "jumpOff.skip": {
+    en: "See all designs instead",
+    de: "Stattdessen alle Designs ansehen",
+  },
+  "jumpOff.caption.plain": {
+    en: "A plain Design — no Frame needed.",
+    de: "Ein schlichtes Design – ganz ohne Rahmen.",
+  },
+  "jumpOff.caption.gradientLetters": {
+    en: "Letters filled with a gradient.",
+    de: "Buchstaben mit Verlaufsfüllung.",
+  },
+  "jumpOff.caption.gradientFrame": {
+    en: "A Frame with its own gradient.",
+    de: "Ein Rahmen mit eigenem Verlauf.",
+  },
+  "jumpOff.caption.dottedFrame": {
+    en: "A dotted Frame with a Background color.",
+    de: "Ein gepunkteter Rahmen mit Hintergrundfarbe.",
+  },
+  "jumpOff.caption.filledFrameCutout": {
+    en: "A filled Frame, cut out by the letters.",
+    de: "Ein gefüllter Rahmen, von den Buchstaben ausgespart.",
+  },
+  "jumpOff.caption.gradientBackground": {
+    en: "A gradient Background.",
+    de: "Ein Verlaufshintergrund.",
+  },
+  "jumpOff.caption.dashedFrame": {
+    en: "A dashed Frame.",
+    de: "Ein gestrichelter Rahmen.",
+  },
+  // One-time coach hint (same brief) over the tab bar, right after the
+  // jump-off step — teaches the tabs exist without gating anything.
+  "coachHint.text": {
+    en: "Design, Frame, Colors, Export — everything you see updates instantly. Explore freely.",
+    de: "Design, Rahmen, Farben, Export – alles aktualisiert sich sofort. Erkunde einfach drauflos.",
+  },
+  "coachHint.dismiss": { en: "Dismiss", de: "Ausblenden" },
   "locale.switchLabel": { en: "Language", de: "Sprache" },
   "whatsnew.buttonLabel": { en: "What's new", de: "Neuigkeiten" },
   "whatsnew.unseenIndicator": { en: "(new)", de: "(neu)" },

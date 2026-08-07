@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
-  import { scale } from "svelte/transition";
+  import { scale, fly } from "svelte/transition";
   import type { Font } from "opentype.js";
   import {
     composeMonogram,
@@ -91,6 +91,8 @@
   import FrameGallery from "./components/FrameGallery.svelte";
   import NewProjectSurface from "./components/NewProjectSurface.svelte";
   import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
+  import JumpOffGallery from "./components/JumpOffGallery.svelte";
+  import { jumpOffSettings, type JumpOffEntry } from "./lib/jump-off-gallery";
   import LocaleSwitcher from "./components/LocaleSwitcher.svelte";
   import WhatsNewPanel from "./components/WhatsNewPanel.svelte";
 
@@ -201,6 +203,7 @@
     if (!next) return;
     event.preventDefault();
     activeTab = next;
+    showCoachHint = false;
     event.currentTarget.parentElement
       ?.querySelector<HTMLButtonElement>(`#tab-${next}`)
       ?.focus();
@@ -712,9 +715,14 @@
   // real letters immediately, bypassing the 200ms gallery debounce below,
   // so the reveal shows the user's actual letters from the first frame, not
   // a stale default), and marks onboarding complete so it never shows again.
-  async function completeOnboarding(nextLetters: string) {
+  // `baseSettings` defaults to the app's own defaults; the jump-off gallery
+  // below passes a curated overlay instead when the visitor picked one.
+  async function completeOnboarding(
+    nextLetters: string,
+    baseSettings: ProjectSettings = DEFAULT_PROJECT_SETTINGS,
+  ) {
     const project = createProject({
-      ...DEFAULT_PROJECT_SETTINGS,
+      ...baseSettings,
       letters: nextLetters,
     });
     switchToProject(project);
@@ -724,14 +732,51 @@
     await refreshProjects();
   }
 
+  // The jump-off gallery (impeccable shape brief, 2026-08-07): a step
+  // between the initials prompt and the editor. The initials prompt no
+  // longer completes onboarding itself — it hands the letters off here, and
+  // completeOnboarding only runs once the visitor either picks a curated
+  // starting point or explicitly skips to the full Design grid. Plain
+  // in-memory state, not persisted: losing it on a reload mid-flow just
+  // means falling back to the initials prompt again, which is harmless.
+  let showJumpOff = $state(false);
+  let pendingOnboardingLetters = $state("ABC");
+
+  // A one-time nudge at the tab bar right after a first-run visitor lands in
+  // the real editor (from either jump-off exit). Deliberately not persisted
+  // to localStorage: it only ever needs to survive the current session, and
+  // never showing it again after a reload is the safe failure direction
+  // (onboard.md: never show the same hint twice).
+  let showCoachHint = $state(false);
+
   function handleOnboardingSubmit(submittedLetters: string) {
-    void completeOnboarding(submittedLetters);
+    pendingOnboardingLetters = submittedLetters;
+    showJumpOff = true;
   }
 
   // Skip / "just browsing" (issue #13 AC): defaults to a pleasant
   // placeholder rather than dead-ending on an empty monogram.
   function handleOnboardingSkip() {
-    void completeOnboarding("ABC");
+    pendingOnboardingLetters = "ABC";
+    showJumpOff = true;
+  }
+
+  function handleJumpOffPick(entry: JumpOffEntry) {
+    void completeOnboarding(pendingOnboardingLetters, jumpOffSettings(entry));
+    showJumpOff = false;
+    showCoachHint = true;
+  }
+
+  // "See all designs instead" (shape brief's escape hatch): lands exactly
+  // where onboarding used to land before the jump-off gallery existed.
+  function handleJumpOffSkip() {
+    void completeOnboarding(pendingOnboardingLetters);
+    showJumpOff = false;
+    showCoachHint = true;
+  }
+
+  function dismissCoachHint() {
+    showCoachHint = false;
   }
 
   // The New surface (issue #48): the topbar "New" button opens an overlay
@@ -1020,6 +1065,14 @@
        on its result, so neither can render first. In practice this is a
        single local IndexedDB read (sub-millisecond to a few ms), well
        within Design Principle 2's "fast first result." -->
+{:else if showJumpOff}
+  <JumpOffGallery
+    letters={pendingOnboardingLetters}
+    {fonts}
+    onPick={handleJumpOffPick}
+    onSkip={handleJumpOffSkip}
+    {reducedMotion}
+  />
 {:else if showOnboarding}
   <OnboardingPrompt
     onSubmit={handleOnboardingSubmit}
@@ -1065,6 +1118,24 @@
     </header>
 
     <aside class="sidebar">
+      {#if showCoachHint}
+        <div
+          class="coach-hint"
+          role="note"
+          transition:fly={{ y: -8, duration: reducedMotion ? 0 : 150 }}
+        >
+          <p>{t("coachHint.text")}</p>
+          <button
+            type="button"
+            class="coach-hint-dismiss"
+            aria-label={t("coachHint.dismiss")}
+            onclick={dismissCoachHint}
+          >
+            &times;
+          </button>
+        </div>
+      {/if}
+
       <div class="tablist" role="tablist" aria-label={t("tabs.label")}>
         {#each WORKSPACE_TABS as tab (tab)}
           <button
@@ -1074,7 +1145,10 @@
             aria-selected={activeTab === tab}
             aria-controls={`panel-${tab}`}
             tabindex={activeTab === tab ? 0 : -1}
-            onclick={() => (activeTab = tab)}
+            onclick={() => {
+              activeTab = tab;
+              showCoachHint = false;
+            }}
             onkeydown={handleTabKeydown}
           >
             {t(`tabs.${tab}`)}
@@ -1600,6 +1674,36 @@
     min-height: 0;
     border-right: 1px solid light-dark(#e2e2e2, #2a2a2c);
     background: light-dark(#fafafa, #161618);
+  }
+
+  .coach-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0.6rem 0.75rem 0;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.5rem;
+    background: light-dark(#e8f0fe, #1a2c4d);
+    color: light-dark(#0b3a91, #a8c7fa);
+  }
+
+  .coach-hint p {
+    flex: 1;
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .coach-hint-dismiss {
+    flex-shrink: 0;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
   }
 
   .tablist {
