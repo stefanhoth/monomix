@@ -3,12 +3,12 @@ import { DEFAULT_PROJECT_SETTINGS, type ProjectSettings } from "./project";
 import type { DictKey } from "./i18n/dictionary";
 
 /**
- * The jump-off gallery (impeccable shape brief, 2026-08-07): a small
- * hand-curated set of *fully styled* starting points shown right after the
- * initials prompt, before the full Design grid — the newcomer's first
- * concrete look at what the app can do, not just a font list. Each entry is
- * a real, renderable settings overlay (deliberately not the full catalog,
- * see docs/BACKLOG.md's rejected "gradient-accurate gallery tiles" — this
+ * Curated Designs (impeccable shape brief, 2026-08-08 — formerly the
+ * one-time "jump-off gallery", 2026-08-07): a small hand-curated set of
+ * *fully styled* starting points, rendered in Easy mode's Design step
+ * (src/components/EasyDesignGallery.svelte). Each entry is a real,
+ * renderable settings overlay (deliberately not the full catalog, see
+ * docs/BACKLOG.md's rejected "gradient-accurate gallery tiles" — this
  * gallery is small enough to render every tile with its true paint, no
  * solid-color substitution needed).
  *
@@ -19,12 +19,12 @@ import type { DictKey } from "./i18n/dictionary";
  * this repo doesn't ship one of; revisit once a licensed sample image
  * exists.
  */
-export interface JumpOffEntry {
+export interface CuratedDesignEntry {
   id: string;
   captionKey: DictKey;
   /** Everything a curated entry fixes, on top of DEFAULT_PROJECT_SETTINGS —
-   * never `letters`/`letterCase`, which come from what the visitor actually
-   * typed (or "ABC" if they skipped). */
+   * never `letters`/`letterCase`, which stay whatever the visitor already
+   * has live. */
   overrides: Partial<Omit<ProjectSettings, "letters" | "letterCase">>;
 }
 
@@ -46,10 +46,10 @@ const SUNSET_BACKGROUND_GRADIENT: Gradient = {
   ],
 };
 
-export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
+export const CURATED_DESIGNS: CuratedDesignEntry[] = [
   {
     id: "plain",
-    captionKey: "jumpOff.caption.plain",
+    captionKey: "curatedDesign.caption.plain",
     overrides: {
       designId: "poppins-classic",
       frameId: NO_FRAME_ID,
@@ -58,7 +58,7 @@ export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
   },
   {
     id: "gradient-letters",
-    captionKey: "jumpOff.caption.gradientLetters",
+    captionKey: "curatedDesign.caption.gradientLetters",
     overrides: {
       designId: "kelly-slab-circle",
       frameId: NO_FRAME_ID,
@@ -68,7 +68,7 @@ export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
   },
   {
     id: "gradient-frame",
-    captionKey: "jumpOff.caption.gradientFrame",
+    captionKey: "curatedDesign.caption.gradientFrame",
     overrides: {
       designId: "playfair-display-diamond",
       frameId: "diamond",
@@ -79,7 +79,7 @@ export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
   },
   {
     id: "dotted-frame",
-    captionKey: "jumpOff.caption.dottedFrame",
+    captionKey: "curatedDesign.caption.dottedFrame",
     overrides: {
       designId: "alex-brush-circle",
       frameId: "dotted-circle",
@@ -91,7 +91,7 @@ export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
   },
   {
     id: "filled-frame-cutout",
-    captionKey: "jumpOff.caption.filledFrameCutout",
+    captionKey: "curatedDesign.caption.filledFrameCutout",
     overrides: {
       designId: "archivo-black-circle",
       frameId: "circle",
@@ -105,7 +105,7 @@ export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
   },
   {
     id: "gradient-background",
-    captionKey: "jumpOff.caption.gradientBackground",
+    captionKey: "curatedDesign.caption.gradientBackground",
     overrides: {
       designId: "alfa-slab-one-circle",
       frameId: NO_FRAME_ID,
@@ -116,7 +116,7 @@ export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
   },
   {
     id: "dashed-frame",
-    captionKey: "jumpOff.caption.dashedFrame",
+    captionKey: "curatedDesign.caption.dashedFrame",
     overrides: {
       designId: "pirata-one-circle",
       frameId: "dashed-circle",
@@ -129,9 +129,11 @@ export const JUMP_OFF_ENTRIES: JumpOffEntry[] = [
 /** Resolves an entry into full `ProjectSettings` — an overlay on the app's
  * own defaults, so an entry only has to state what it actually changes.
  * `letters`/`letterCase` come along from `DEFAULT_PROJECT_SETTINGS` (an
- * entry's `overrides` can never touch them), and the caller (App.svelte's
- * `completeOnboarding`) replaces `letters` with what the visitor actually
- * typed regardless. */
-export function jumpOffSettings(entry: JumpOffEntry): ProjectSettings {
+ * entry's `overrides` can never touch them); callers that apply an entry to
+ * the live editor (EasyDesignGallery via App.svelte) keep whatever letters
+ * are already typed instead of using this function's placeholder value. */
+export function curatedDesignSettings(
+  entry: CuratedDesignEntry,
+): ProjectSettings {
   return { ...DEFAULT_PROJECT_SETTINGS, ...entry.overrides };
 }
