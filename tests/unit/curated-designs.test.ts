@@ -32,11 +32,10 @@ describe("CURATED_DESIGNS", () => {
   });
 
   it("stays a small, curated set — a handful of starting points, not a subset of the full catalog", () => {
-    // EasyDesignGallery.svelte (the one consumer) *does* substitute solid
-    // colors for these tiles' preview, unlike this dataset's original
-    // one-time jump-off-gallery incarnation — see docs/DECISIONS.md,
-    // 2026-08-08. This size bound is about staying curated, not about
-    // being small enough to skip that substitution.
+    // EasyDesignGallery.svelte (the one consumer) renders every tile with
+    // its true gradient/fill, same as this dataset's original one-time
+    // jump-off-gallery incarnation — see docs/DECISIONS.md, 2026-08-08. This
+    // size bound is about staying curated, not about render fidelity.
     expect(CURATED_DESIGNS.length).toBeGreaterThanOrEqual(6);
     expect(CURATED_DESIGNS.length).toBeLessThanOrEqual(9);
   });

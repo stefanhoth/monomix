@@ -267,14 +267,24 @@
 
   // Easy mode's curated Colors step: a preset only ever touches the letters
   // and the background (never Frame, which the Design step already set) —
-  // see src/lib/color-presets.ts.
+  // see src/lib/color-presets.ts. A preset may itself be a pre-made
+  // gradient (letters or background), so applying one never has to flatten
+  // a curated Design's own gradient background down to a plain color.
   function handleColorPresetSelect(preset: ColorPreset) {
     selectedColorPresetId = preset.id;
     lettersColor = preset.lettersColor;
-    lettersColorKind = "color";
+    lettersColorKind = preset.lettersColorKind ?? "color";
+    if (preset.lettersGradient) {
+      lettersGradient = structuredClone(preset.lettersGradient);
+    }
     backgroundKind = preset.backgroundKind;
     if (preset.backgroundKind === "color") {
       backgroundColor = preset.backgroundColor;
+    } else if (
+      preset.backgroundKind === "gradient" &&
+      preset.backgroundGradient
+    ) {
+      backgroundGradient = structuredClone(preset.backgroundGradient);
     }
   }
 
@@ -1205,12 +1215,20 @@
           hidden={activeTab !== "design"}
         >
           {#if workspaceMode === "easy"}
-            <EasyDesignGallery
-              letters={debouncedLetters}
-              {fonts}
-              onSelect={handleCuratedDesignSelect}
-              {reducedMotion}
-            />
+            <!-- Only mounted while this is the active step (true unmount,
+                 not `hidden`): EasyDesignGallery renders every tile's true
+                 gradient/fill, and a content-hashed <defs>/<mask> id only
+                 corrupts other references while sitting in a display:none
+                 subtree, never while genuinely absent from the DOM — see
+                 its own doc comment and docs/DECISIONS.md, 2026-08-08. -->
+            {#if activeTab === "design"}
+              <EasyDesignGallery
+                letters={debouncedLetters}
+                {fonts}
+                onSelect={handleCuratedDesignSelect}
+                {reducedMotion}
+              />
+            {/if}
           {:else}
             <DesignGallery
               designs={availableDesigns}

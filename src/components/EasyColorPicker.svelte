@@ -1,11 +1,15 @@
 <script lang="ts">
+  import type { Gradient } from "../engine";
   import { COLOR_PRESETS, type ColorPreset } from "../lib/color-presets";
   import { t } from "../lib/i18n/store.svelte";
 
   // Easy mode's Colors step (impeccable shape brief, 2026-08-08): a handful
-  // of curated solid-color combinations, nothing else — no gradients, no
-  // opacity, no background image. Full mode's PaintPicker/GradientEditor
-  // stack is where that depth lives.
+  // of curated, one-click color combinations — some plain solids, some a
+  // pre-made gradient (never an editable one; Full mode's
+  // PaintPicker/GradientEditor stack is where stop/angle editing lives).
+  // Swatches render gradients as a plain CSS background/text-gradient, not
+  // through the SVG engine — no <defs> involved, so none of the
+  // content-hashed-id hazard EasyDesignGallery documents applies here.
   let {
     selectedId,
     onSelect,
@@ -13,6 +17,19 @@
     selectedId: string | undefined;
     onSelect: (preset: ColorPreset) => void;
   } = $props();
+
+  // Approximates the engine's own gradient convention (src/engine/paint.ts:
+  // a linear gradient's `angle` rotates a fixed top-to-bottom vector) closely
+  // enough for a small decorative swatch — exact fidelity isn't the point,
+  // recognizability is.
+  function cssGradient(gradient: Gradient): string {
+    const stops = gradient.stops
+      .map((s) => `${s.color} ${s.offset}%`)
+      .join(", ");
+    return gradient.style === "radial"
+      ? `radial-gradient(circle, ${stops})`
+      : `linear-gradient(${180 + gradient.angle}deg, ${stops})`;
+  }
 </script>
 
 <div class="presets" role="listbox" aria-label={t("colorPreset.label")}>
@@ -29,12 +46,26 @@
       <span
         class="swatch"
         class:checkerboard={preset.backgroundKind === "transparent"}
-        style:background={preset.backgroundKind === "color"
-          ? preset.backgroundColor
-          : undefined}
+        style:background={preset.backgroundKind === "gradient" &&
+        preset.backgroundGradient
+          ? cssGradient(preset.backgroundGradient)
+          : preset.backgroundKind === "color"
+            ? preset.backgroundColor
+            : undefined}
         style:--checker-size="8px"
       >
-        <span class="swatch-letter" style:color={preset.lettersColor}>Aa</span>
+        <span
+          class="swatch-letter"
+          class:swatch-letter-gradient={preset.lettersColorKind ===
+            "gradient" && preset.lettersGradient}
+          style:color={preset.lettersColorKind === "gradient"
+            ? undefined
+            : preset.lettersColor}
+          style:background-image={preset.lettersColorKind === "gradient" &&
+          preset.lettersGradient
+            ? cssGradient(preset.lettersGradient)
+            : undefined}>Aa</span
+        >
       </span>
       <span class="preset-name">{t(preset.nameKey)}</span>
     </button>
@@ -79,6 +110,12 @@
   .swatch-letter {
     font-size: 1.1rem;
     font-weight: 650;
+  }
+
+  .swatch-letter-gradient {
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
   }
 
   .preset-name {

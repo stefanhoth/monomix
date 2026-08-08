@@ -1,5 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { skipOnboarding } from "./helpers/onboarding";
+
+const preview = (page: Page) => page.locator(".preview:not([inert]) svg");
 
 // Reveal animation timing/easing is deliberately not asserted here (issue
 // #13 test plan: visual polish, not a CI assertion) — just that the prompt
@@ -120,4 +122,49 @@ test("a returning user (onboarding already complete) never sees the prompt and l
   // No stored workspace-mode preference either (a pre-existing user
   // predates this feature) — must default to Full, not the newcomer's Easy.
   await expect(page.getByRole("tab", { name: "Frame" })).toBeVisible();
+});
+
+test("curated Design tiles render their true gradient in Easy mode, and the live preview's own gradient still resolves", async ({
+  page,
+}) => {
+  // The hazard this guards (docs/DECISIONS.md, 2026-08-08): EasyDesignGallery
+  // renders every tile with its real paint, not a solid substitute — safe
+  // only because App.svelte mounts it exclusively while the Design step is
+  // active, never hidden-but-mounted alongside another step. Deliberately
+  // picks the gradient-letters tile, so the tile and the live preview render
+  // the *same* content-hashed <linearGradient id> simultaneously — both
+  // visible at once is fine (see NewProjectSurface's remix thumbnails,
+  // docs/DECISIONS.md 2026-08-07); a *duplicate* id is not itself the
+  // hazard, an unresolvable one inside a hidden ancestor is.
+  await page.goto("/");
+  await page.getByRole("button", { name: "Just browsing" }).click();
+
+  await expect(
+    page
+      .locator("li", { hasText: "Letters filled with a gradient." })
+      .locator("linearGradient"),
+  ).toHaveCount(1);
+
+  await page.getByText("Letters filled with a gradient.").click();
+
+  // The live preview's fill genuinely resolves to a real gradient
+  // definition with real stops — not a dangling reference silently left
+  // unpainted (the actual 2026-07-17 failure mode). Uses getElementById,
+  // not a CSS locator: the tile's identical id duplicates this one (both
+  // visible, both real — see the comment above), and a CSS `#id` selector
+  // matches every duplicate, while `url(#id)` — like getElementById —
+  // resolves to exactly one.
+  const previewGroup = preview(page).locator("g[fill^='url(#']");
+  await expect(previewGroup).toHaveCount(1);
+  const fillId = await previewGroup.evaluate((el) =>
+    el
+      .getAttribute("fill")!
+      .replace(/^url\(#/, "")
+      .replace(/\)$/, ""),
+  );
+  const resolvedStopCount = await page.evaluate((id) => {
+    const el = document.getElementById(id);
+    return el ? el.querySelectorAll("stop").length : 0;
+  }, fillId);
+  expect(resolvedStopCount).toBe(2);
 });

@@ -1,11 +1,12 @@
 <script lang="ts">
   import type { Font } from "opentype.js";
   import { fly } from "svelte/transition";
-  import { DESIGNS, composeMonogram, paintSolidColor } from "../engine";
+  import { composeMonogram, DESIGNS, paintSolidColor } from "../engine";
   import {
+    resolveProjectBackground,
+    resolveProjectFrameFill,
     resolveProjectFramePaint,
     resolveProjectLettersPaint,
-    type ProjectSettings,
   } from "../lib/project";
   import {
     CURATED_DESIGNS,
@@ -20,6 +21,15 @@
   // gate — see docs/DECISIONS.md on the former jump-off gallery). Picking a
   // tile applies its Design + Frame + colors straight onto the live editor;
   // it never touches the letters already typed.
+  //
+  // Renders every tile with its *true* paint — real gradients, a real
+  // filled+cut-out Frame — not a solid-color approximation: App.svelte only
+  // mounts this component while the Design step is actually the active
+  // rail step (never hidden-but-mounted alongside another step), so it's
+  // never present in a display:none subtree the way DesignGallery/
+  // FrameGallery's always-mounted tabs are — the same "mounts only while
+  // actually visible" precedent NewProjectSurface's remix thumbnails
+  // already established (docs/DECISIONS.md, 2026-08-07/2026-08-08).
   let {
     letters,
     fonts,
@@ -33,24 +43,6 @@
   } = $props();
 
   const STAGGER_STEP_MS = 30;
-
-  // Tiles paint with representative solids, never a true gradient or filled
-  // Frame — same reason DesignGallery/FrameGallery do (docs/DECISIONS.md,
-  // 2026-07-17): this panel stays mounted-but-hidden when another rail step
-  // is active (so e.g. scroll position survives a round-trip), and a
-  // content-hashed <linearGradient>/<mask> id inside a display:none subtree
-  // corrupts every other reference to that same id in the document —
-  // including the live main preview, if it happens to render the same
-  // paint. Picking a tile still applies the entry's *real* gradient/fill to
-  // the live editor (handleCuratedDesignSelect in App.svelte); only this
-  // grid's own preview is simplified.
-  function tileBackground(settings: ProjectSettings): string {
-    if (settings.backgroundKind === "color") return settings.backgroundColor;
-    if (settings.backgroundKind === "gradient") {
-      return settings.backgroundGradient.stops[0]?.color ?? "transparent";
-    }
-    return "transparent";
-  }
 </script>
 
 <ul class="gallery" aria-label={t("gallery.curatedDesignsLabel")}>
@@ -86,20 +78,12 @@
               frame: {
                 id: settings.frameId,
                 gap: settings.frameGap,
-                color: paintSolidColor(
-                  resolveProjectFramePaint(settings),
-                  "#111111",
-                ),
-                // No `fill` (matches FrameGallery): a filled Frame's cutout
-                // mask is content-hashed too — same hazard as the gradient
-                // defs above.
+                color: resolveProjectFramePaint(settings),
+                fill: resolveProjectFrameFill(settings),
               },
-              lettersColor: paintSolidColor(
-                resolveProjectLettersPaint(settings),
-                "#111111",
-              ),
+              lettersColor: resolveProjectLettersPaint(settings),
               lettersOpacity: settings.lettersOpacity,
-              background: tileBackground(settings),
+              background: resolveProjectBackground(settings),
             })}
           {/if}
         </span>
