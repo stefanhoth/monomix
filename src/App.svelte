@@ -262,14 +262,23 @@
     const settings = curatedDesignSettings(entry);
     selectedDesignId = settings.designId;
     selectedFrameId = settings.frameId;
-    applyStylingFields(settings);
+    frameGap = settings.frameGap;
+    frameColor = settings.frameColor;
+    frameColorKind = settings.frameColorKind;
+    frameGradient = structuredClone(settings.frameGradient);
+    frameFilled = settings.frameFilled;
+    lettersOpacity = settings.lettersOpacity;
+    // Deliberately never lettersColor/lettersColorKind/lettersGradient or
+    // any backgroundKind/backgroundColor/backgroundImage*/backgroundGradient
+    // field — CuratedDesignEntry's overrides type structurally can't carry
+    // them (docs/DECISIONS.md, 2026-08-08), so a Design pick never clobbers
+    // whatever the Colors step already set, and vice versa.
   }
 
   // Easy mode's curated Colors step: a preset only ever touches the letters
-  // and the background (never Frame, which the Design step already set) —
-  // see src/lib/color-presets.ts. A preset may itself be a pre-made
-  // gradient (letters or background), so applying one never has to flatten
-  // a curated Design's own gradient background down to a plain color.
+  // and the Background — the two fields Design never sets — so applying one
+  // is always a clean layer, never a fight over who owns what. See
+  // src/lib/color-presets.ts and docs/DECISIONS.md, 2026-08-08.
   function handleColorPresetSelect(preset: ColorPreset) {
     selectedColorPresetId = preset.id;
     lettersColor = preset.lettersColor;
@@ -1286,6 +1295,7 @@
         >
           {#if workspaceMode === "easy"}
             <EasyColorPicker
+              {letters}
               selectedId={selectedColorPresetId}
               onSelect={handleColorPresetSelect}
             />

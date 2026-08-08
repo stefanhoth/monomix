@@ -62,23 +62,38 @@ test("the skip path lands in the editor's Easy mode with the 'ABC' placeholder, 
   await expect(preview.locator("path")).toHaveCount(3);
 });
 
-test("picking a curated Design tile applies its real settings, without disturbing the typed letters", async ({
+test("picking a curated Design tile applies its real Frame settings, without disturbing the typed letters or the Background", async ({
   page,
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Just browsing" }).click();
 
-  await page.getByText("Letters filled with a gradient.").click();
+  await page.getByText("A Frame with its own gradient.").click();
 
   const lettersInput = page.getByLabel("Letters");
   await expect(lettersInput).toHaveValue("ABC");
 
-  // The picked tile's settings actually landed on the live editor state, not
-  // just the preview — switch to Full mode to inspect the Colors step.
+  // The picked tile's Frame settings actually landed on the live editor
+  // state, not just the preview — switch to Full mode to inspect the Colors
+  // step. Deliberately scoped to the Frame fieldset: a curated Design never
+  // touches Letters or Background (docs/DECISIONS.md, 2026-08-08), so
+  // neither fieldset's radio should have moved off its default.
   await page.getByRole("button", { name: "Full" }).click();
   await page.getByRole("tab", { name: "Colors" }).click();
   await expect(
-    page.getByRole("radio", { name: "gradient" }).first(),
+    page
+      .getByRole("group", { name: "Frame", exact: true })
+      .getByRole("radio", { name: "gradient" }),
+  ).toBeChecked();
+  await expect(
+    page
+      .getByRole("group", { name: "Letters", exact: true })
+      .getByRole("radio", { name: "gradient" }),
+  ).not.toBeChecked();
+  await expect(
+    page
+      .getByRole("group", { name: "Background", exact: true })
+      .getByRole("radio", { name: "Transparent", exact: true }),
   ).toBeChecked();
 });
 
@@ -131,7 +146,7 @@ test("curated Design tiles render their true gradient in Easy mode, and the live
   // renders every tile with its real paint, not a solid substitute — safe
   // only because App.svelte mounts it exclusively while the Design step is
   // active, never hidden-but-mounted alongside another step. Deliberately
-  // picks the gradient-letters tile, so the tile and the live preview render
+  // picks the gradient-frame tile, so the tile and the live preview render
   // the *same* content-hashed <linearGradient id> simultaneously — both
   // visible at once is fine (see NewProjectSurface's remix thumbnails,
   // docs/DECISIONS.md 2026-08-07); a *duplicate* id is not itself the
@@ -141,24 +156,26 @@ test("curated Design tiles render their true gradient in Easy mode, and the live
 
   await expect(
     page
-      .locator("li", { hasText: "Letters filled with a gradient." })
+      .locator("li", { hasText: "A Frame with its own gradient." })
       .locator("linearGradient"),
   ).toHaveCount(1);
 
-  await page.getByText("Letters filled with a gradient.").click();
+  await page.getByText("A Frame with its own gradient.").click();
 
-  // The live preview's fill genuinely resolves to a real gradient
+  // The live preview's stroke genuinely resolves to a real gradient
   // definition with real stops — not a dangling reference silently left
   // unpainted (the actual 2026-07-17 failure mode). Uses getElementById,
   // not a CSS locator: the tile's identical id duplicates this one (both
   // visible, both real — see the comment above), and a CSS `#id` selector
   // matches every duplicate, while `url(#id)` — like getElementById —
-  // resolves to exactly one.
-  const previewGroup = preview(page).locator("g[fill^='url(#']");
-  await expect(previewGroup).toHaveCount(1);
-  const fillId = await previewGroup.evaluate((el) =>
+  // resolves to exactly one. An unfilled Frame's gradient paints its
+  // *stroke*, not a `fill` (src/engine/frames.ts) — unlike the letters'
+  // glyph group, which is why this differs from the letters-gradient case.
+  const previewShape = preview(page).locator("[stroke^='url(#']");
+  await expect(previewShape).toHaveCount(1);
+  const fillId = await previewShape.evaluate((el) =>
     el
-      .getAttribute("fill")!
+      .getAttribute("stroke")!
       .replace(/^url\(#/, "")
       .replace(/\)$/, ""),
   );

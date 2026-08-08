@@ -191,29 +191,25 @@ export const dictionary = {
     en: "A plain Design — no Frame needed.",
     de: "Ein schlichtes Design – ganz ohne Rahmen.",
   },
-  "curatedDesign.caption.gradientLetters": {
-    en: "Letters filled with a gradient.",
-    de: "Buchstaben mit Verlaufsfüllung.",
-  },
   "curatedDesign.caption.gradientFrame": {
     en: "A Frame with its own gradient.",
     de: "Ein Rahmen mit eigenem Verlauf.",
   },
   "curatedDesign.caption.dottedFrame": {
-    en: "A dotted Frame with a Background color.",
-    de: "Ein gepunkteter Rahmen mit Hintergrundfarbe.",
+    en: "A dotted Frame.",
+    de: "Ein gepunkteter Rahmen.",
   },
   "curatedDesign.caption.filledFrameCutout": {
     en: "A filled Frame, cut out by the letters.",
     de: "Ein gefüllter Rahmen, von den Buchstaben ausgespart.",
   },
-  "curatedDesign.caption.gradientBackground": {
-    en: "A gradient Background.",
-    de: "Ein Verlaufshintergrund.",
-  },
   "curatedDesign.caption.dashedFrame": {
     en: "A dashed Frame.",
     de: "Ein gestrichelter Rahmen.",
+  },
+  "curatedDesign.caption.squareFrame": {
+    en: "A square Frame.",
+    de: "Ein quadratischer Rahmen.",
   },
   // Curated color presets (same brief) — Easy mode's Colors step.
   "colorPreset.label": { en: "Color presets", de: "Farbvorlagen" },

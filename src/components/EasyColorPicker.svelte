@@ -11,9 +11,11 @@
   // through the SVG engine — no <defs> involved, so none of the
   // content-hashed-id hazard EasyDesignGallery documents applies here.
   let {
+    letters,
     selectedId,
     onSelect,
   }: {
+    letters: string;
     selectedId: string | undefined;
     onSelect: (preset: ColorPreset) => void;
   } = $props();
@@ -64,7 +66,7 @@
           style:background-image={preset.lettersColorKind === "gradient" &&
           preset.lettersGradient
             ? cssGradient(preset.lettersGradient)
-            : undefined}>Aa</span
+            : undefined}>{letters || "Aa"}</span
         >
       </span>
       <span class="preset-name">{t(preset.nameKey)}</span>
@@ -108,8 +110,14 @@
   }
 
   .swatch-letter {
-    font-size: 1.1rem;
-    font-weight: 650;
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .swatch-letter-gradient {

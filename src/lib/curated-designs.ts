@@ -5,27 +5,39 @@ import type { DictKey } from "./i18n/dictionary";
 /**
  * Curated Designs (impeccable shape brief, 2026-08-08 — formerly the
  * one-time "jump-off gallery", 2026-08-07): a small hand-curated set of
- * *fully styled* starting points, rendered in Easy mode's Design step
- * (src/components/EasyDesignGallery.svelte). Each entry is a real,
- * renderable settings overlay (deliberately not the full catalog, see
- * docs/BACKLOG.md's rejected "gradient-accurate gallery tiles" — this
- * gallery is small enough to render every tile with its true paint, no
- * solid-color substitution needed).
+ * Design + Frame starting points, rendered in Easy mode's Design step
+ * (src/components/EasyDesignGallery.svelte).
  *
- * Every combination below is picked to demonstrate exactly one capability a
- * newcomer wouldn't discover by scrolling font names alone (gradient
- * letters, a filled+cut-out Frame, a gradient Background, ...) — deliberately
- * excludes a background-image example, since that needs a real photo asset
- * this repo doesn't ship one of; revisit once a licensed sample image
- * exists.
+ * Deliberately Frame-only: an entry may set the Frame's own shape/color/fill
+ * and letters *opacity* (no overlap with Colors' domain — see
+ * CuratedDesignEntry's own doc comment), but never letters color or the
+ * Background. Colors presets (src/lib/color-presets.ts) already demonstrate
+ * gradient letters and gradient backgrounds on their own; letting Design
+ * *also* set those fields meant picking any Colors preset after a
+ * color-rich Design silently discarded it — caught in review, 2026-08-08,
+ * see docs/DECISIONS.md.
  */
 export interface CuratedDesignEntry {
   id: string;
   captionKey: DictKey;
-  /** Everything a curated entry fixes, on top of DEFAULT_PROJECT_SETTINGS —
-   * never `letters`/`letterCase`, which stay whatever the visitor already
-   * has live. */
-  overrides: Partial<Omit<ProjectSettings, "letters" | "letterCase">>;
+  /** Everything a curated entry fixes, on top of DEFAULT_PROJECT_SETTINGS.
+   * Deliberately narrowed to Frame + `lettersOpacity` — never `designId`'s
+   * letters color/background counterparts, and never `letters`/`letterCase`
+   * (the visitor's own typed letters stay put). The type itself is the
+   * guarantee: a field Colors also writes cannot appear here at all. */
+  overrides: Partial<
+    Pick<
+      ProjectSettings,
+      | "designId"
+      | "frameId"
+      | "frameGap"
+      | "frameColor"
+      | "frameColorKind"
+      | "frameGradient"
+      | "frameFilled"
+      | "lettersOpacity"
+    >
+  >;
 }
 
 const GOLD_FRAME_GRADIENT: Gradient = {
@@ -37,15 +49,6 @@ const GOLD_FRAME_GRADIENT: Gradient = {
   ],
 };
 
-const SUNSET_BACKGROUND_GRADIENT: Gradient = {
-  style: "radial",
-  angle: 0,
-  stops: [
-    { color: "#ff8a65", offset: 0 },
-    { color: "#6a1b9a", offset: 100 },
-  ],
-};
-
 export const CURATED_DESIGNS: CuratedDesignEntry[] = [
   {
     id: "plain",
@@ -53,17 +56,6 @@ export const CURATED_DESIGNS: CuratedDesignEntry[] = [
     overrides: {
       designId: "poppins-classic",
       frameId: NO_FRAME_ID,
-      lettersColor: "#111111",
-    },
-  },
-  {
-    id: "gradient-letters",
-    captionKey: "curatedDesign.caption.gradientLetters",
-    overrides: {
-      designId: "kelly-slab-circle",
-      frameId: NO_FRAME_ID,
-      lettersColorKind: "gradient",
-      lettersGradient: DEFAULT_PROJECT_SETTINGS.lettersGradient,
     },
   },
   {
@@ -72,7 +64,6 @@ export const CURATED_DESIGNS: CuratedDesignEntry[] = [
     overrides: {
       designId: "playfair-display-diamond",
       frameId: "diamond",
-      lettersColor: "#1c1c1e",
       frameColorKind: "gradient",
       frameGradient: GOLD_FRAME_GRADIENT,
     },
@@ -83,10 +74,7 @@ export const CURATED_DESIGNS: CuratedDesignEntry[] = [
     overrides: {
       designId: "alex-brush-circle",
       frameId: "dotted-circle",
-      lettersColor: "#b5533c",
       frameColor: "#b5533c",
-      backgroundKind: "color",
-      backgroundColor: "#f7efe4",
     },
   },
   {
@@ -97,21 +85,7 @@ export const CURATED_DESIGNS: CuratedDesignEntry[] = [
       frameId: "circle",
       frameColor: "#16213e",
       frameFilled: true,
-      lettersColor: "#16213e",
       lettersOpacity: 0.1,
-      backgroundKind: "color",
-      backgroundColor: "#f4ede1",
-    },
-  },
-  {
-    id: "gradient-background",
-    captionKey: "curatedDesign.caption.gradientBackground",
-    overrides: {
-      designId: "alfa-slab-one-circle",
-      frameId: NO_FRAME_ID,
-      lettersColor: "#fdf8f0",
-      backgroundKind: "gradient",
-      backgroundGradient: SUNSET_BACKGROUND_GRADIENT,
     },
   },
   {
@@ -120,8 +94,16 @@ export const CURATED_DESIGNS: CuratedDesignEntry[] = [
     overrides: {
       designId: "pirata-one-circle",
       frameId: "dashed-circle",
-      lettersColor: "#1c1c1e",
       frameColor: "#7a1f2b",
+    },
+  },
+  {
+    id: "square-frame",
+    captionKey: "curatedDesign.caption.squareFrame",
+    overrides: {
+      designId: "kelly-slab-circle",
+      frameId: "square",
+      frameColor: "#1b6b57",
     },
   },
 ];
@@ -130,8 +112,9 @@ export const CURATED_DESIGNS: CuratedDesignEntry[] = [
  * own defaults, so an entry only has to state what it actually changes.
  * `letters`/`letterCase` come along from `DEFAULT_PROJECT_SETTINGS` (an
  * entry's `overrides` can never touch them); callers that apply an entry to
- * the live editor (EasyDesignGallery via App.svelte) keep whatever letters
- * are already typed instead of using this function's placeholder value. */
+ * the live editor (`handleCuratedDesignSelect` in App.svelte) apply only the
+ * Frame-domain fields, leaving letters color and Background exactly as they
+ * already were. */
 export function curatedDesignSettings(
   entry: CuratedDesignEntry,
 ): ProjectSettings {
