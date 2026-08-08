@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
-  import { scale, fly } from "svelte/transition";
+  import { scale } from "svelte/transition";
   import type { Font } from "opentype.js";
   import {
     composeMonogram,
@@ -40,10 +40,16 @@
   import { isFirstRun } from "./lib/first-run";
   import { backdropTone, BACKDROP_COLORS } from "./lib/preview-backdrop";
   import {
-    WORKSPACE_TABS,
+    tabsForMode,
     tabForKey,
     type WorkspaceTab,
   } from "./lib/workspace-tabs";
+  import {
+    getStoredWorkspaceMode,
+    storeWorkspaceMode,
+    DEFAULT_WORKSPACE_MODE,
+    type WorkspaceMode,
+  } from "./lib/workspace-mode";
   import {
     hasCompletedOnboarding,
     markOnboardingComplete,
@@ -91,8 +97,13 @@
   import FrameGallery from "./components/FrameGallery.svelte";
   import NewProjectSurface from "./components/NewProjectSurface.svelte";
   import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
-  import JumpOffGallery from "./components/JumpOffGallery.svelte";
-  import { jumpOffSettings, type JumpOffEntry } from "./lib/jump-off-gallery";
+  import EasyDesignGallery from "./components/EasyDesignGallery.svelte";
+  import EasyColorPicker from "./components/EasyColorPicker.svelte";
+  import {
+    curatedDesignSettings,
+    type CuratedDesignEntry,
+  } from "./lib/curated-designs";
+  import type { ColorPreset } from "./lib/color-presets";
   import LocaleSwitcher from "./components/LocaleSwitcher.svelte";
   import WhatsNewPanel from "./components/WhatsNewPanel.svelte";
 
@@ -184,29 +195,106 @@
 
   let onboardingComplete = $state(untrack(() => hasCompletedOnboarding()));
 
-  // Sidebar tab (issue #47). Tabs are views over the same live editor
-  // state, never gates — all editable state lives in the $state vars above,
-  // so switching tabs can't lose anything. All four panels stay mounted
-  // (toggled via the `hidden` attribute) so e.g. the Design gallery's
-  // scroll position survives a round-trip through the Colors tab.
+  // Sidebar rail (issue #47, restyled as a connected sequence per the
+  // impeccable shape brief 2026-08-08). Steps are views over the same live
+  // editor state, never gates — all editable state lives in the $state vars
+  // above, so switching steps can't lose anything. All four panels stay
+  // mounted (toggled via the `hidden` attribute) so e.g. the Design
+  // gallery's scroll position survives a round-trip through the Colors
+  // step.
   let activeTab: WorkspaceTab = $state("design");
+
+  // Easy/Full mode (impeccable shape brief, 2026-08-08): a persistent,
+  // always-available toggle — Easy surfaces a curated Design gallery, a
+  // handful of curated color presets, and Export; Full is today's complete
+  // rail. Defaults to "full" for anyone with no stored preference (a
+  // pre-existing user); `completeOnboarding` below is the one call site
+  // that opts a genuinely fresh visitor into "easy" explicitly.
+  let workspaceMode: WorkspaceMode = $state(
+    untrack(() => getStoredWorkspaceMode() ?? DEFAULT_WORKSPACE_MODE),
+  );
+  let visibleTabs = $derived(tabsForMode(workspaceMode));
+
+  function setWorkspaceMode(mode: WorkspaceMode) {
+    workspaceMode = mode;
+    storeWorkspaceMode(mode);
+  }
+
+  // Easy mode hides the Frame step (tabsForMode) — if the active step is no
+  // longer visible (Frame was open when the visitor switched to Easy), fall
+  // back to Design rather than leaving a hidden step "selected".
+  $effect(() => {
+    if (!visibleTabs.includes(activeTab)) {
+      activeTab = "design";
+    }
+  });
 
   // WAI-ARIA tabs keyboard pattern with automatic activation: arrows move
   // both focus and selection. tabForKey returns undefined for keys the
   // tablist doesn't own (Tab, characters, ...) — those must keep their
   // default behavior. Attached to each tab button (the focusable elements),
-  // not the tablist container.
+  // not the tablist container. Takes `visibleTabs`, not the full constant,
+  // so Easy mode's narrower rail never lands focus on a hidden step.
   function handleTabKeydown(
     event: KeyboardEvent & { currentTarget: HTMLButtonElement },
   ) {
-    const next = tabForKey(activeTab, event.key);
+    const next = tabForKey(visibleTabs, activeTab, event.key);
     if (!next) return;
     event.preventDefault();
     activeTab = next;
-    showCoachHint = false;
     event.currentTarget.parentElement
       ?.querySelector<HTMLButtonElement>(`#tab-${next}`)
       ?.focus();
+  }
+
+  // Easy mode's curated Colors step (src/lib/color-presets.ts) tracks which
+  // preset was last applied, purely for the swatch's own selected ring —
+  // same non-authoritative role selectedDesignId plays for the full Design
+  // gallery.
+  let selectedColorPresetId: string | undefined = $state(undefined);
+
+  // Easy mode's curated Design step (src/lib/curated-designs.ts): applies a
+  // curated entry's Design + Frame + colors onto the live editor state via
+  // applyStylingFields (defined below, next to switchToProject — its other
+  // caller), but never touches letters/letterCase/identity — the visitor's
+  // own typed letters and the active Project stay put.
+  function handleCuratedDesignSelect(entry: CuratedDesignEntry) {
+    const settings = curatedDesignSettings(entry);
+    selectedDesignId = settings.designId;
+    selectedFrameId = settings.frameId;
+    frameGap = settings.frameGap;
+    frameColor = settings.frameColor;
+    frameColorKind = settings.frameColorKind;
+    frameGradient = structuredClone(settings.frameGradient);
+    frameFilled = settings.frameFilled;
+    lettersOpacity = settings.lettersOpacity;
+    // Deliberately never lettersColor/lettersColorKind/lettersGradient or
+    // any backgroundKind/backgroundColor/backgroundImage*/backgroundGradient
+    // field — CuratedDesignEntry's overrides type structurally can't carry
+    // them (docs/DECISIONS.md, 2026-08-08), so a Design pick never clobbers
+    // whatever the Colors step already set, and vice versa.
+  }
+
+  // Easy mode's curated Colors step: a preset only ever touches the letters
+  // and the Background — the two fields Design never sets — so applying one
+  // is always a clean layer, never a fight over who owns what. See
+  // src/lib/color-presets.ts and docs/DECISIONS.md, 2026-08-08.
+  function handleColorPresetSelect(preset: ColorPreset) {
+    selectedColorPresetId = preset.id;
+    lettersColor = preset.lettersColor;
+    lettersColorKind = preset.lettersColorKind ?? "color";
+    if (preset.lettersGradient) {
+      lettersGradient = structuredClone(preset.lettersGradient);
+    }
+    backgroundKind = preset.backgroundKind;
+    if (preset.backgroundKind === "color") {
+      backgroundColor = preset.backgroundColor;
+    } else if (
+      preset.backgroundKind === "gradient" &&
+      preset.backgroundGradient
+    ) {
+      backgroundGradient = structuredClone(preset.backgroundGradient);
+    }
   }
 
   // What's new panel (issue #17, ADR 0005): lastSeenChangelogId starts from
@@ -491,23 +579,43 @@
     letterCase = project.letterCase;
     selectedDesignId = project.designId;
     selectedFrameId = project.frameId;
-    frameGap = project.frameGap;
-    lettersColor = project.lettersColor;
-    lettersColorKind = project.lettersColorKind;
-    lettersGradient = structuredClone(project.lettersGradient);
-    lettersOpacity = project.lettersOpacity;
-    frameColor = project.frameColor;
-    frameColorKind = project.frameColorKind;
-    frameGradient = structuredClone(project.frameGradient);
-    frameFilled = project.frameFilled;
-    backgroundKind = project.backgroundKind;
-    backgroundColor = project.backgroundColor;
-    backgroundImage = project.backgroundImage;
-    backgroundImageZoom = project.backgroundImageZoom;
-    backgroundImageOffsetX = project.backgroundImageOffsetX;
-    backgroundImageOffsetY = project.backgroundImageOffsetY;
+    applyStylingFields(project);
+  }
+
+  /**
+   * Every color/Frame-appearance field `switchToProject`, `handleCuratedDesignSelect`,
+   * and `handleDeleteProject`'s no-Projects-left fallback all need to apply
+   * onto the live editor state — everything in `ProjectSettings` except
+   * `letters`/`letterCase` (not styling) and `designId`/`frameId` (each
+   * caller has its own reason to assign those explicitly: a plain id for
+   * two of the three callers, but the delete fallback resets `selectedDesignId`
+   * to `undefined` rather than a concrete id, so it can keep gracefully
+   * re-resolving via `resolveSelectedDesignId` — folding that into this
+   * shared helper would erase that distinction).
+   */
+  function applyStylingFields(
+    settings: Omit<
+      ProjectSettings,
+      "letters" | "letterCase" | "designId" | "frameId"
+    >,
+  ) {
+    frameGap = settings.frameGap;
+    lettersColor = settings.lettersColor;
+    lettersColorKind = settings.lettersColorKind;
+    lettersGradient = structuredClone(settings.lettersGradient);
+    lettersOpacity = settings.lettersOpacity;
+    frameColor = settings.frameColor;
+    frameColorKind = settings.frameColorKind;
+    frameGradient = structuredClone(settings.frameGradient);
+    frameFilled = settings.frameFilled;
+    backgroundKind = settings.backgroundKind;
+    backgroundColor = settings.backgroundColor;
+    backgroundImage = settings.backgroundImage;
+    backgroundImageZoom = settings.backgroundImageZoom;
+    backgroundImageOffsetX = settings.backgroundImageOffsetX;
+    backgroundImageOffsetY = settings.backgroundImageOffsetY;
     backgroundImageError = null;
-    backgroundGradient = structuredClone(project.backgroundGradient);
+    backgroundGradient = structuredClone(settings.backgroundGradient);
   }
 
   async function refreshProjects() {
@@ -711,72 +819,33 @@
 
   // Shared by both onboarding exits (submit and skip): creates and persists
   // the first Project (design guidance for #14: "submitting initials /
-  // skipping should create the first Project"), makes it active (sets the
-  // real letters immediately, bypassing the 200ms gallery debounce below,
-  // so the reveal shows the user's actual letters from the first frame, not
-  // a stale default), and marks onboarding complete so it never shows again.
-  // `baseSettings` defaults to the app's own defaults; the jump-off gallery
-  // below passes a curated overlay instead when the visitor picked one.
-  async function completeOnboarding(
-    nextLetters: string,
-    baseSettings: ProjectSettings = DEFAULT_PROJECT_SETTINGS,
-  ) {
+  // skipping should create the first Project"), makes it active, marks
+  // onboarding complete so it never shows again, and lands the visitor
+  // straight in the real editor in Easy mode (impeccable shape brief,
+  // 2026-08-08) — Easy mode's own curated Design gallery is now the first
+  // concrete look at what the app can do, replacing the old one-time
+  // jump-off gallery + coach-hint step (docs/DECISIONS.md).
+  async function completeOnboarding(nextLetters: string) {
     const project = createProject({
-      ...baseSettings,
+      ...DEFAULT_PROJECT_SETTINGS,
       letters: nextLetters,
     });
     switchToProject(project);
     markOnboardingComplete();
     onboardingComplete = true;
+    setWorkspaceMode("easy");
     await projectStore.put(project);
     await refreshProjects();
   }
 
-  // The jump-off gallery (impeccable shape brief, 2026-08-07): a step
-  // between the initials prompt and the editor. The initials prompt no
-  // longer completes onboarding itself — it hands the letters off here, and
-  // completeOnboarding only runs once the visitor either picks a curated
-  // starting point or explicitly skips to the full Design grid. Plain
-  // in-memory state, not persisted: losing it on a reload mid-flow just
-  // means falling back to the initials prompt again, which is harmless.
-  let showJumpOff = $state(false);
-  let pendingOnboardingLetters = $state("ABC");
-
-  // A one-time nudge at the tab bar right after a first-run visitor lands in
-  // the real editor (from either jump-off exit). Deliberately not persisted
-  // to localStorage: it only ever needs to survive the current session, and
-  // never showing it again after a reload is the safe failure direction
-  // (onboard.md: never show the same hint twice).
-  let showCoachHint = $state(false);
-
   function handleOnboardingSubmit(submittedLetters: string) {
-    pendingOnboardingLetters = submittedLetters;
-    showJumpOff = true;
+    void completeOnboarding(submittedLetters);
   }
 
   // Skip / "just browsing" (issue #13 AC): defaults to a pleasant
   // placeholder rather than dead-ending on an empty monogram.
   function handleOnboardingSkip() {
-    pendingOnboardingLetters = "ABC";
-    showJumpOff = true;
-  }
-
-  function handleJumpOffPick(entry: JumpOffEntry) {
-    void completeOnboarding(pendingOnboardingLetters, jumpOffSettings(entry));
-    showJumpOff = false;
-    showCoachHint = true;
-  }
-
-  // "See all designs instead" (shape brief's escape hatch): lands exactly
-  // where onboarding used to land before the jump-off gallery existed.
-  function handleJumpOffSkip() {
-    void completeOnboarding(pendingOnboardingLetters);
-    showJumpOff = false;
-    showCoachHint = true;
-  }
-
-  function dismissCoachHint() {
-    showCoachHint = false;
+    void completeOnboarding("ABC");
   }
 
   // The New surface (issue #48): the topbar "New" button opens an overlay
@@ -851,6 +920,9 @@
         // defaults the app shipped with pre-#14, since there's nothing left
         // to hydrate from. onboardingComplete stays true (a one-way flag,
         // see #13), so this does not bring the onboarding prompt back.
+        // selectedDesignId resets to undefined (not a concrete id) so it
+        // keeps gracefully re-resolving via resolveSelectedDesignId — see
+        // applyStylingFields' docstring.
         activeProjectMeta = undefined;
         lastSavedSettings = undefined;
         letters = DEFAULT_PROJECT_SETTINGS.letters;
@@ -858,29 +930,7 @@
         letterCase = DEFAULT_PROJECT_SETTINGS.letterCase;
         selectedDesignId = undefined;
         selectedFrameId = DEFAULT_PROJECT_SETTINGS.frameId;
-        frameGap = DEFAULT_PROJECT_SETTINGS.frameGap;
-        lettersColor = DEFAULT_PROJECT_SETTINGS.lettersColor;
-        lettersColorKind = DEFAULT_PROJECT_SETTINGS.lettersColorKind;
-        lettersGradient = structuredClone(
-          DEFAULT_PROJECT_SETTINGS.lettersGradient,
-        );
-        lettersOpacity = DEFAULT_PROJECT_SETTINGS.lettersOpacity;
-        frameColor = DEFAULT_PROJECT_SETTINGS.frameColor;
-        frameColorKind = DEFAULT_PROJECT_SETTINGS.frameColorKind;
-        frameGradient = structuredClone(DEFAULT_PROJECT_SETTINGS.frameGradient);
-        frameFilled = DEFAULT_PROJECT_SETTINGS.frameFilled;
-        backgroundKind = DEFAULT_PROJECT_SETTINGS.backgroundKind;
-        backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
-        backgroundImage = DEFAULT_PROJECT_SETTINGS.backgroundImage;
-        backgroundImageZoom = DEFAULT_PROJECT_SETTINGS.backgroundImageZoom;
-        backgroundImageOffsetX =
-          DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX;
-        backgroundImageOffsetY =
-          DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY;
-        backgroundImageError = null;
-        backgroundGradient = structuredClone(
-          DEFAULT_PROJECT_SETTINGS.backgroundGradient,
-        );
+        applyStylingFields(DEFAULT_PROJECT_SETTINGS);
       }
     }
     await refreshProjects();
@@ -1065,14 +1115,6 @@
        on its result, so neither can render first. In practice this is a
        single local IndexedDB read (sub-millisecond to a few ms), well
        within Design Principle 2's "fast first result." -->
-{:else if showJumpOff}
-  <JumpOffGallery
-    letters={pendingOnboardingLetters}
-    {fonts}
-    onPick={handleJumpOffPick}
-    onSkip={handleJumpOffSkip}
-    {reducedMotion}
-  />
 {:else if showOnboarding}
   <OnboardingPrompt
     onSubmit={handleOnboardingSubmit}
@@ -1118,26 +1160,42 @@
     </header>
 
     <aside class="sidebar">
-      {#if showCoachHint}
-        <div
-          class="coach-hint"
-          role="note"
-          transition:fly={{ y: -8, duration: reducedMotion ? 0 : 150 }}
+      <div
+        class="mode-toggle"
+        role="group"
+        aria-label={t("workspaceMode.label")}
+      >
+        <button
+          type="button"
+          aria-pressed={workspaceMode === "easy"}
+          onclick={() => setWorkspaceMode("easy")}
         >
-          <p>{t("coachHint.text")}</p>
-          <button
-            type="button"
-            class="coach-hint-dismiss"
-            aria-label={t("coachHint.dismiss")}
-            onclick={dismissCoachHint}
-          >
-            &times;
-          </button>
-        </div>
-      {/if}
+          {t("workspaceMode.easy")}
+        </button>
+        <button
+          type="button"
+          aria-pressed={workspaceMode === "full"}
+          onclick={() => setWorkspaceMode("full")}
+        >
+          {t("workspaceMode.full")}
+        </button>
+      </div>
 
-      <div class="tablist" role="tablist" aria-label={t("tabs.label")}>
-        {#each WORKSPACE_TABS as tab (tab)}
+      <!-- Rail (issue #47, restyled per the impeccable shape brief,
+           2026-08-08): numbered, connected steps rather than flat tabs, so
+           Design -> Frame -> Colors -> Export reads as one sequence to move
+           through, not four unrelated panels — while staying fully
+           non-linear (every step stays reachable in any order, exactly as
+           before). --backdrop-count sizes the connecting track (below) to
+           however many steps Easy/Full mode currently shows. -->
+      <div
+        class="rail"
+        role="tablist"
+        aria-label={t("tabs.label")}
+        style:--rail-count={visibleTabs.length}
+      >
+        <div class="rail-track" aria-hidden="true"></div>
+        {#each visibleTabs as tab, i (tab)}
           <button
             type="button"
             role="tab"
@@ -1145,13 +1203,14 @@
             aria-selected={activeTab === tab}
             aria-controls={`panel-${tab}`}
             tabindex={activeTab === tab ? 0 : -1}
+            class="rail-step"
             onclick={() => {
               activeTab = tab;
-              showCoachHint = false;
             }}
             onkeydown={handleTabKeydown}
           >
-            {t(`tabs.${tab}`)}
+            <span class="rail-index" aria-hidden="true">{i + 1}</span>
+            <span class="rail-label">{t(`tabs.${tab}`)}</span>
           </button>
         {/each}
       </div>
@@ -1164,15 +1223,32 @@
           aria-labelledby="tab-design"
           hidden={activeTab !== "design"}
         >
-          <DesignGallery
-            designs={availableDesigns}
-            letters={debouncedLetters}
-            {fonts}
-            lettersColor={lettersTileColor}
-            selectedId={resolvedDesignId}
-            onSelect={(id) => (selectedDesignId = id)}
-            {reducedMotion}
-          />
+          {#if workspaceMode === "easy"}
+            <!-- Only mounted while this is the active step (true unmount,
+                 not `hidden`): EasyDesignGallery renders every tile's true
+                 gradient/fill, and a content-hashed <defs>/<mask> id only
+                 corrupts other references while sitting in a display:none
+                 subtree, never while genuinely absent from the DOM — see
+                 its own doc comment and docs/DECISIONS.md, 2026-08-08. -->
+            {#if activeTab === "design"}
+              <EasyDesignGallery
+                letters={debouncedLetters}
+                {fonts}
+                onSelect={handleCuratedDesignSelect}
+                {reducedMotion}
+              />
+            {/if}
+          {:else}
+            <DesignGallery
+              designs={availableDesigns}
+              letters={debouncedLetters}
+              {fonts}
+              lettersColor={lettersTileColor}
+              selectedId={resolvedDesignId}
+              onSelect={(id) => (selectedDesignId = id)}
+              {reducedMotion}
+            />
+          {/if}
         </div>
 
         <div
@@ -1217,193 +1293,204 @@
           aria-labelledby="tab-colors"
           hidden={activeTab !== "colors"}
         >
-          <div class="color-controls">
-            <PaintPicker
-              legend={t("color.lettersSection")}
-              name="letters"
-              gradientLabel={t("color.lettersGradient")}
-              colorLabel={t("color.letters")}
-              bind:kind={lettersColorKind}
-              bind:color={lettersColor}
-              bind:gradient={lettersGradient}
+          {#if workspaceMode === "easy"}
+            <EasyColorPicker
+              {letters}
+              selectedId={selectedColorPresetId}
+              onSelect={handleColorPresetSelect}
             />
-            <div class="opacity-control">
+          {:else}
+            <div class="color-controls">
+              <PaintPicker
+                legend={t("color.lettersSection")}
+                name="letters"
+                gradientLabel={t("color.lettersGradient")}
+                colorLabel={t("color.letters")}
+                bind:kind={lettersColorKind}
+                bind:color={lettersColor}
+                bind:gradient={lettersGradient}
+              />
+              <div class="opacity-control">
+                <label>
+                  {t("color.lettersOpacity")}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={Math.round(lettersOpacity * 100)}
+                    oninput={handleLettersOpacityInput}
+                  />
+                </label>
+                <output class="opacity-value"
+                  >{Math.round(lettersOpacity * 100)}%</output
+                >
+              </div>
+              <PaintPicker
+                legend={t("color.frameSection")}
+                name="frame"
+                gradientLabel={t("color.frameGradient")}
+                colorLabel={t("color.frame")}
+                bind:kind={frameColorKind}
+                bind:color={frameColor}
+                bind:gradient={frameGradient}
+              />
               <label>
-                {t("color.lettersOpacity")}
+                {t("color.frameFilled")}
                 <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={Math.round(lettersOpacity * 100)}
-                  oninput={handleLettersOpacityInput}
+                  type="checkbox"
+                  bind:checked={frameFilled}
+                  disabled={selectedFrameId === NO_FRAME_ID}
                 />
               </label>
-              <output class="opacity-value"
-                >{Math.round(lettersOpacity * 100)}%</output
-              >
-            </div>
-            <PaintPicker
-              legend={t("color.frameSection")}
-              name="frame"
-              gradientLabel={t("color.frameGradient")}
-              colorLabel={t("color.frame")}
-              bind:kind={frameColorKind}
-              bind:color={frameColor}
-              bind:gradient={frameGradient}
-            />
-            <label>
-              {t("color.frameFilled")}
-              <input
-                type="checkbox"
-                bind:checked={frameFilled}
-                disabled={selectedFrameId === NO_FRAME_ID}
-              />
-            </label>
-            <fieldset class="paint-kind background-kind">
-              <legend>{t("color.background")}</legend>
-              <div class="kind-options">
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="background-kind"
-                    value="transparent"
-                    bind:group={backgroundKind}
-                  />
-                  {t("color.backgroundTransparent")}
-                </label>
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="background-kind"
-                    value="color"
-                    bind:group={backgroundKind}
-                  />
-                  {t("color.backgroundSolid")}
-                </label>
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="background-kind"
-                    value="image"
-                    bind:group={backgroundKind}
-                  />
-                  {t("color.backgroundImage")}
-                </label>
-                <label class="kind-option">
-                  <input
-                    type="radio"
-                    name="background-kind"
-                    value="gradient"
-                    bind:group={backgroundKind}
-                  />
-                  {t("color.backgroundGradient")}
-                </label>
-              </div>
+              <fieldset class="paint-kind background-kind">
+                <legend>{t("color.background")}</legend>
+                <div class="kind-options">
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="transparent"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundTransparent")}
+                  </label>
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="color"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundSolid")}
+                  </label>
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="image"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundImage")}
+                  </label>
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="gradient"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundGradient")}
+                  </label>
+                </div>
 
-              {#if backgroundKind === "color"}
-                <label class="sub-control">
-                  {t("color.backgroundColorInput")}
-                  <input type="color" bind:value={backgroundColor} />
-                </label>
-              {:else if backgroundKind === "image"}
-                <div class="sub-control image-control">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    aria-label={t("color.backgroundImageUpload")}
-                    onchange={handleBackgroundImageInput}
-                  />
-                  {#if backgroundImage}
-                    <div class="image-preview-row">
-                      <span class="image-preview checkerboard">
-                        <img
-                          src={backgroundImage}
-                          alt=""
-                          style:left={`${thumbPlacement.x}%`}
-                          style:top={`${thumbPlacement.y}%`}
-                          style:width={`${thumbPlacement.size}%`}
-                          style:height={`${thumbPlacement.size}%`}
-                        />
-                      </span>
-                      <button
-                        type="button"
-                        onclick={handleRemoveBackgroundImage}
-                      >
-                        {t("color.backgroundImageRemove")}
-                      </button>
-                    </div>
-                    <!-- Zoom + pan (issue #123). Sliders are the accessible
+                {#if backgroundKind === "color"}
+                  <label class="sub-control">
+                    {t("color.backgroundColorInput")}
+                    <input type="color" bind:value={backgroundColor} />
+                  </label>
+                {:else if backgroundKind === "image"}
+                  <div class="sub-control image-control">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      aria-label={t("color.backgroundImageUpload")}
+                      onchange={handleBackgroundImageInput}
+                    />
+                    {#if backgroundImage}
+                      <div class="image-preview-row">
+                        <span class="image-preview checkerboard">
+                          <img
+                            src={backgroundImage}
+                            alt=""
+                            style:left={`${thumbPlacement.x}%`}
+                            style:top={`${thumbPlacement.y}%`}
+                            style:width={`${thumbPlacement.size}%`}
+                            style:height={`${thumbPlacement.size}%`}
+                          />
+                        </span>
+                        <button
+                          type="button"
+                          onclick={handleRemoveBackgroundImage}
+                        >
+                          {t("color.backgroundImageRemove")}
+                        </button>
+                      </div>
+                      <!-- Zoom + pan (issue #123). Sliders are the accessible
                          path to the same fields drag-to-pan writes; the
                          offset pair is disabled at 1x because there is no
                          slack to move into. -->
-                    <div class="image-transform">
-                      <div class="transform-row">
-                        <label>
-                          {t("color.backgroundImageZoom")}
-                          <input
-                            type="range"
-                            min={MIN_IMAGE_ZOOM}
-                            max={MAX_IMAGE_ZOOM}
-                            step="0.05"
-                            bind:value={backgroundImageZoom}
-                          />
-                        </label>
-                        <output>{Math.round(backgroundImageZoom * 100)}%</output
-                        >
+                      <div class="image-transform">
+                        <div class="transform-row">
+                          <label>
+                            {t("color.backgroundImageZoom")}
+                            <input
+                              type="range"
+                              min={MIN_IMAGE_ZOOM}
+                              max={MAX_IMAGE_ZOOM}
+                              step="0.05"
+                              bind:value={backgroundImageZoom}
+                            />
+                          </label>
+                          <output
+                            >{Math.round(backgroundImageZoom * 100)}%</output
+                          >
+                        </div>
+                        <div class="transform-row">
+                          <label>
+                            {t("color.backgroundImageOffsetX")}
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.01"
+                              disabled={!canPanBackground}
+                              bind:value={backgroundImageOffsetX}
+                            />
+                          </label>
+                          <output>
+                            {Math.round(backgroundImageOffsetX * 100)}%
+                          </output>
+                        </div>
+                        <div class="transform-row">
+                          <label>
+                            {t("color.backgroundImageOffsetY")}
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.01"
+                              disabled={!canPanBackground}
+                              bind:value={backgroundImageOffsetY}
+                            />
+                          </label>
+                          <output>
+                            {Math.round(backgroundImageOffsetY * 100)}%
+                          </output>
+                        </div>
+                        <p class="form-note">
+                          {canPanBackground
+                            ? t("color.backgroundImageDragHint")
+                            : t("color.backgroundImageZoomHint")}
+                        </p>
                       </div>
-                      <div class="transform-row">
-                        <label>
-                          {t("color.backgroundImageOffsetX")}
-                          <input
-                            type="range"
-                            min="-1"
-                            max="1"
-                            step="0.01"
-                            disabled={!canPanBackground}
-                            bind:value={backgroundImageOffsetX}
-                          />
-                        </label>
-                        <output>
-                          {Math.round(backgroundImageOffsetX * 100)}%
-                        </output>
-                      </div>
-                      <div class="transform-row">
-                        <label>
-                          {t("color.backgroundImageOffsetY")}
-                          <input
-                            type="range"
-                            min="-1"
-                            max="1"
-                            step="0.01"
-                            disabled={!canPanBackground}
-                            bind:value={backgroundImageOffsetY}
-                          />
-                        </label>
-                        <output>
-                          {Math.round(backgroundImageOffsetY * 100)}%
-                        </output>
-                      </div>
-                      <p class="form-note">
-                        {canPanBackground
-                          ? t("color.backgroundImageDragHint")
-                          : t("color.backgroundImageZoomHint")}
+                    {/if}
+                    {#if backgroundImageError}
+                      <p class="form-hint" role="alert">
+                        {backgroundImageError}
                       </p>
-                    </div>
-                  {/if}
-                  {#if backgroundImageError}
-                    <p class="form-hint" role="alert">{backgroundImageError}</p>
-                  {/if}
-                </div>
-              {:else if backgroundKind === "gradient"}
-                <GradientEditor
-                  bind:gradient={backgroundGradient}
-                  name="background"
-                  label={t("color.backgroundGradient")}
-                />
-              {/if}
-            </fieldset>
-          </div>
+                    {/if}
+                  </div>
+                {:else if backgroundKind === "gradient"}
+                  <GradientEditor
+                    bind:gradient={backgroundGradient}
+                    name="background"
+                    label={t("color.backgroundGradient")}
+                  />
+                {/if}
+              </fieldset>
+            </div>
+          {/if}
         </div>
 
         <div
@@ -1643,7 +1730,7 @@
     width: 0.4rem;
     height: 0.4rem;
     border-radius: 50%;
-    background: light-dark(#0b57d0, #a8c7fa);
+    background: var(--accent);
   }
 
   .sr-only {
@@ -1676,59 +1763,109 @@
     background: light-dark(#fafafa, #161618);
   }
 
-  .coach-hint {
+  /* Mode toggle (impeccable shape brief, 2026-08-08): same segmented-control
+     look as the canvas zone's case toggle further down, deliberately kept
+     as its own small class rather than shared — the two toggle unrelated
+     things and happen to look alike by coincidence, not by system. */
+  .mode-toggle {
     display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
+    align-self: flex-start;
     margin: 0.6rem 0.75rem 0;
-    padding: 0.6rem 0.75rem;
-    border-radius: 0.5rem;
-    background: light-dark(#e8f0fe, #1a2c4d);
-    color: light-dark(#0b3a91, #a8c7fa);
+    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+    border-radius: 0.4rem;
+    overflow: hidden;
   }
 
-  .coach-hint p {
-    flex: 1;
-    margin: 0;
-    font-size: 0.8125rem;
-    line-height: 1.4;
-  }
-
-  .coach-hint-dismiss {
-    flex-shrink: 0;
+  .mode-toggle button {
     font: inherit;
-    font-size: 1rem;
-    line-height: 1;
-    padding: 0;
-    background: none;
+    font-size: var(--control-label-size);
+    padding: 0.3rem 0.65rem;
     border: none;
-    color: inherit;
-    cursor: pointer;
-  }
-
-  .tablist {
-    display: flex;
-    gap: 0.25rem;
-    padding: 0.4rem 0.75rem 0;
-    border-bottom: 1px solid light-dark(#e2e2e2, #2a2a2c);
-  }
-
-  .tablist [role="tab"] {
-    flex: 1;
-    font: inherit;
-    font-size: 0.875rem;
-    padding: 0.5rem 0.25rem;
     background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
     color: light-dark(#555, #aaa);
     cursor: pointer;
   }
 
-  .tablist [role="tab"][aria-selected="true"] {
-    color: light-dark(#0b57d0, #a8c7fa);
-    border-bottom-color: currentColor;
+  .mode-toggle button + button {
+    border-left: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .mode-toggle button[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-contrast);
     font-weight: 600;
+  }
+
+  /* Rail (issue #47, restyled as a connected sequence per the impeccable
+     shape brief 2026-08-08): a numbered track behind every step's circle,
+     drawn once as a single line spanning from the first step's circle
+     center to the last step's — not per-segment — so it never depends on
+     exact circle spacing and adapts automatically to Easy mode's shorter,
+     3-step rail via --rail-count. */
+  .rail {
+    position: relative;
+    display: flex;
+    padding: 0.6rem 0.75rem 0.5rem;
+    border-bottom: 1px solid light-dark(#e2e2e2, #2a2a2c);
+  }
+
+  .rail-track {
+    position: absolute;
+    top: 1.35rem;
+    left: calc(50% / var(--rail-count));
+    right: calc(50% / var(--rail-count));
+    height: 2px;
+    background: light-dark(#e2e2e2, #333);
+  }
+
+  .rail-step {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    font: inherit;
+    background: none;
+    border: none;
+    padding: 0.15rem 0.25rem;
+    cursor: pointer;
+  }
+
+  .rail-index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 2px solid light-dark(#d5d5d5, #3a3a3c);
+    background: light-dark(#fafafa, #161618);
+    color: light-dark(#777, #999);
+    font-size: 0.75rem;
+    font-weight: var(--step-label-weight);
+  }
+
+  .rail-label {
+    font-size: var(--control-label-size);
+    color: light-dark(#555, #aaa);
+  }
+
+  .rail-step[aria-selected="true"] .rail-index {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-contrast);
+  }
+
+  .rail-step[aria-selected="true"] .rail-label {
+    color: var(--accent);
+    font-weight: var(--step-label-weight);
+    font-size: var(--step-label-size);
+  }
+
+  .rail-step:hover .rail-index,
+  .rail-step:focus-visible .rail-index {
+    border-color: var(--accent);
   }
 
   .sidebar-content {
@@ -1745,16 +1882,17 @@
   }
 
   /* Restarts every time a panel un-hides (CSS animations don't run while
-     display: none), so tab switches get a light glide without any JS —
-     and none at all under prefers-reduced-motion. */
+     display: none), so moving along the rail reads as advancing forward
+     rather than a flat panel swap — and none at all under
+     prefers-reduced-motion. */
   .panel {
-    animation: panel-in 160ms ease;
+    animation: panel-in 200ms ease;
   }
 
   @keyframes panel-in {
     from {
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateY(8px) scale(0.99);
     }
   }
 
@@ -1818,8 +1956,8 @@
   }
 
   .case-toggle button[aria-pressed="true"] {
-    background: light-dark(#0b57d0, #a8c7fa);
-    color: light-dark(#fff, #1c1c1e);
+    background: var(--accent);
+    color: var(--accent-contrast);
     font-weight: 600;
   }
 
@@ -2150,8 +2288,8 @@
     margin: 0 0 0.75rem;
     padding: 0.6rem 0.75rem;
     border-radius: 0.4rem;
-    background: light-dark(#eef3fd, #1b2436);
-    color: light-dark(#0b3b8c, #a8c7fa);
+    background: light-dark(#f0f0f0, #232325);
+    color: light-dark(#333, #ccc);
     font-size: 0.875rem;
     line-height: 1.4;
   }

@@ -141,6 +141,10 @@ export const dictionary = {
   "share.noticeDismiss": { en: "Dismiss", de: "Ausblenden" },
   "gallery.designsLabel": { en: "Designs", de: "Designs" },
   "gallery.framesLabel": { en: "Frames", de: "Rahmen" },
+  "gallery.curatedDesignsLabel": {
+    en: "Curated starting points",
+    de: "Ausgewählte Ausgangspunkte",
+  },
   "tabs.label": { en: "Editor sections", de: "Editor-Bereiche" },
   "tabs.design": { en: "Design", de: "Design" },
   "tabs.frame": { en: "Frame", de: "Rahmen" },
@@ -173,55 +177,54 @@ export const dictionary = {
     de: "Mein Monogramm ansehen",
   },
   "onboarding.skip": { en: "Just browsing", de: "Nur stöbern" },
-  // The jump-off gallery (impeccable shape brief, 2026-08-07): shown once,
-  // right after the initials prompt, before the full Design grid.
-  "jumpOff.heading": {
-    en: "Here's what your initials can look like",
-    de: "So können deine Initialen aussehen",
+  // Easy/Full workspace mode (impeccable shape brief, 2026-08-08): a
+  // persistent toggle, not a one-time step — see docs/DECISIONS.md.
+  "workspaceMode.label": {
+    en: "Workspace mode",
+    de: "Arbeitsmodus",
   },
-  "jumpOff.intro": {
-    en: "Pick one to start from, or explore every Design yourself.",
-    de: "Wähle eins als Ausgangspunkt oder entdecke alle Designs selbst.",
-  },
-  "jumpOff.skip": {
-    en: "See all designs instead",
-    de: "Stattdessen alle Designs ansehen",
-  },
-  "jumpOff.caption.plain": {
+  "workspaceMode.easy": { en: "Easy", de: "Einfach" },
+  "workspaceMode.full": { en: "Full", de: "Vollständig" },
+  // Curated Designs (same brief; formerly the one-time "jump-off gallery",
+  // 2026-08-07) — Easy mode's persistent Design step.
+  "curatedDesign.caption.plain": {
     en: "A plain Design — no Frame needed.",
     de: "Ein schlichtes Design – ganz ohne Rahmen.",
   },
-  "jumpOff.caption.gradientLetters": {
-    en: "Letters filled with a gradient.",
-    de: "Buchstaben mit Verlaufsfüllung.",
-  },
-  "jumpOff.caption.gradientFrame": {
+  "curatedDesign.caption.gradientFrame": {
     en: "A Frame with its own gradient.",
     de: "Ein Rahmen mit eigenem Verlauf.",
   },
-  "jumpOff.caption.dottedFrame": {
-    en: "A dotted Frame with a Background color.",
-    de: "Ein gepunkteter Rahmen mit Hintergrundfarbe.",
+  "curatedDesign.caption.dottedFrame": {
+    en: "A dotted Frame.",
+    de: "Ein gepunkteter Rahmen.",
   },
-  "jumpOff.caption.filledFrameCutout": {
+  "curatedDesign.caption.filledFrameCutout": {
     en: "A filled Frame, cut out by the letters.",
     de: "Ein gefüllter Rahmen, von den Buchstaben ausgespart.",
   },
-  "jumpOff.caption.gradientBackground": {
-    en: "A gradient Background.",
-    de: "Ein Verlaufshintergrund.",
-  },
-  "jumpOff.caption.dashedFrame": {
+  "curatedDesign.caption.dashedFrame": {
     en: "A dashed Frame.",
     de: "Ein gestrichelter Rahmen.",
   },
-  // One-time coach hint (same brief) over the tab bar, right after the
-  // jump-off step — teaches the tabs exist without gating anything.
-  "coachHint.text": {
-    en: "Design, Frame, Colors, Export — everything you see updates instantly. Explore freely.",
-    de: "Design, Rahmen, Farben, Export – alles aktualisiert sich sofort. Erkunde einfach drauflos.",
+  "curatedDesign.caption.squareFrame": {
+    en: "A square Frame.",
+    de: "Ein quadratischer Rahmen.",
   },
-  "coachHint.dismiss": { en: "Dismiss", de: "Ausblenden" },
+  // Curated color presets (same brief) — Easy mode's Colors step.
+  "colorPreset.label": { en: "Color presets", de: "Farbvorlagen" },
+  "colorPreset.ink": { en: "Ink", de: "Tinte" },
+  "colorPreset.rosewood": { en: "Rosewood", de: "Rosenholz" },
+  "colorPreset.ivory": { en: "Ivory", de: "Elfenbein" },
+  "colorPreset.ocean": { en: "Ocean", de: "Ozean" },
+  "colorPreset.charcoalCream": { en: "Charcoal & Cream", de: "Kohle & Creme" },
+  "colorPreset.blush": { en: "Blush", de: "Zartrosa" },
+  "colorPreset.sunset": { en: "Sunset", de: "Sonnenuntergang" },
+  "colorPreset.dusk": { en: "Dusk", de: "Dämmerung" },
+  "colorPreset.citrus": { en: "Citrus", de: "Zitrus" },
+  "colorPreset.twilight": { en: "Twilight", de: "Zwielicht" },
+  "colorPreset.aurora": { en: "Aurora", de: "Aurora" },
+  "colorPreset.berry": { en: "Berry", de: "Beere" },
   "locale.switchLabel": { en: "Language", de: "Sprache" },
   "whatsnew.buttonLabel": { en: "What's new", de: "Neuigkeiten" },
   "whatsnew.unseenIndicator": { en: "(new)", de: "(neu)" },

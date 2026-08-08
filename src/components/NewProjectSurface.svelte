@@ -256,7 +256,7 @@
   }
 
   .start-blank:hover {
-    border-color: light-dark(#0b57d0, #a8c7fa);
+    border-color: var(--accent);
   }
 
   .plus {
@@ -320,8 +320,8 @@
     padding: 0.3rem;
     border: none;
     border-radius: 0.35rem;
-    background: light-dark(#0b57d0, #a8c7fa);
-    color: light-dark(#fff, #1c1c1e);
+    background: var(--accent);
+    color: var(--accent-contrast);
     cursor: pointer;
   }
 
