@@ -1,5 +1,25 @@
 :root {
   color-scheme: light dark;
+
+  /* Design tokens (impeccable shape brief, 2026-08-08). Restrained color
+     strategy: neutrals everywhere, one considered accent reserved for
+     functional signal (the active rail step, the primary export action) —
+     never page-scale decoration (docs/DESIGN-PRINCIPLES.md #6, "the UI
+     recedes"). The accent replaces the previous ad hoc blue used inline
+     across the shell and galleries. */
+  --accent: light-dark(#861657, #d98fb3);
+  --accent-contrast: light-dark(#fff, #1c1c1e);
+
+  /* Type scale: a deliberate weight/size contrast between structural
+     moments (brand, rail step labels, section legends) and quiet controls —
+     the lever this shape brief uses to fix "generic form-builder" hierarchy
+     without borrowing a visual metaphor. A workhorse system stack throughout
+     (no display face): genericness here is a hierarchy problem, not a font
+     problem. */
+  --step-label-size: 0.9375rem;
+  --step-label-weight: 650;
+  --control-label-size: 0.875rem;
+  --control-label-weight: 400;
 }
 
 * {

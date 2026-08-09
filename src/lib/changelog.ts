@@ -20,6 +20,12 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-08-08-easy-mode",
+    date: "2026-08-08",
+    en: "New: an Easy/Full mode switch above the sidebar. Easy keeps things simple — a curated gallery of ready-made looks, a few color combinations, and Export. Full has everything else. Switch anytime; MonoMix remembers your choice.",
+    de: "Neu: ein Einfach/Vollständig-Schalter über der Seitenleiste. Einfach hält es simpel — eine kuratierte Galerie fertiger Looks, ein paar Farbkombinationen und Export. Vollständig bietet alles andere. Jederzeit wechselbar — MonoMix merkt sich deine Wahl.",
+  },
+  {
     id: "2026-08-07-background-image-framing",
     date: "2026-08-07",
     en: "Background photos are no longer stuck at whatever crop they landed on: drag the preview to move the picture around, and zoom in to pick exactly the part you want behind your letters.",

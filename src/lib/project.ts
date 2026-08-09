@@ -43,16 +43,17 @@ const BACKGROUND_KINDS: BackgroundKind[] = [
   "gradient",
 ];
 
-/** The Gradient a Project starts with once "Gradient" is first picked — the
- * app's own accent blue (matches the active-tab/badge color elsewhere in
- * the UI), so the first gradient a user sees already looks intentional
- * rather than a plain placeholder black-to-white ramp. */
+/** The Gradient a Project starts with once "Gradient" is first picked — a
+ * tint of the app's own accent (--accent in src/app.css; matches the active
+ * rail step/badge color elsewhere in the UI), so the first gradient a user
+ * sees already looks intentional rather than a plain placeholder
+ * black-to-white ramp. */
 export const DEFAULT_GRADIENT: Gradient = {
   style: "linear",
   angle: 180,
   stops: [
-    { color: "#a8c7fa", offset: 0 },
-    { color: "#0b57d0", offset: 100 },
+    { color: "#e8c2d6", offset: 0 },
+    { color: "#861657", offset: 100 },
   ],
 };
 
