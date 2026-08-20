@@ -2,6 +2,11 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "monomix",
   "compatibility_date": "2026-07-01",
+  // Custom Domains imply workers_dev=false; preview_urls follows workers_dev
+  // by default, so it must stay explicit or PR previews (preview-deploy.yml)
+  // stop working on the next production deploy.
+  "preview_urls": true,
+  "routes": [{ "pattern": "monomix.stefanhoth.com", "custom_domain": true }],
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application",
