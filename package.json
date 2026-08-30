@@ -37,7 +37,7 @@
     "oxlint": "1.80.0",
     "prettier": "3.9.6",
     "prettier-plugin-svelte": "4.1.1",
-    "subset-font": "2.6.0",
+    "subset-font": "2.7.0",
     "svelte": "5.57.0",
     "svelte-check": "4.7.6",
     "typescript": "5.9.3",
