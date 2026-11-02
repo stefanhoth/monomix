@@ -2,7 +2,7 @@ const prefersReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
 ).matches;
 
-// Reveal-on-view (Hallmark motion.md): one-shot fade + rise, IntersectionObserver only.
+// Reveal-on-view — one-shot fade + rise, IntersectionObserver only.
 const revealTargets = document.querySelectorAll<HTMLElement>(".reveal");
 if (prefersReducedMotion || !("IntersectionObserver" in window)) {
   revealTargets.forEach((el) => el.classList.add("is-visible"));
