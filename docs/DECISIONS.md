@@ -11,6 +11,10 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-08-20
+
+- **Attaching the `monomix.stefanhoth.com` Custom Domain (`wrangler.jsonc`) needs `preview_urls: true` set explicitly, not left to default.** Cloudflare infers `workers_dev = false` the moment a `routes` entry exists, and `preview_urls` defaults to whatever `workers_dev` is — so without the explicit flag, the next production deploy would silently kill the `pr-N-monomix.stefanhoth-de.workers.dev` preview aliases that `preview-deploy.yml`'s E2E job depends on. Confirmed against current Cloudflare docs (routing/custom-domains, versions-and-deployments/preview-urls), not assumed.
+
 ## 2026-08-08
 
 - **Easy/Full workspace mode (impeccable shape brief) replaces the 2026-08-07 jump-off gallery + coach hint outright, rather than coexisting with it.** Once Easy mode's own curated Design gallery is a _persistent_ first step (not a one-time screen), it already does that gallery's job every time, not just on first visit — and the mode toggle itself (always visible, self-explanatory) replaces the coach hint's job of pointing out there's more available. `JumpOffGallery.svelte` and `src/lib/jump-off-gallery.ts` are gone; the curated dataset moved to `src/lib/curated-designs.ts` and now renders inside `EasyDesignGallery.svelte`, mounted as the Design step's Easy-mode content rather than a standalone route.
