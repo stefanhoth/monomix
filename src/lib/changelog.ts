@@ -20,6 +20,30 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    id: "2026-08-08-easy-mode",
+    date: "2026-08-08",
+    en: "New: an Easy/Full mode switch above the sidebar. Easy keeps things simple — a curated gallery of ready-made looks, a few color combinations, and Export. Full has everything else. Switch anytime; MonoMix remembers your choice.",
+    de: "Neu: ein Einfach/Vollständig-Schalter über der Seitenleiste. Einfach hält es simpel — eine kuratierte Galerie fertiger Looks, ein paar Farbkombinationen und Export. Vollständig bietet alles andere. Jederzeit wechselbar — MonoMix merkt sich deine Wahl.",
+  },
+  {
+    id: "2026-08-07-background-image-framing",
+    date: "2026-08-07",
+    en: "Background photos are no longer stuck at whatever crop they landed on: drag the preview to move the picture around, and zoom in to pick exactly the part you want behind your letters.",
+    de: "Hintergrundfotos hängen nicht mehr an dem Ausschnitt fest, der zufällig herauskam: Zieh die Vorschau, um das Bild zu verschieben, und zoome hinein, um genau den Teil hinter deine Buchstaben zu holen.",
+  },
+  {
+    id: "2026-08-07-letter-frame-gradients",
+    date: "2026-08-07",
+    en: "Letters and Frames can now be filled with a gradient, not just a flat color — the same linear and radial controls the background already had. Great for metallic and sunset looks.",
+    de: "Buchstaben und Rahmen lassen sich jetzt mit einem Verlauf füllen statt nur mit einer Volltonfarbe — mit denselben linearen und radialen Reglern wie beim Hintergrund. Ideal für Metallic- und Sonnenuntergangs-Effekte.",
+  },
+  {
+    id: "2026-08-07-share-links",
+    date: "2026-08-07",
+    en: "You can now share a monogram as a link: hit “Copy link” under Export and send it on. Whoever opens it gets their own editable copy — still no upload, no account, no server; the whole monogram travels inside the link itself.",
+    de: "Monogramme lassen sich jetzt als Link teilen: unter Export auf „Link kopieren“ tippen und verschicken. Wer ihn öffnet, bekommt eine eigene bearbeitbare Kopie — weiterhin ohne Upload, ohne Konto, ohne Server; das ganze Monogramm steckt im Link selbst.",
+  },
+  {
     id: "2026-07-16-diamond-variants",
     date: "2026-07-16",
     en: "Two new diamond shapes: a narrow (tall) and a wide (broad) diamond, each with its own Design and matching Frame.",

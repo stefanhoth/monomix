@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeMonogram } from "../../src/engine";
+import { composeMonogram, type Gradient } from "../../src/engine";
 import { loadTestFont } from "./helpers/load-test-font";
 
 const font = loadTestFont("archivo-black");
@@ -36,6 +36,54 @@ describe("composeMonogram", () => {
   it("defaults letters color to currentColor", () => {
     const svg = composeMonogram("A", font);
     expect(svg).toContain('<g fill="currentColor">');
+  });
+
+  it("omits fill-opacity entirely at the default (fully opaque)", () => {
+    const svg = composeMonogram("A", font, { lettersOpacity: 1 });
+    expect(composeMonogram("A", font)).toBe(svg);
+    expect(svg).not.toContain("fill-opacity");
+  });
+
+  it("applies fill-opacity to the glyph group when reduced (issue #65)", () => {
+    const svg = composeMonogram("A", font, { lettersOpacity: 0.4 });
+    expect(svg).toContain('<g fill="currentColor" fill-opacity="0.4">');
+  });
+
+  it("supports fully transparent letters (a pure cut-out)", () => {
+    const svg = composeMonogram("A", font, { lettersOpacity: 0 });
+    expect(svg).toContain('fill-opacity="0">');
+    // The path geometry itself is unaffected — only the fill.
+    expect(svg).toContain("<path ");
+  });
+
+  it("clamps an out-of-range or non-finite opacity instead of producing invalid SVG", () => {
+    expect(composeMonogram("A", font, { lettersOpacity: -5 })).toContain(
+      'fill-opacity="0">',
+    );
+    expect(composeMonogram("A", font, { lettersOpacity: 5 })).not.toContain(
+      "fill-opacity",
+    );
+    expect(
+      composeMonogram("A", font, { lettersOpacity: Number.NaN }),
+    ).not.toContain("fill-opacity");
+  });
+
+  it("cuts the letters' own shape out of a filled Frame (issue #65 second follow-up)", () => {
+    const svg = composeMonogram("A", font, {
+      frame: { id: "circle", fill: "#00ff00" },
+    });
+    expect(svg).toContain("<mask");
+    // The mask's cutout content is the exact same path markup as the
+    // visible glyph paths, so the hole and the letters drawn on top of it
+    // always align pixel-for-pixel — each glyph path appears twice: once
+    // inside the mask (the hole), once in the visible glyph group.
+    const glyphPath = svg.match(/<path d="[^"]+"\/>/)![0];
+    expect(svg.split(glyphPath).length - 1).toBe(2);
+  });
+
+  it("omits the mask/cutout entirely when the Frame has no fill", () => {
+    const svg = composeMonogram("A", font, { frame: { id: "circle" } });
+    expect(svg).not.toContain("<mask");
   });
 
   it("draws a background rect first when a background color is given", () => {
@@ -332,3 +380,73 @@ describe.each(["diamond-narrow", "diamond-wide"] as const)(
     );
   },
 );
+
+// Gradient fills for letters and Frames (issue #122). The engine-level
+// contract is: a solid color emits exactly what it always did, and a
+// Gradient adds a <defs> paint server the element references by id.
+describe("gradient paints for letters and Frames (issue #122)", () => {
+  const gradient: Gradient = {
+    style: "linear",
+    angle: 90,
+    stops: [
+      { color: "#ff0000", offset: 0 },
+      { color: "#0000ff", offset: 100 },
+    ],
+  };
+
+  it("paints the glyph group from a <defs> gradient", () => {
+    const svg = composeMonogram("AB", font, { lettersColor: gradient });
+    const id = svg.match(
+      /<linearGradient id="(mm-letters-gradient-[^"]+)"/,
+    )?.[1];
+
+    expect(id).toBeDefined();
+    expect(svg).toContain(`<g fill="url(#${id})">`);
+  });
+
+  it("paints a Frame's stroke from its own <defs> gradient", () => {
+    const svg = composeMonogram("AB", font, {
+      frame: { id: "circle", color: gradient },
+    });
+    const id = svg.match(/<linearGradient id="(mm-frame-gradient-[^"]+)"/)?.[1];
+
+    expect(id).toBeDefined();
+    expect(svg).toContain(`stroke="url(#${id})"`);
+  });
+
+  it("gives letters and Frame distinct ids even for the identical gradient", () => {
+    // A <defs id> is document-global; two identical ids in one SVG is the
+    // failure mode issue #65's <mask> hit (docs/DECISIONS.md, 2026-07-17).
+    const svg = composeMonogram("AB", font, {
+      lettersColor: gradient,
+      frame: { id: "circle", color: gradient, fill: gradient },
+    });
+    const ids = [
+      ...svg.matchAll(/<(?:linear|radial)Gradient id="([^"]+)"/g),
+    ].map((m) => m[1]);
+
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it("still cuts the letters out of a gradient-filled Frame", () => {
+    const svg = composeMonogram("AB", font, {
+      frame: { id: "circle", color: "#111111", fill: gradient },
+    });
+    const fillId = svg.match(/id="(mm-frame-fill-gradient-[^"]+)"/)?.[1];
+    const maskId = svg.match(/<mask id="(mm-frame-cutout-[^"]+)"/)?.[1];
+
+    expect(fillId).toBeDefined();
+    expect(maskId).toBeDefined();
+    expect(svg).toContain(`fill="url(#${fillId})" mask="url(#${maskId})"`);
+  });
+
+  it("emits no defs at all for solid colors, keeping output byte-identical", () => {
+    const svg = composeMonogram("AB", font, {
+      lettersColor: "#ff0000",
+      frame: { id: "circle", color: "#00ff00" },
+    });
+    expect(svg).not.toContain("<defs>");
+    expect(svg).toContain('<g fill="#ff0000">');
+  });
+});

@@ -60,6 +60,18 @@
           {@html composeMonogram(letters, font, {
             arrangement,
             shape,
+            // Deliberately no `fill` here (issue #65 second follow-up): a
+            // filled Frame's own <mask> cutout (composeFrame/render.ts) is
+            // content-hashed for a deterministic id, so a tile whose Frame,
+            // color, and letters exactly match the live main preview would
+            // render an id-for-id identical <mask> element. This tab panel
+            // stays mounted-but-hidden (`hidden`, i.e. display:none) rather
+            // than being torn down when the Frame tab isn't active, and a
+            // <mask> inside a display:none subtree corrupts every other
+            // element referencing that same id elsewhere in the document —
+            // including the visible main preview's own cutout. The gallery
+            // only needs to preview Frame *shapes* for selection; showing
+            // the fill/cutout combo isn't worth that risk.
             frame: { id: frame.id, gap, color: frameColor },
             lettersColor,
           })}
@@ -94,7 +106,7 @@
   }
 
   .tile.selected {
-    border-color: light-dark(#0b57d0, #a8c7fa);
+    border-color: var(--accent);
   }
 
   .tile-preview {

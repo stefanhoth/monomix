@@ -148,10 +148,15 @@ test("the background defaults to a transparent checkerboard and switches to an o
   expect(checkerboardImage).toContain("gradient");
 
   await openTab(page, "Colors");
-  const transparentToggle = page.getByLabel("Transparent background");
-  await expect(transparentToggle).toBeChecked();
+  const transparentOption = page
+    .getByRole("group", { name: "Background", exact: true })
+    .getByRole("radio", { name: "Transparent" });
+  await expect(transparentOption).toBeChecked();
 
-  await transparentToggle.uncheck();
+  await page
+    .getByRole("group", { name: "Background", exact: true })
+    .getByRole("radio", { name: "Solid color" })
+    .check();
   await page.getByLabel("Background Color").fill("#3355ff");
 
   // A real background rect now covers the whole canvas.

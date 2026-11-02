@@ -97,7 +97,7 @@
   }
 
   .tile.selected {
-    border-color: light-dark(#0b57d0, #a8c7fa);
+    border-color: var(--accent);
   }
 
   .tile-preview {

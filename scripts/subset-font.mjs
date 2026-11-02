@@ -1,20 +1,24 @@
 #!/usr/bin/env node
 /**
- * Subsets a font down to the glyphs MonoMix actually needs (A-Z + space —
- * see ADR: Letters are restricted to uppercase A-Z) and writes the result
+ * Subsets a font down to the glyphs MonoMix actually needs (A-Z, a-z, and
+ * space — see ADR 0008: letters support both cases) and writes the result
  * next to the source as font.ttf.
  *
  * Usage: node scripts/subset-font.mjs <path-to-source-font> <output-dir>
  *
- * Source fonts are fetched from https://github.com/google/fonts (each
- * family's ofl/ or apache/ folder carries the canonical license file —
- * copy it into <output-dir> alongside font.ttf).
+ * Source fonts: the easiest reliable source is the matching `@fontsource/*`
+ * npm package's `files/*-latin-400-normal.woff2` (a full, unsubset static
+ * instance of the same google/fonts OFL/Apache family) — `subset-font`
+ * accepts woff2 input directly. `docs/FONTS.md` has the full recipe. The
+ * upstream google/fonts `ofl/`/`apache/` folder is an equally valid raw-TTF
+ * source if you have it already; either way, copy the license file into
+ * <output-dir> alongside font.ttf.
  */
 import subsetFont from "subset-font";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const TEXT = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ";
+const TEXT = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ";
 
 const [, , srcPath, outDir] = process.argv;
 if (!srcPath || !outDir) {

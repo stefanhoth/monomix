@@ -1,19 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { createMemoryProjectStore } from "../../src/lib/project-store-memory";
-import type { Project } from "../../src/lib/project";
+import { DEFAULT_GRADIENT, type Project } from "../../src/lib/project";
 
 function project(overrides: Partial<Project> = {}): Project {
   return {
     id: "p1",
     name: "MX",
     letters: "MX",
+    letterCase: "upper",
     designId: "cinzel-classic",
     frameId: "none",
     frameGap: 40,
     lettersColor: "#111111",
+    lettersColorKind: "color",
+    lettersGradient: DEFAULT_GRADIENT,
+    lettersOpacity: 1,
     frameColor: "#111111",
-    transparentBackground: true,
+    frameColorKind: "color",
+    frameGradient: DEFAULT_GRADIENT,
+    frameFilled: false,
+    backgroundKind: "transparent",
     backgroundColor: "#ffffff",
+    backgroundImage: null,
+    backgroundImageZoom: 1,
+    backgroundImageOffsetX: 0,
+    backgroundImageOffsetY: 0,
+    backgroundGradient: DEFAULT_GRADIENT,
     createdAt: 1000,
     lastEditedAt: 1000,
     ...overrides,

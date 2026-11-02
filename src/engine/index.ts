@@ -5,6 +5,23 @@
  */
 export { composeMonogram, type ComposeOptions } from "./render";
 export {
+  imagePlacement,
+  clampImageZoom,
+  clampImageOffset,
+  DEFAULT_IMAGE_TRANSFORM,
+  MIN_IMAGE_ZOOM,
+  MAX_IMAGE_ZOOM,
+  type BackgroundFill,
+  type ImageTransform,
+} from "./background";
+export {
+  paintSolidColor,
+  type Gradient,
+  type GradientStop,
+  type GradientStyle,
+  type Paint,
+} from "./paint";
+export {
   layoutLetters,
   VIEWBOX_SIZE,
   type Arrangement,

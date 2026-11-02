@@ -9,14 +9,24 @@
     FONTS,
     FRAMES,
     NO_FRAME_ID,
+    paintSolidColor,
+    imagePlacement,
+    clampImageOffset,
+    MIN_IMAGE_ZOOM,
+    MAX_IMAGE_ZOOM,
     type LetterCount,
+    type Gradient,
   } from "./engine";
   import { loadFont } from "./lib/font-loader";
   import { exportSvg } from "./lib/export/svg";
   import { exportPng, exportJpg } from "./lib/export/raster";
   import { triggerDownload } from "./lib/export/download";
   import { DEFAULT_EXPORT_SIZE } from "./lib/export/options";
-  import { sanitizeLettersInput, type LettersHint } from "./lib/letters-input";
+  import {
+    sanitizeLettersInput,
+    type LettersHint,
+    type LetterCaseMode,
+  } from "./lib/letters-input";
   import {
     resolveFrameGap,
     DEFAULT_FRAME_GAP,
@@ -30,10 +40,16 @@
   import { isFirstRun } from "./lib/first-run";
   import { backdropTone, BACKDROP_COLORS } from "./lib/preview-backdrop";
   import {
-    WORKSPACE_TABS,
+    tabsForMode,
     tabForKey,
     type WorkspaceTab,
   } from "./lib/workspace-tabs";
+  import {
+    getStoredWorkspaceMode,
+    storeWorkspaceMode,
+    DEFAULT_WORKSPACE_MODE,
+    type WorkspaceMode,
+  } from "./lib/workspace-mode";
   import {
     hasCompletedOnboarding,
     markOnboardingComplete,
@@ -42,11 +58,27 @@
     createProject,
     projectSettingsEqual,
     remixProject,
+    resolveProjectBackground,
+    resolveProjectFrameFill,
+    resolveProjectFramePaint,
+    resolveProjectLettersPaint,
     toProjectSettings,
     DEFAULT_PROJECT_SETTINGS,
     type Project,
     type ProjectSettings,
+    type BackgroundKind,
+    type PaintKind,
   } from "./lib/project";
+  import {
+    prepareBackgroundImage,
+    BackgroundImageError,
+  } from "./lib/background-image";
+  import {
+    buildShareUrl,
+    decodeShareSettings,
+    readSharePayload,
+    shareOmitsBackgroundImage,
+  } from "./lib/share-link";
   import { createIndexedDbProjectStore } from "./lib/project-store-indexeddb";
   import { createAutosaveController } from "./lib/autosave";
   import { formatLettersHint } from "./lib/i18n/format-letters-hint";
@@ -59,14 +91,28 @@
   import { getLastSeenEntryId, markEntrySeen } from "./lib/changelog-storage";
   import AboutPanel from "./components/AboutPanel.svelte";
   import DesignGallery from "./components/DesignGallery.svelte";
+  import GradientEditor from "./components/GradientEditor.svelte";
+  import PaintPicker from "./components/PaintPicker.svelte";
   import FontCreditsPanel from "./components/FontCreditsPanel.svelte";
   import FrameGallery from "./components/FrameGallery.svelte";
   import NewProjectSurface from "./components/NewProjectSurface.svelte";
   import OnboardingPrompt from "./components/OnboardingPrompt.svelte";
+  import EasyDesignGallery from "./components/EasyDesignGallery.svelte";
+  import EasyColorPicker from "./components/EasyColorPicker.svelte";
+  import {
+    curatedDesignSettings,
+    type CuratedDesignEntry,
+  } from "./lib/curated-designs";
+  import type { ColorPreset } from "./lib/color-presets";
   import LocaleSwitcher from "./components/LocaleSwitcher.svelte";
   import WhatsNewPanel from "./components/WhatsNewPanel.svelte";
 
   let letters = $state("MX");
+  // Case model (issue #62, ADR 0008): "upper" (default) uppercases every
+  // letter as before; "preserve" keeps each letter's case exactly as
+  // typed. Only affects how future keystrokes are sanitized — toggling it
+  // never retroactively recovers case already discarded by "upper".
+  let letterCase: LetterCaseMode = $state(DEFAULT_PROJECT_SETTINGS.letterCase);
   let lettersHintInfo: LettersHint | null = $state(null);
   let lettersHint = $derived(
     lettersHintInfo && formatLettersHint(lettersHintInfo, getLocale()),
@@ -95,38 +141,160 @@
   // look the preview had before explicit color controls existed, without
   // trying to track the system color scheme dynamically.
   let lettersColor = $state("#111111");
+  // Issue #122: letters and Frame can each be painted with a Gradient
+  // instead of their solid color. Same "kind picks which, both values stay
+  // put" shape the Background already uses, so toggling to Gradient and
+  // back doesn't discard the solid color.
+  let lettersColorKind: PaintKind = $state(
+    DEFAULT_PROJECT_SETTINGS.lettersColorKind,
+  );
+  let lettersGradient: Gradient = $state(
+    structuredClone(DEFAULT_PROJECT_SETTINGS.lettersGradient),
+  );
+  // Issue #65: 0-1, 1 = fully opaque (the original, default look). Lets a
+  // background color/image/gradient show through the letterforms.
+  let lettersOpacity = $state(DEFAULT_PROJECT_SETTINGS.lettersOpacity);
   let frameColor = $state("#111111");
+  let frameColorKind: PaintKind = $state(
+    DEFAULT_PROJECT_SETTINGS.frameColorKind,
+  );
+  let frameGradient: Gradient = $state(
+    structuredClone(DEFAULT_PROJECT_SETTINGS.frameGradient),
+  );
+  // Issue #65 follow-up: fills the Frame's interior with frameColor instead
+  // of leaving it an unfilled ring, so reduced Letter Opacity has something
+  // to cut a visible stencil out of even without a Background set.
+  let frameFilled = $state(DEFAULT_PROJECT_SETTINGS.frameFilled);
   // Background is transparent by default (checkerboard, not white — see
-  // .preview below). `backgroundColor` only takes effect once the user
-  // unchecks "Transparent", and remembers their last pick if they toggle
-  // back and forth.
-  let transparentBackground = $state(true);
+  // .preview below). `backgroundKind` picks which fill is active; the
+  // other kinds' own fields (backgroundColor, backgroundImage,
+  // backgroundGradient) keep their last-picked value so switching kinds
+  // and back doesn't lose it (issue #63 image, issue #64 gradient — see
+  // project.ts's BackgroundKind).
+  let backgroundKind: BackgroundKind = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundKind,
+  );
   let backgroundColor = $state("#ffffff");
+  let backgroundImage: string | null = $state(null);
+  let backgroundImageError: string | null = $state(null);
+  // Issue #123: zoom + pan for the background image. At the defaults
+  // (1x, centered) the engine reproduces the original `cover` fit exactly,
+  // so every existing Project renders byte-identically.
+  let backgroundImageZoom = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundImageZoom,
+  );
+  let backgroundImageOffsetX = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX,
+  );
+  let backgroundImageOffsetY = $state(
+    DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY,
+  );
+  let backgroundGradient: Gradient = $state(
+    structuredClone(DEFAULT_PROJECT_SETTINGS.backgroundGradient),
+  );
 
   let onboardingComplete = $state(untrack(() => hasCompletedOnboarding()));
 
-  // Sidebar tab (issue #47). Tabs are views over the same live editor
-  // state, never gates — all editable state lives in the $state vars above,
-  // so switching tabs can't lose anything. All four panels stay mounted
-  // (toggled via the `hidden` attribute) so e.g. the Design gallery's
-  // scroll position survives a round-trip through the Colors tab.
+  // Sidebar rail (issue #47, restyled as a connected sequence per the
+  // impeccable shape brief 2026-08-08). Steps are views over the same live
+  // editor state, never gates — all editable state lives in the $state vars
+  // above, so switching steps can't lose anything. All four panels stay
+  // mounted (toggled via the `hidden` attribute) so e.g. the Design
+  // gallery's scroll position survives a round-trip through the Colors
+  // step.
   let activeTab: WorkspaceTab = $state("design");
+
+  // Easy/Full mode (impeccable shape brief, 2026-08-08): a persistent,
+  // always-available toggle — Easy surfaces a curated Design gallery, a
+  // handful of curated color presets, and Export; Full is today's complete
+  // rail. Defaults to "full" for anyone with no stored preference (a
+  // pre-existing user); `completeOnboarding` below is the one call site
+  // that opts a genuinely fresh visitor into "easy" explicitly.
+  let workspaceMode: WorkspaceMode = $state(
+    untrack(() => getStoredWorkspaceMode() ?? DEFAULT_WORKSPACE_MODE),
+  );
+  let visibleTabs = $derived(tabsForMode(workspaceMode));
+
+  function setWorkspaceMode(mode: WorkspaceMode) {
+    workspaceMode = mode;
+    storeWorkspaceMode(mode);
+  }
+
+  // Easy mode hides the Frame step (tabsForMode) — if the active step is no
+  // longer visible (Frame was open when the visitor switched to Easy), fall
+  // back to Design rather than leaving a hidden step "selected".
+  $effect(() => {
+    if (!visibleTabs.includes(activeTab)) {
+      activeTab = "design";
+    }
+  });
 
   // WAI-ARIA tabs keyboard pattern with automatic activation: arrows move
   // both focus and selection. tabForKey returns undefined for keys the
   // tablist doesn't own (Tab, characters, ...) — those must keep their
   // default behavior. Attached to each tab button (the focusable elements),
-  // not the tablist container.
+  // not the tablist container. Takes `visibleTabs`, not the full constant,
+  // so Easy mode's narrower rail never lands focus on a hidden step.
   function handleTabKeydown(
     event: KeyboardEvent & { currentTarget: HTMLButtonElement },
   ) {
-    const next = tabForKey(activeTab, event.key);
+    const next = tabForKey(visibleTabs, activeTab, event.key);
     if (!next) return;
     event.preventDefault();
     activeTab = next;
     event.currentTarget.parentElement
       ?.querySelector<HTMLButtonElement>(`#tab-${next}`)
       ?.focus();
+  }
+
+  // Easy mode's curated Colors step (src/lib/color-presets.ts) tracks which
+  // preset was last applied, purely for the swatch's own selected ring —
+  // same non-authoritative role selectedDesignId plays for the full Design
+  // gallery.
+  let selectedColorPresetId: string | undefined = $state(undefined);
+
+  // Easy mode's curated Design step (src/lib/curated-designs.ts): applies a
+  // curated entry's Design + Frame + colors onto the live editor state via
+  // applyStylingFields (defined below, next to switchToProject — its other
+  // caller), but never touches letters/letterCase/identity — the visitor's
+  // own typed letters and the active Project stay put.
+  function handleCuratedDesignSelect(entry: CuratedDesignEntry) {
+    const settings = curatedDesignSettings(entry);
+    selectedDesignId = settings.designId;
+    selectedFrameId = settings.frameId;
+    frameGap = settings.frameGap;
+    frameColor = settings.frameColor;
+    frameColorKind = settings.frameColorKind;
+    frameGradient = structuredClone(settings.frameGradient);
+    frameFilled = settings.frameFilled;
+    lettersOpacity = settings.lettersOpacity;
+    // Deliberately never lettersColor/lettersColorKind/lettersGradient or
+    // any backgroundKind/backgroundColor/backgroundImage*/backgroundGradient
+    // field — CuratedDesignEntry's overrides type structurally can't carry
+    // them (docs/DECISIONS.md, 2026-08-08), so a Design pick never clobbers
+    // whatever the Colors step already set, and vice versa.
+  }
+
+  // Easy mode's curated Colors step: a preset only ever touches the letters
+  // and the Background — the two fields Design never sets — so applying one
+  // is always a clean layer, never a fight over who owns what. See
+  // src/lib/color-presets.ts and docs/DECISIONS.md, 2026-08-08.
+  function handleColorPresetSelect(preset: ColorPreset) {
+    selectedColorPresetId = preset.id;
+    lettersColor = preset.lettersColor;
+    lettersColorKind = preset.lettersColorKind ?? "color";
+    if (preset.lettersGradient) {
+      lettersGradient = structuredClone(preset.lettersGradient);
+    }
+    backgroundKind = preset.backgroundKind;
+    if (preset.backgroundKind === "color") {
+      backgroundColor = preset.backgroundColor;
+    } else if (
+      preset.backgroundKind === "gradient" &&
+      preset.backgroundGradient
+    ) {
+      backgroundGradient = structuredClone(preset.backgroundGradient);
+    }
   }
 
   // What's new panel (issue #17, ADR 0005): lastSeenChangelogId starts from
@@ -183,10 +351,17 @@
   // instantly rather than waiting on the IndexedDB Project check.
   let aboutOpen = $state(location.hash === "#about");
 
-  function setAboutHash(open: boolean) {
+  // The single place the URL hash is ever written. Always replaceState,
+  // never pushState, so neither the About panel (issue #55) nor a followed
+  // share link (issue #121) grows browser history — see docs/DECISIONS.md.
+  function replaceHash(value: string) {
     const url = new URL(location.href);
-    url.hash = open ? "about" : "";
+    url.hash = value;
     history.replaceState(null, "", url);
+  }
+
+  function setAboutHash(open: boolean) {
+    replaceHash(open ? "about" : "");
   }
 
   function openAbout() {
@@ -262,12 +437,67 @@
     resolvedDesign && fonts.get(resolvedDesign.fontId),
   );
   let resolvedFrameGap = $derived(resolveFrameGap(frameGap));
+  let lettersPaint = $derived(
+    resolveProjectLettersPaint({
+      lettersColorKind,
+      lettersColor,
+      lettersGradient,
+    }),
+  );
+  let framePaint = $derived(
+    resolveProjectFramePaint({ frameColorKind, frameColor, frameGradient }),
+  );
+  let resolvedFrameFill = $derived(
+    resolveProjectFrameFill({
+      frameFilled,
+      frameColorKind,
+      frameColor,
+      frameGradient,
+    }),
+  );
+  // Gallery tiles paint with one representative solid, never the gradient
+  // itself: their panels stay mounted-but-hidden when another tab is
+  // active, and a <defs id> inside a display:none subtree corrupts every
+  // other reference to that id in the document (docs/DECISIONS.md,
+  // 2026-07-17 — the same hazard issue #65's <mask> hit).
+  let lettersTileColor = $derived(paintSolidColor(lettersPaint, "#111111"));
+  let frameTileColor = $derived(paintSolidColor(framePaint, "#111111"));
   let resolvedBackground = $derived(
-    transparentBackground ? "transparent" : backgroundColor,
+    resolveProjectBackground({
+      backgroundKind,
+      backgroundColor,
+      backgroundImage,
+      backgroundImageZoom,
+      backgroundImageOffsetX,
+      backgroundImageOffsetY,
+      backgroundGradient,
+    }),
+  );
+  // Panning only means something once zoomed in — at 1x the image exactly
+  // covers the canvas, so there is no slack to move it into. Gates both the
+  // drag handler and the offset sliders, which is also the honest answer to
+  // "why does dragging do nothing?".
+  // The sidebar thumbnail reuses the engine's own placement, in percent
+  // units, so it can't drift from what the canvas renders — the alternative
+  // was restating the zoom/pan math in CSS.
+  let thumbPlacement = $derived(
+    imagePlacement(
+      {
+        zoom: backgroundImageZoom,
+        offsetX: backgroundImageOffsetX,
+        offsetY: backgroundImageOffsetY,
+      },
+      100,
+    ),
+  );
+  let canPanBackground = $derived(
+    backgroundKind === "image" &&
+      backgroundImage !== null &&
+      backgroundImageZoom > MIN_IMAGE_ZOOM,
   );
   // Checkerboard follows the letters color, not the UI theme (issue #46) —
   // near-black default letters were unreadable on the dark-mode board.
-  let backdrop = $derived(BACKDROP_COLORS[backdropTone(lettersColor)]);
+  let backdrop = $derived(BACKDROP_COLORS[backdropTone(lettersTileColor)]);
   let preview = $derived(
     resolvedFont && resolvedDesign && letters.length > 0
       ? composeMonogram(letters, resolvedFont, {
@@ -276,9 +506,11 @@
           frame: {
             id: selectedFrameId,
             gap: resolvedFrameGap,
-            color: frameColor,
+            color: framePaint,
+            fill: resolvedFrameFill,
           },
-          lettersColor,
+          lettersColor: lettersPaint,
+          lettersOpacity,
           background: resolvedBackground,
         })
       : "",
@@ -288,15 +520,37 @@
   // valid, concrete snapshot (uses resolvedDesignId, never the possibly-
   // undefined selectedDesignId) so it's always safe to persist. Read by the
   // autosave effect below.
+  //
+  // backgroundGradient must go through $state.snapshot(): it's the first
+  // object-typed ProjectSettings field, and `backgroundGradient` on its own
+  // is a live Svelte $state proxy, not a plain object. IndexedDB's put()
+  // structured-clones its argument, and a Svelte reactive proxy isn't
+  // structured-cloneable — it throws DataCloneError, silently (the promise
+  // rejection was never surfaced anywhere), so autosave writes never landed
+  // once a Project carried a gradient. $state.snapshot() takes a plain,
+  // non-reactive deep copy safe for structured clone (and for the
+  // `{ ...stored, ...currentProjectSettings }` remix spread below).
   let currentProjectSettings: ProjectSettings = $derived({
     letters,
+    letterCase,
     designId: resolvedDesignId,
     frameId: selectedFrameId,
     frameGap,
     lettersColor,
+    lettersColorKind,
+    lettersGradient: $state.snapshot(lettersGradient),
+    lettersOpacity,
     frameColor,
-    transparentBackground,
+    frameColorKind,
+    frameGradient: $state.snapshot(frameGradient),
+    frameFilled,
+    backgroundKind,
     backgroundColor,
+    backgroundImage,
+    backgroundImageZoom,
+    backgroundImageOffsetX,
+    backgroundImageOffsetY,
+    backgroundGradient: $state.snapshot(backgroundGradient),
   });
 
   // Loads every field from `project` into the live editor state and makes
@@ -322,13 +576,46 @@
     lastSavedSettings = toProjectSettings(project);
     letters = project.letters;
     debouncedLetters = project.letters;
+    letterCase = project.letterCase;
     selectedDesignId = project.designId;
     selectedFrameId = project.frameId;
-    frameGap = project.frameGap;
-    lettersColor = project.lettersColor;
-    frameColor = project.frameColor;
-    transparentBackground = project.transparentBackground;
-    backgroundColor = project.backgroundColor;
+    applyStylingFields(project);
+  }
+
+  /**
+   * Every color/Frame-appearance field `switchToProject`, `handleCuratedDesignSelect`,
+   * and `handleDeleteProject`'s no-Projects-left fallback all need to apply
+   * onto the live editor state — everything in `ProjectSettings` except
+   * `letters`/`letterCase` (not styling) and `designId`/`frameId` (each
+   * caller has its own reason to assign those explicitly: a plain id for
+   * two of the three callers, but the delete fallback resets `selectedDesignId`
+   * to `undefined` rather than a concrete id, so it can keep gracefully
+   * re-resolving via `resolveSelectedDesignId` — folding that into this
+   * shared helper would erase that distinction).
+   */
+  function applyStylingFields(
+    settings: Omit<
+      ProjectSettings,
+      "letters" | "letterCase" | "designId" | "frameId"
+    >,
+  ) {
+    frameGap = settings.frameGap;
+    lettersColor = settings.lettersColor;
+    lettersColorKind = settings.lettersColorKind;
+    lettersGradient = structuredClone(settings.lettersGradient);
+    lettersOpacity = settings.lettersOpacity;
+    frameColor = settings.frameColor;
+    frameColorKind = settings.frameColorKind;
+    frameGradient = structuredClone(settings.frameGradient);
+    frameFilled = settings.frameFilled;
+    backgroundKind = settings.backgroundKind;
+    backgroundColor = settings.backgroundColor;
+    backgroundImage = settings.backgroundImage;
+    backgroundImageZoom = settings.backgroundImageZoom;
+    backgroundImageOffsetX = settings.backgroundImageOffsetX;
+    backgroundImageOffsetY = settings.backgroundImageOffsetY;
+    backgroundImageError = null;
+    backgroundGradient = structuredClone(settings.backgroundGradient);
   }
 
   async function refreshProjects() {
@@ -336,10 +623,107 @@
     projects = list.slice().sort((a, b) => b.lastEditedAt - a.lastEditedAt);
   }
 
+  // Shareable links (issue #121): the hash also carries a whole monogram as
+  // `#m=<payload>` (src/lib/share-link.ts). Same non-polluting-history
+  // approach as #about above — replaceState only, never pushState.
+  //
+  // `shareNotice` reports what a link couldn't carry (a background image) or
+  // that it couldn't be read at all; `shareLink` is only populated as the
+  // manual-copy fallback when the Clipboard API is unavailable or denied.
+  let shareCopied = $state(false);
+  let shareLink: string | null = $state(null);
+  let shareNotice: "image-dropped" | "unreadable" | null = $state(null);
+  // The one thing a link genuinely can't carry — surfaced on the *sending*
+  // side too, so nobody shares a background image believing it travelled.
+  // Same predicate the payload's own `bi` flag is written from, so the
+  // warning and what actually gets dropped can never disagree.
+  let shareDropsImage = $derived(
+    shareOmitsBackgroundImage({ backgroundKind, backgroundImage }),
+  );
+
+  async function handleCopyShareLink() {
+    const url = buildShareUrl(location.href, currentProjectSettings);
+    try {
+      await navigator.clipboard.writeText(url);
+      shareCopied = true;
+      shareLink = null;
+    } catch {
+      // Clipboard unavailable (insecure context, permission denied, older
+      // browser) — show the link for manual copying rather than leaving the
+      // button looking like it did nothing.
+      shareCopied = false;
+      shareLink = url;
+    }
+  }
+
+  // Any edit invalidates an already-copied link: leaving "Link copied"
+  // on screen would imply the clipboard still matches what's on the canvas.
+  // Writes only (never reads `shareCopied`/`shareLink`), so this can't loop.
+  $effect(() => {
+    void currentProjectSettings;
+    shareCopied = false;
+    shareLink = null;
+  });
+
+  /**
+   * Loads a shared monogram into a brand-new local Project — own id and
+   * timestamps, exactly like Remix. A link is a starting point to build on,
+   * not a document two people co-own; the alternative (transient state that
+   * isn't saved) would be the only thing in the app that autosave doesn't
+   * cover, and would vanish on reload.
+   *
+   * Returns whether the payload was readable, so the caller can fall back to
+   * the normal "hydrate the last-edited Project" path for a broken link.
+   */
+  async function importSharedMonogram(payload: string): Promise<boolean> {
+    const shared = decodeShareSettings(payload);
+    // Drop the payload from the URL either way: a reload must not import a
+    // second copy of the same monogram (nor re-raise the same error), and
+    // the #about sync above owns the hash from here on.
+    replaceHash("");
+    if (!shared) {
+      shareNotice = "unreadable";
+      return false;
+    }
+    const project = createProject(shared.settings);
+    switchToProject(project);
+    shareNotice = shared.backgroundImageOmitted ? "image-dropped" : null;
+    // A shared link is a finished monogram to look at — never gate it behind
+    // the first-run initials prompt (#13), which would hide the very thing
+    // the link was sent for.
+    if (!onboardingComplete) {
+      markOnboardingComplete();
+      onboardingComplete = true;
+    }
+    await projectStore.put(project);
+    return true;
+  }
+
+  // Pasting a share link into the address bar of an already-open tab changes
+  // the hash without reloading, so the import has to hang off hashchange as
+  // well as the initial load. Our own replaceState calls don't fire this.
+  function handleHashChange() {
+    syncAboutFromHash();
+    const payload = readSharePayload(location.hash);
+    if (payload) void importSharedFromHash(payload);
+  }
+
+  async function importSharedFromHash(payload: string) {
+    if (await importSharedMonogram(payload)) await refreshProjects();
+  }
+
   async function initProject() {
-    const lastEdited = await projectStore.getLastEdited();
-    if (lastEdited) {
-      switchToProject(lastEdited);
+    // A share link wins over the last-edited Project: someone following a
+    // link came to see *that* monogram. Resolved before `projectReady` flips
+    // so the shared monogram is what the first rendered frame shows —
+    // neither the onboarding prompt nor the outgoing Project flashes first.
+    const payload = readSharePayload(location.hash);
+    const imported = payload ? await importSharedMonogram(payload) : false;
+    if (!imported) {
+      const lastEdited = await projectStore.getLastEdited();
+      if (lastEdited) {
+        switchToProject(lastEdited);
+      }
     }
     await refreshProjects();
     projectReady = true;
@@ -435,10 +819,12 @@
 
   // Shared by both onboarding exits (submit and skip): creates and persists
   // the first Project (design guidance for #14: "submitting initials /
-  // skipping should create the first Project"), makes it active (sets the
-  // real letters immediately, bypassing the 200ms gallery debounce below,
-  // so the reveal shows the user's actual letters from the first frame, not
-  // a stale default), and marks onboarding complete so it never shows again.
+  // skipping should create the first Project"), makes it active, marks
+  // onboarding complete so it never shows again, and lands the visitor
+  // straight in the real editor in Easy mode (impeccable shape brief,
+  // 2026-08-08) — Easy mode's own curated Design gallery is now the first
+  // concrete look at what the app can do, replacing the old one-time
+  // jump-off gallery + coach-hint step (docs/DECISIONS.md).
   async function completeOnboarding(nextLetters: string) {
     const project = createProject({
       ...DEFAULT_PROJECT_SETTINGS,
@@ -447,6 +833,7 @@
     switchToProject(project);
     markOnboardingComplete();
     onboardingComplete = true;
+    setWorkspaceMode("easy");
     await projectStore.put(project);
     await refreshProjects();
   }
@@ -533,17 +920,17 @@
         // defaults the app shipped with pre-#14, since there's nothing left
         // to hydrate from. onboardingComplete stays true (a one-way flag,
         // see #13), so this does not bring the onboarding prompt back.
+        // selectedDesignId resets to undefined (not a concrete id) so it
+        // keeps gracefully re-resolving via resolveSelectedDesignId — see
+        // applyStylingFields' docstring.
         activeProjectMeta = undefined;
         lastSavedSettings = undefined;
         letters = DEFAULT_PROJECT_SETTINGS.letters;
         debouncedLetters = DEFAULT_PROJECT_SETTINGS.letters;
+        letterCase = DEFAULT_PROJECT_SETTINGS.letterCase;
         selectedDesignId = undefined;
         selectedFrameId = DEFAULT_PROJECT_SETTINGS.frameId;
-        frameGap = DEFAULT_PROJECT_SETTINGS.frameGap;
-        lettersColor = DEFAULT_PROJECT_SETTINGS.lettersColor;
-        frameColor = DEFAULT_PROJECT_SETTINGS.frameColor;
-        transparentBackground = DEFAULT_PROJECT_SETTINGS.transparentBackground;
-        backgroundColor = DEFAULT_PROJECT_SETTINGS.backgroundColor;
+        applyStylingFields(DEFAULT_PROJECT_SETTINGS);
       }
     }
     await refreshProjects();
@@ -557,12 +944,141 @@
   function handleLettersInput(
     event: Event & { currentTarget: HTMLInputElement },
   ) {
-    const result = sanitizeLettersInput(event.currentTarget.value);
+    const result = sanitizeLettersInput(event.currentTarget.value, letterCase);
     letters = result.letters;
     lettersHintInfo = result.hint;
     // Keep the DOM in sync immediately — a rejected character (e.g. an
     // umlaut) must never render, not even for a frame.
     event.currentTarget.value = result.letters;
+  }
+
+  // Letter Opacity (issue #65): the slider works in whole percent (0-100)
+  // for a legible display value; the underlying model (and what the engine
+  // accepts) is a 0-1 fraction.
+  function handleLettersOpacityInput(
+    event: Event & { currentTarget: HTMLInputElement },
+  ) {
+    lettersOpacity = Number(event.currentTarget.value) / 100;
+  }
+
+  // Background image (issue #63): reads + downscales the picked file
+  // (src/lib/background-image.ts), storing the resulting data URL directly
+  // in the $state var that already flows into resolvedBackground/
+  // currentProjectSettings above — no separate "pending upload" state.
+  function backgroundImageErrorMessage(message: string): string {
+    switch (message) {
+      case "not-an-image":
+        return t("color.backgroundImageErrorType");
+      case "too-large":
+        return t("color.backgroundImageErrorSize");
+      default:
+        return t("color.backgroundImageErrorDecode");
+    }
+  }
+
+  async function handleBackgroundImageInput(
+    event: Event & { currentTarget: HTMLInputElement },
+  ) {
+    const file = event.currentTarget.files?.[0];
+    // Clear the input's own value so picking the exact same file again
+    // still fires a change event.
+    event.currentTarget.value = "";
+    if (!file) return;
+    try {
+      backgroundImage = await prepareBackgroundImage(file);
+      // A new picture gets a clean framing rather than inheriting the crop
+      // that happened to suit the previous one.
+      resetBackgroundImageFraming();
+      backgroundImageError = null;
+    } catch (err) {
+      backgroundImageError = backgroundImageErrorMessage(
+        err instanceof BackgroundImageError ? err.message : "decode-failed",
+      );
+    }
+  }
+
+  function handleRemoveBackgroundImage() {
+    backgroundImage = null;
+    // Symmetric with picking one: a crop belongs to the picture it was
+    // tuned for, so removing the picture must not leave a stale 3x zoom
+    // persisted (and encoded into share links) with nothing to apply it to.
+    resetBackgroundImageFraming();
+    backgroundImageError = null;
+  }
+
+  function resetBackgroundImageFraming() {
+    backgroundImageZoom = DEFAULT_PROJECT_SETTINGS.backgroundImageZoom;
+    backgroundImageOffsetX = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX;
+    backgroundImageOffsetY = DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY;
+  }
+
+  // Drag-to-pan on the live preview (issue #123). Direct manipulation is the
+  // point — Design Principle 1 puts the monogram, not a sidebar widget, at
+  // the centre — but it is deliberately *not* the only way in: the offset
+  // sliders below do the same job for keyboard and assistive-tech users.
+  //
+  // Pointer (not mouse) events, with capture, so a drag that leaves the
+  // preview still tracks and still ends cleanly; touch panning is the same
+  // code path.
+  let panPointerId: number | null = null;
+  let panLastX = 0;
+  let panLastY = 0;
+
+  function handlePreviewPointerDown(
+    event: PointerEvent & { currentTarget: HTMLElement },
+  ) {
+    if (!canPanBackground || panPointerId !== null) return;
+    panPointerId = event.pointerId;
+    panLastX = event.clientX;
+    panLastY = event.clientY;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePreviewPointerMove(
+    event: PointerEvent & { currentTarget: HTMLElement },
+  ) {
+    if (event.pointerId !== panPointerId) return;
+    event.preventDefault();
+    // The *SVG's* box, not the wrapper's: `.preview` carries padding, and
+    // measuring that instead would make the image lag the cursor by the
+    // padding's share of the width (~6% at the desktop cap, more on a
+    // phone). Inside the content box the gain below is exact 1:1 tracking —
+    // the image follows the pointer pixel for pixel at any zoom.
+    const svg = event.currentTarget.querySelector("svg");
+    const rect = (svg ?? event.currentTarget).getBoundingClientRect();
+    const range = backgroundImageZoom - MIN_IMAGE_ZOOM;
+    if (range <= 0 || rect.width === 0 || rect.height === 0) return;
+    backgroundImageOffsetX = clampImageOffset(
+      backgroundImageOffsetX +
+        ((event.clientX - panLastX) * 2) / (rect.width * range),
+    );
+    backgroundImageOffsetY = clampImageOffset(
+      backgroundImageOffsetY +
+        ((event.clientY - panLastY) * 2) / (rect.height * range),
+    );
+    panLastX = event.clientX;
+    panLastY = event.clientY;
+  }
+
+  /**
+   * Ends a drag. Also bound to `lostpointercapture`, which is the only
+   * signal that arrives when the preview is destroyed mid-drag — it sits
+   * inside `{#key resolvedDesignId}`, so picking a Design while panning
+   * (two fingers on a touch screen) tears it down. Without this,
+   * `panPointerId` would stay set and every later drag would be refused,
+   * leaving a grab cursor that promises an interaction that's dead until
+   * reload (Design Principle 3: no dead ends).
+   */
+  function handlePreviewPointerUp(
+    event: PointerEvent & { currentTarget: HTMLElement },
+  ) {
+    if (event.pointerId !== panPointerId) return;
+    panPointerId = null;
+    // Capture may already be gone (pointercancel, element torn down), and
+    // releasing a pointer that isn't captured throws.
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
   }
 
   async function handleExport(format: "svg" | "png" | "jpg" | "pdf") {
@@ -590,7 +1106,7 @@
   }
 </script>
 
-<svelte:window onhashchange={syncAboutFromHash} />
+<svelte:window onhashchange={handleHashChange} />
 
 {#if !projectReady}
   <!-- Briefly blank while the initial "does a Project already exist?"
@@ -644,8 +1160,42 @@
     </header>
 
     <aside class="sidebar">
-      <div class="tablist" role="tablist" aria-label={t("tabs.label")}>
-        {#each WORKSPACE_TABS as tab (tab)}
+      <div
+        class="mode-toggle"
+        role="group"
+        aria-label={t("workspaceMode.label")}
+      >
+        <button
+          type="button"
+          aria-pressed={workspaceMode === "easy"}
+          onclick={() => setWorkspaceMode("easy")}
+        >
+          {t("workspaceMode.easy")}
+        </button>
+        <button
+          type="button"
+          aria-pressed={workspaceMode === "full"}
+          onclick={() => setWorkspaceMode("full")}
+        >
+          {t("workspaceMode.full")}
+        </button>
+      </div>
+
+      <!-- Rail (issue #47, restyled per the impeccable shape brief,
+           2026-08-08): numbered, connected steps rather than flat tabs, so
+           Design -> Frame -> Colors -> Export reads as one sequence to move
+           through, not four unrelated panels — while staying fully
+           non-linear (every step stays reachable in any order, exactly as
+           before). --backdrop-count sizes the connecting track (below) to
+           however many steps Easy/Full mode currently shows. -->
+      <div
+        class="rail"
+        role="tablist"
+        aria-label={t("tabs.label")}
+        style:--rail-count={visibleTabs.length}
+      >
+        <div class="rail-track" aria-hidden="true"></div>
+        {#each visibleTabs as tab, i (tab)}
           <button
             type="button"
             role="tab"
@@ -653,10 +1203,14 @@
             aria-selected={activeTab === tab}
             aria-controls={`panel-${tab}`}
             tabindex={activeTab === tab ? 0 : -1}
-            onclick={() => (activeTab = tab)}
+            class="rail-step"
+            onclick={() => {
+              activeTab = tab;
+            }}
             onkeydown={handleTabKeydown}
           >
-            {t(`tabs.${tab}`)}
+            <span class="rail-index" aria-hidden="true">{i + 1}</span>
+            <span class="rail-label">{t(`tabs.${tab}`)}</span>
           </button>
         {/each}
       </div>
@@ -669,15 +1223,32 @@
           aria-labelledby="tab-design"
           hidden={activeTab !== "design"}
         >
-          <DesignGallery
-            designs={availableDesigns}
-            letters={debouncedLetters}
-            {fonts}
-            {lettersColor}
-            selectedId={resolvedDesignId}
-            onSelect={(id) => (selectedDesignId = id)}
-            {reducedMotion}
-          />
+          {#if workspaceMode === "easy"}
+            <!-- Only mounted while this is the active step (true unmount,
+                 not `hidden`): EasyDesignGallery renders every tile's true
+                 gradient/fill, and a content-hashed <defs>/<mask> id only
+                 corrupts other references while sitting in a display:none
+                 subtree, never while genuinely absent from the DOM — see
+                 its own doc comment and docs/DECISIONS.md, 2026-08-08. -->
+            {#if activeTab === "design"}
+              <EasyDesignGallery
+                letters={debouncedLetters}
+                {fonts}
+                onSelect={handleCuratedDesignSelect}
+                {reducedMotion}
+              />
+            {/if}
+          {:else}
+            <DesignGallery
+              designs={availableDesigns}
+              letters={debouncedLetters}
+              {fonts}
+              lettersColor={lettersTileColor}
+              selectedId={resolvedDesignId}
+              onSelect={(id) => (selectedDesignId = id)}
+              {reducedMotion}
+            />
+          {/if}
         </div>
 
         <div
@@ -694,8 +1265,8 @@
             arrangement={resolvedDesign?.arrangement}
             shape={resolvedDesign?.shape}
             gap={resolvedFrameGap}
-            {lettersColor}
-            {frameColor}
+            lettersColor={lettersTileColor}
+            frameColor={frameTileColor}
             selectedId={selectedFrameId}
             onSelect={(id) => (selectedFrameId = id)}
           />
@@ -722,28 +1293,204 @@
           aria-labelledby="tab-colors"
           hidden={activeTab !== "colors"}
         >
-          <div class="color-controls">
-            <label>
-              {t("color.letters")}
-              <input type="color" bind:value={lettersColor} />
-            </label>
-            <label>
-              {t("color.frame")}
-              <input type="color" bind:value={frameColor} />
-            </label>
-            <label class:disabled={transparentBackground}>
-              {t("color.background")}
-              <input
-                type="color"
-                bind:value={backgroundColor}
-                disabled={transparentBackground}
+          {#if workspaceMode === "easy"}
+            <EasyColorPicker
+              {letters}
+              selectedId={selectedColorPresetId}
+              onSelect={handleColorPresetSelect}
+            />
+          {:else}
+            <div class="color-controls">
+              <PaintPicker
+                legend={t("color.lettersSection")}
+                name="letters"
+                gradientLabel={t("color.lettersGradient")}
+                colorLabel={t("color.letters")}
+                bind:kind={lettersColorKind}
+                bind:color={lettersColor}
+                bind:gradient={lettersGradient}
               />
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" bind:checked={transparentBackground} />
-              {t("color.transparent")}
-            </label>
-          </div>
+              <div class="opacity-control">
+                <label>
+                  {t("color.lettersOpacity")}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={Math.round(lettersOpacity * 100)}
+                    oninput={handleLettersOpacityInput}
+                  />
+                </label>
+                <output class="opacity-value"
+                  >{Math.round(lettersOpacity * 100)}%</output
+                >
+              </div>
+              <PaintPicker
+                legend={t("color.frameSection")}
+                name="frame"
+                gradientLabel={t("color.frameGradient")}
+                colorLabel={t("color.frame")}
+                bind:kind={frameColorKind}
+                bind:color={frameColor}
+                bind:gradient={frameGradient}
+              />
+              <label>
+                {t("color.frameFilled")}
+                <input
+                  type="checkbox"
+                  bind:checked={frameFilled}
+                  disabled={selectedFrameId === NO_FRAME_ID}
+                />
+              </label>
+              <fieldset class="paint-kind background-kind">
+                <legend>{t("color.background")}</legend>
+                <div class="kind-options">
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="transparent"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundTransparent")}
+                  </label>
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="color"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundSolid")}
+                  </label>
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="image"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundImage")}
+                  </label>
+                  <label class="kind-option">
+                    <input
+                      type="radio"
+                      name="background-kind"
+                      value="gradient"
+                      bind:group={backgroundKind}
+                    />
+                    {t("color.backgroundGradient")}
+                  </label>
+                </div>
+
+                {#if backgroundKind === "color"}
+                  <label class="sub-control">
+                    {t("color.backgroundColorInput")}
+                    <input type="color" bind:value={backgroundColor} />
+                  </label>
+                {:else if backgroundKind === "image"}
+                  <div class="sub-control image-control">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      aria-label={t("color.backgroundImageUpload")}
+                      onchange={handleBackgroundImageInput}
+                    />
+                    {#if backgroundImage}
+                      <div class="image-preview-row">
+                        <span class="image-preview checkerboard">
+                          <img
+                            src={backgroundImage}
+                            alt=""
+                            style:left={`${thumbPlacement.x}%`}
+                            style:top={`${thumbPlacement.y}%`}
+                            style:width={`${thumbPlacement.size}%`}
+                            style:height={`${thumbPlacement.size}%`}
+                          />
+                        </span>
+                        <button
+                          type="button"
+                          onclick={handleRemoveBackgroundImage}
+                        >
+                          {t("color.backgroundImageRemove")}
+                        </button>
+                      </div>
+                      <!-- Zoom + pan (issue #123). Sliders are the accessible
+                         path to the same fields drag-to-pan writes; the
+                         offset pair is disabled at 1x because there is no
+                         slack to move into. -->
+                      <div class="image-transform">
+                        <div class="transform-row">
+                          <label>
+                            {t("color.backgroundImageZoom")}
+                            <input
+                              type="range"
+                              min={MIN_IMAGE_ZOOM}
+                              max={MAX_IMAGE_ZOOM}
+                              step="0.05"
+                              bind:value={backgroundImageZoom}
+                            />
+                          </label>
+                          <output
+                            >{Math.round(backgroundImageZoom * 100)}%</output
+                          >
+                        </div>
+                        <div class="transform-row">
+                          <label>
+                            {t("color.backgroundImageOffsetX")}
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.01"
+                              disabled={!canPanBackground}
+                              bind:value={backgroundImageOffsetX}
+                            />
+                          </label>
+                          <output>
+                            {Math.round(backgroundImageOffsetX * 100)}%
+                          </output>
+                        </div>
+                        <div class="transform-row">
+                          <label>
+                            {t("color.backgroundImageOffsetY")}
+                            <input
+                              type="range"
+                              min="-1"
+                              max="1"
+                              step="0.01"
+                              disabled={!canPanBackground}
+                              bind:value={backgroundImageOffsetY}
+                            />
+                          </label>
+                          <output>
+                            {Math.round(backgroundImageOffsetY * 100)}%
+                          </output>
+                        </div>
+                        <p class="form-note">
+                          {canPanBackground
+                            ? t("color.backgroundImageDragHint")
+                            : t("color.backgroundImageZoomHint")}
+                        </p>
+                      </div>
+                    {/if}
+                    {#if backgroundImageError}
+                      <p class="form-hint" role="alert">
+                        {backgroundImageError}
+                      </p>
+                    {/if}
+                  </div>
+                {:else if backgroundKind === "gradient"}
+                  <GradientEditor
+                    bind:gradient={backgroundGradient}
+                    name="background"
+                    label={t("color.backgroundGradient")}
+                  />
+                {/if}
+              </fieldset>
+            </div>
+          {/if}
         </div>
 
         <div
@@ -772,6 +1519,35 @@
               {t("export.pdf")}
             </button>
           </div>
+
+          <!-- Share (issue #121): lives with Export because it's an output —
+               the same "take it with you" job as the file formats above,
+               except the recipient gets something still editable. Not
+               gated on `preview`: a link needs no rendered SVG, so it works
+               even while the Design's font is still loading. -->
+          <div class="share-control">
+            <h3 class="share-heading">{t("share.heading")}</h3>
+            <p class="share-description">{t("share.description")}</p>
+            <button type="button" onclick={() => void handleCopyShareLink()}>
+              {t("share.copy")}
+            </button>
+            {#if shareCopied}
+              <p class="share-status" role="status">{t("share.copied")}</p>
+            {/if}
+            {#if shareLink}
+              <input
+                class="share-link"
+                type="text"
+                readonly
+                value={shareLink}
+                aria-label={t("share.linkLabel")}
+                onfocus={(event) => event.currentTarget.select()}
+              />
+            {/if}
+            {#if shareDropsImage}
+              <p class="share-description">{t("share.imageOmitted")}</p>
+            {/if}
+          </div>
         </div>
         <button
           type="button"
@@ -784,10 +1560,56 @@
     </aside>
 
     <main class="canvas-zone">
-      <label class="letters-field">
-        {t("letters.label")}
-        <input value={letters} oninput={handleLettersInput} />
-      </label>
+      <!-- Import feedback for a followed share link (issue #121) — what the
+           link couldn't carry, or that it couldn't be read at all. Sits above
+           the letters row rather than in the fixed-height hint slot below,
+           which belongs to the letters field's own validation. -->
+      {#if shareNotice}
+        <p class="share-notice" role="status">
+          <span>
+            {shareNotice === "unreadable"
+              ? t("share.noticeUnreadable")
+              : t("share.noticeImageDropped")}
+          </span>
+          <button
+            type="button"
+            class="dismiss-notice"
+            aria-label={t("share.noticeDismiss")}
+            onclick={() => (shareNotice = null)}
+          >
+            ×
+          </button>
+        </p>
+      {/if}
+      <div class="letters-row">
+        <label class="letters-field">
+          {t("letters.label")}
+          <input value={letters} oninput={handleLettersInput} />
+        </label>
+        <!-- Case toggle (issue #62, ADR 0008): affects only how future
+             keystrokes are sanitized, not a retroactive re-case of the
+             current letters (see letterCase's docstring above). -->
+        <div
+          class="case-toggle"
+          role="group"
+          aria-label={t("letters.caseLabel")}
+        >
+          <button
+            type="button"
+            aria-pressed={letterCase === "upper"}
+            onclick={() => (letterCase = "upper")}
+          >
+            {t("letters.caseUpper")}
+          </button>
+          <button
+            type="button"
+            aria-pressed={letterCase === "preserve"}
+            onclick={() => (letterCase = "preserve")}
+          >
+            {t("letters.casePreserve")}
+          </button>
+        </div>
+      </div>
       <!-- Fixed-height slot so the hint appearing/disappearing never shifts
            the preview (or anything else) around. -->
       <div class="hint-slot">
@@ -799,6 +1621,16 @@
       {#key resolvedDesignId}
         <div
           class="preview checkerboard"
+          class:pannable={canPanBackground}
+          role="img"
+          aria-label={canPanBackground
+            ? `${t("preview.label")} — ${t("color.backgroundImageDragHint")}`
+            : t("preview.label")}
+          onpointerdown={handlePreviewPointerDown}
+          onpointermove={handlePreviewPointerMove}
+          onpointerup={handlePreviewPointerUp}
+          onpointercancel={handlePreviewPointerUp}
+          onlostpointercapture={handlePreviewPointerUp}
           transition:scale={{ start: 0.98, duration: reducedMotion ? 0 : 200 }}
         >
           {#if preview}
@@ -898,7 +1730,7 @@
     width: 0.4rem;
     height: 0.4rem;
     border-radius: 50%;
-    background: light-dark(#0b57d0, #a8c7fa);
+    background: var(--accent);
   }
 
   .sr-only {
@@ -931,29 +1763,109 @@
     background: light-dark(#fafafa, #161618);
   }
 
-  .tablist {
+  /* Mode toggle (impeccable shape brief, 2026-08-08): same segmented-control
+     look as the canvas zone's case toggle further down, deliberately kept
+     as its own small class rather than shared — the two toggle unrelated
+     things and happen to look alike by coincidence, not by system. */
+  .mode-toggle {
     display: flex;
-    gap: 0.25rem;
-    padding: 0.4rem 0.75rem 0;
-    border-bottom: 1px solid light-dark(#e2e2e2, #2a2a2c);
+    align-self: flex-start;
+    margin: 0.6rem 0.75rem 0;
+    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+    border-radius: 0.4rem;
+    overflow: hidden;
   }
 
-  .tablist [role="tab"] {
-    flex: 1;
+  .mode-toggle button {
     font: inherit;
-    font-size: 0.875rem;
-    padding: 0.5rem 0.25rem;
-    background: none;
+    font-size: var(--control-label-size);
+    padding: 0.3rem 0.65rem;
     border: none;
-    border-bottom: 2px solid transparent;
+    background: none;
     color: light-dark(#555, #aaa);
     cursor: pointer;
   }
 
-  .tablist [role="tab"][aria-selected="true"] {
-    color: light-dark(#0b57d0, #a8c7fa);
-    border-bottom-color: currentColor;
+  .mode-toggle button + button {
+    border-left: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .mode-toggle button[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-contrast);
     font-weight: 600;
+  }
+
+  /* Rail (issue #47, restyled as a connected sequence per the impeccable
+     shape brief 2026-08-08): a numbered track behind every step's circle,
+     drawn once as a single line spanning from the first step's circle
+     center to the last step's — not per-segment — so it never depends on
+     exact circle spacing and adapts automatically to Easy mode's shorter,
+     3-step rail via --rail-count. */
+  .rail {
+    position: relative;
+    display: flex;
+    padding: 0.6rem 0.75rem 0.5rem;
+    border-bottom: 1px solid light-dark(#e2e2e2, #2a2a2c);
+  }
+
+  .rail-track {
+    position: absolute;
+    top: 1.35rem;
+    left: calc(50% / var(--rail-count));
+    right: calc(50% / var(--rail-count));
+    height: 2px;
+    background: light-dark(#e2e2e2, #333);
+  }
+
+  .rail-step {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    font: inherit;
+    background: none;
+    border: none;
+    padding: 0.15rem 0.25rem;
+    cursor: pointer;
+  }
+
+  .rail-index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 2px solid light-dark(#d5d5d5, #3a3a3c);
+    background: light-dark(#fafafa, #161618);
+    color: light-dark(#777, #999);
+    font-size: 0.75rem;
+    font-weight: var(--step-label-weight);
+  }
+
+  .rail-label {
+    font-size: var(--control-label-size);
+    color: light-dark(#555, #aaa);
+  }
+
+  .rail-step[aria-selected="true"] .rail-index {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-contrast);
+  }
+
+  .rail-step[aria-selected="true"] .rail-label {
+    color: var(--accent);
+    font-weight: var(--step-label-weight);
+    font-size: var(--step-label-size);
+  }
+
+  .rail-step:hover .rail-index,
+  .rail-step:focus-visible .rail-index {
+    border-color: var(--accent);
   }
 
   .sidebar-content {
@@ -970,16 +1882,17 @@
   }
 
   /* Restarts every time a panel un-hides (CSS animations don't run while
-     display: none), so tab switches get a light glide without any JS —
-     and none at all under prefers-reduced-motion. */
+     display: none), so moving along the rail reads as advancing forward
+     rather than a flat panel swap — and none at all under
+     prefers-reduced-motion. */
   .panel {
-    animation: panel-in 160ms ease;
+    animation: panel-in 200ms ease;
   }
 
   @keyframes panel-in {
     from {
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateY(8px) scale(0.99);
     }
   }
 
@@ -1005,6 +1918,13 @@
     padding: 1.5rem;
   }
 
+  .letters-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
   .letters-field {
     display: flex;
     flex-direction: column;
@@ -1012,6 +1932,33 @@
     gap: 0.25rem;
     font-size: 0.875rem;
     color: light-dark(#555, #aaa);
+  }
+
+  .case-toggle {
+    display: flex;
+    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+    border-radius: 0.4rem;
+    overflow: hidden;
+  }
+
+  .case-toggle button {
+    font: inherit;
+    font-size: 0.875rem;
+    padding: 0.35rem 0.6rem;
+    border: none;
+    background: none;
+    color: light-dark(#555, #aaa);
+    cursor: pointer;
+  }
+
+  .case-toggle button + button {
+    border-left: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .case-toggle button[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 600;
   }
 
   .letters-field input {
@@ -1102,14 +2049,173 @@
     font-size: 0.875rem;
   }
 
-  .color-controls label.disabled {
-    opacity: 0.5;
+  .opacity-control {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
   }
 
-  .color-controls label.checkbox-label {
-    flex-direction: row-reverse;
-    justify-content: flex-end;
+  .opacity-control label {
+    flex: 1;
+  }
+
+  .opacity-control input[type="range"] {
+    flex: 1;
+    margin-left: 0.75rem;
+  }
+
+  .opacity-value {
+    font-variant-numeric: tabular-nums;
+    min-width: 2.5rem;
+    text-align: right;
+    font-size: 0.875rem;
+  }
+
+  .background-kind {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .background-kind legend {
+    padding: 0;
+    font-size: 0.875rem;
+  }
+
+  .kind-options {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .color-controls .kind-option {
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+  }
+
+  .color-controls .sub-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .image-control {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .image-control input[type="file"] {
+    max-width: 100%;
+    font-size: 0.8125rem;
+  }
+
+  .image-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .image-preview {
+    position: relative;
+    display: block;
+    flex-shrink: 0;
+    width: 3.5rem;
+    height: 3.5rem;
+    overflow: hidden;
+    border-radius: 0.35rem;
+    border: 1px solid light-dark(#d5d5d5, #3a3a3c);
+  }
+
+  .image-preview img {
+    position: absolute;
+    object-fit: cover;
+  }
+
+  .image-transform {
+    display: flex;
+    flex-direction: column;
     gap: 0.4rem;
+    width: 100%;
+  }
+
+  /* Output sits outside the <label> — inside, its live value would become
+     part of the control's accessible name ("Zoom 235%"). Same shape as the
+     Frame Gap and Letter Opacity rows. */
+  .transform-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .transform-row label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .transform-row input[type="range"] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .image-transform output {
+    font-variant-numeric: tabular-nums;
+    min-width: 3rem;
+    text-align: right;
+    font-size: 0.8125rem;
+  }
+
+  .form-note {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: light-dark(#555, #aaa);
+  }
+
+  /* Drag-to-pan is only live while there is slack to pan into, so the
+     grab cursor never promises an interaction that does nothing. */
+  .pannable {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .pannable:active {
+    cursor: grabbing;
+  }
+
+  .form-hint {
+    color: light-dark(#b3261e, #ffb4ab);
+    font-size: 0.8125rem;
+    margin: 0;
+  }
+
+  /* Letters / Frame / Background fill pickers (issue #122): the same
+     solid-vs-gradient chooser three times over, so they share one class. */
+  .paint-kind {
+    border: 1px solid light-dark(#e2e2e2, #2a2a2c);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.75rem 0.75rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .paint-kind legend {
+    font-size: 0.8125rem;
+    padding: 0 0.25rem;
+    color: light-dark(#555, #aaa);
   }
 
   .export-size {
@@ -1131,6 +2237,72 @@
     gap: 0.5rem;
     margin-top: 0.75rem;
     padding: 0 0.25rem;
+  }
+
+  /* Share (issue #121) — separated from the export buttons by a rule: it
+     produces a link, not a file, so it shouldn't read as a fifth format. */
+  .share-control {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    padding: 1rem 0.25rem 0;
+    border-top: 1px solid light-dark(#e2e2e2, #2a2a2c);
+  }
+
+  .share-heading {
+    margin: 0;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: light-dark(#555, #aaa);
+  }
+
+  .share-description {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: light-dark(#555, #aaa);
+  }
+
+  .share-status {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: light-dark(#1a7f37, #6fdc8c);
+  }
+
+  .share-link {
+    font-size: 0.75rem;
+    font-family: ui-monospace, monospace;
+    padding: 0.35rem 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .share-notice {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.4rem;
+    background: light-dark(#f0f0f0, #232325);
+    color: light-dark(#333, #ccc);
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .dismiss-notice {
+    font: inherit;
+    flex-shrink: 0;
+    line-height: 1;
+    background: none;
+    border: none;
+    padding: 0 0.25rem;
+    color: inherit;
+    cursor: pointer;
   }
 
   /* Mobile (issue #47): fixed vertical split — canvas zone on top, tab bar
@@ -1176,6 +2348,10 @@
       gap: 0.4rem;
     }
 
+    .letters-row {
+      gap: 0.5rem;
+    }
+
     .letters-field {
       flex-direction: row;
       gap: 0.5rem;
@@ -1184,6 +2360,10 @@
     .letters-field input {
       font-size: 1.1rem;
       width: 7rem;
+    }
+
+    .case-toggle button {
+      padding: 0.3rem 0.45rem;
     }
 
     .hint-slot {

@@ -15,7 +15,9 @@ import {
   frameFitExtent,
   type FrameFitTarget,
 } from "./fit";
-import { sanitizeColor } from "./color";
+import { sanitizeOpacity } from "./color";
+import { composeBackgroundLayer, type BackgroundFill } from "./background";
+import { resolvePaint, type Paint } from "./paint";
 import {
   warpPathCommands,
   scalePathCommands,
@@ -40,10 +42,18 @@ export interface ComposeOptions extends LayoutOptions {
      * exactly; larger values scale the lettering down (issue #36). */
     gap?: number;
   };
-  /** Letter fill color. Defaults to "currentColor". */
-  lettersColor?: string;
-  /** Background fill. Omit (or "transparent") for a transparent background — the default. */
-  background?: string;
+  /** Letter fill: a color string (defaults to "currentColor") or a Gradient
+   * (issue #122), which renders as a `<defs>` paint server the glyph group
+   * references. */
+  lettersColor?: Paint;
+  /** Letter fill opacity, 0-1 (issue #65: "see-through" letters that let a
+   * background color/image/gradient show through the letterforms).
+   * Defaults to 1 (fully opaque, the original behavior). */
+  lettersOpacity?: number;
+  /** Background fill: a color string ("transparent" for none — the
+   * default), or a `BackgroundFill` for the richer kinds (issue #63 image,
+   * issue #64 gradient). */
+  background?: string | BackgroundFill;
 }
 
 /** A positioned letter's raw glyph outline, in absolute viewBox coordinates. */
@@ -136,20 +146,37 @@ export function composeMonogram(
     paths = composeShapedLetters(baseLayout, font, shape, options.frame);
   }
 
-  const lettersColor = sanitizeColor(options.lettersColor, "currentColor");
-  const glyphGroup = `<g fill="${lettersColor}">${paths}</g>`;
+  // `defs` is "" for a solid color, so a solid-painted monogram's output
+  // stays byte-identical to what shipped before gradients (issue #122).
+  const lettersPaint = resolvePaint(
+    options.lettersColor,
+    "currentColor",
+    "mm-letters-gradient",
+  );
+  const lettersOpacity = sanitizeOpacity(options.lettersOpacity, 1);
+  // Omitted entirely at full opacity (the default) so every existing
+  // Design's output stays byte-identical — fill-opacity="1" is a no-op but
+  // would still bloat every exported SVG.
+  const opacityAttr =
+    lettersOpacity < 1 ? ` fill-opacity="${lettersOpacity}"` : "";
+  const glyphGroup = `${lettersPaint.defs}<g fill="${lettersPaint.value}"${opacityAttr}>${paths}</g>`;
   const frameMarkup = options.frame
     ? composeFrame(options.frame.id, {
         color: options.frame.color,
         strokeWidth: options.frame.strokeWidth,
+        fill: options.frame.fill,
+        // The letters' own paths, reused as the mask that cuts their
+        // silhouette out of the fill (composeFrame ignores this unless
+        // `fill` is also set) — same coordinate space, since both are
+        // computed from the same fitted `layout` above.
+        cutout: paths,
       })
     : "";
 
-  const background = sanitizeColor(options.background, "transparent");
-  const backgroundMarkup =
-    background === "transparent"
-      ? ""
-      : `<rect width="${VIEWBOX_SIZE}" height="${VIEWBOX_SIZE}" fill="${background}"/>`;
+  const { defs, markup: backgroundMarkup } = composeBackgroundLayer(
+    options.background,
+    VIEWBOX_SIZE,
+  );
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}">${backgroundMarkup}${frameMarkup}${glyphGroup}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}">${defs}${backgroundMarkup}${frameMarkup}${glyphGroup}</svg>`;
 }

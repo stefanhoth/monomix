@@ -22,6 +22,9 @@ export const dictionary = {
     de: "Misch dein Monogramm und nimm es überallhin mit.",
   },
   "letters.label": { en: "Letters", de: "Buchstaben" },
+  "letters.caseLabel": { en: "Case", de: "Groß-/Kleinschreibung" },
+  "letters.caseUpper": { en: "ABC", de: "ABC" },
+  "letters.casePreserve": { en: "Abc", de: "Abc" },
   "letters.hint.generic": {
     en: "Only A-Z letters are supported.",
     de: "Es werden nur die Buchstaben A-Z unterstützt.",
@@ -31,20 +34,117 @@ export const dictionary = {
     de: 'Es werden nur die Buchstaben A-Z unterstützt. Verwende "{suggestion}" statt "{invalid}".',
   },
   "frameGap.label": { en: "Frame Gap", de: "Abstand" },
+  // The live preview is an inline SVG with no text of its own; without a
+  // name assistive tech announces nothing at all for the app's hero element.
+  "preview.label": { en: "Monogram preview", de: "Monogramm-Vorschau" },
   "color.letters": { en: "Letter Color", de: "Buchstabenfarbe" },
+  // Issue #122: letters and Frame gained the same solid/gradient chooser the
+  // Background already had. The fieldset legend names the *target* and the
+  // input inside it names the color — mirroring Background/"Background
+  // Color", so a group and its own input never share an accessible name.
+  // Target-agnostic, so the Letters and Frame choosers don't label
+  // themselves with Background-scoped keys.
+  "color.paintSolid": { en: "Solid color", de: "Volltonfarbe" },
+  "color.paintGradient": { en: "Gradient", de: "Verlauf" },
+  "color.lettersSection": { en: "Letters", de: "Buchstaben" },
+  "color.lettersGradient": { en: "Letter gradient", de: "Buchstabenverlauf" },
+  "color.frameSection": { en: "Frame", de: "Rahmen" },
+  "color.frameGradient": { en: "Frame gradient", de: "Rahmenverlauf" },
+  "color.lettersOpacity": { en: "Letter Opacity", de: "Buchstabendeckkraft" },
   "color.frame": { en: "Frame Color", de: "Rahmenfarbe" },
-  "color.background": { en: "Background Color", de: "Hintergrundfarbe" },
-  "color.transparent": {
-    en: "Transparent background",
-    de: "Transparenter Hintergrund",
+  "color.frameFilled": { en: "Fill Frame", de: "Rahmen füllen" },
+  "color.background": { en: "Background", de: "Hintergrund" },
+  "color.backgroundTransparent": { en: "Transparent", de: "Transparent" },
+  "color.backgroundSolid": { en: "Solid color", de: "Volltonfarbe" },
+  "color.backgroundColorInput": {
+    en: "Background Color",
+    de: "Hintergrundfarbe",
+  },
+  "color.backgroundImage": { en: "Image", de: "Bild" },
+  "color.backgroundImageUpload": {
+    en: "Upload background image",
+    de: "Hintergrundbild hochladen",
+  },
+  "color.backgroundImageRemove": { en: "Remove image", de: "Bild entfernen" },
+  // Issue #123: zoom + pan, so the interesting part of a photo can be moved
+  // into frame instead of accepting whatever crop `cover` picked.
+  "color.backgroundImageZoom": { en: "Zoom", de: "Zoom" },
+  "color.backgroundImageOffsetX": { en: "Horizontal", de: "Horizontal" },
+  "color.backgroundImageOffsetY": { en: "Vertical", de: "Vertikal" },
+  "color.backgroundImageDragHint": {
+    en: "Drag the preview to reposition the image.",
+    de: "Ziehe die Vorschau, um das Bild zu verschieben.",
+  },
+  "color.backgroundImageZoomHint": {
+    en: "Zoom in to reposition the image.",
+    de: "Zoome hinein, um das Bild zu verschieben.",
+  },
+  "color.backgroundImageErrorType": {
+    en: "Please choose an image file.",
+    de: "Bitte wähle eine Bilddatei.",
+  },
+  "color.backgroundImageErrorSize": {
+    en: "That image is too large (max 20 MB).",
+    de: "Das Bild ist zu groß (max. 20 MB).",
+  },
+  "color.backgroundImageErrorDecode": {
+    en: "Couldn't read that image. Try a different file.",
+    de: "Das Bild konnte nicht gelesen werden. Versuche eine andere Datei.",
+  },
+  "color.backgroundGradient": { en: "Gradient", de: "Verlauf" },
+  "color.gradientLinear": { en: "Linear", de: "Linear" },
+  "color.gradientRadial": { en: "Radial", de: "Radial" },
+  "color.gradientAngle": { en: "Angle", de: "Winkel" },
+  "color.gradientStopColor": {
+    en: "Color stop {n}",
+    de: "Farbstopp {n}",
+  },
+  "color.gradientStopPosition": {
+    en: "Color stop {n} position",
+    de: "Position von Farbstopp {n}",
+  },
+  "color.gradientAddStop": {
+    en: "Add color stop",
+    de: "Farbstopp hinzufügen",
+  },
+  "color.gradientRemoveStop": {
+    en: "Remove color stop {n}",
+    de: "Farbstopp {n} entfernen",
   },
   "export.sizeLabel": { en: "PNG/JPG size (px)", de: "PNG/JPG-Größe (px)" },
   "export.svg": { en: "Export SVG", de: "SVG exportieren" },
   "export.png": { en: "Export PNG", de: "PNG exportieren" },
   "export.jpg": { en: "Export JPG", de: "JPG exportieren" },
   "export.pdf": { en: "Export PDF", de: "PDF exportieren" },
+  // Shareable links (issue #121). "Link" is the ordinary German word too, so
+  // it stays as-is rather than being forced into "Verweis".
+  "share.heading": { en: "Share", de: "Teilen" },
+  "share.description": {
+    en: "Copy a link that recreates this monogram. Whoever opens it gets their own editable copy — nothing is uploaded.",
+    de: "Kopiere einen Link, der dieses Monogramm wiederherstellt. Wer ihn öffnet, bekommt eine eigene bearbeitbare Kopie — nichts wird hochgeladen.",
+  },
+  "share.copy": { en: "Copy link", de: "Link kopieren" },
+  "share.copied": { en: "Link copied.", de: "Link kopiert." },
+  "share.linkLabel": { en: "Share link", de: "Link zum Teilen" },
+  "share.imageOmitted": {
+    en: "The background image is too large for a link and won't be included.",
+    de: "Das Hintergrundbild ist zu groß für einen Link und wird nicht mitgeschickt.",
+  },
+  "share.noticeImageDropped": {
+    en: "Shared monogram opened. Its background image couldn't travel in the link — pick your own under Colors.",
+    de: "Geteiltes Monogramm geöffnet. Das Hintergrundbild ließ sich nicht per Link übertragen — wähle unter Farben dein eigenes.",
+  },
+  "share.noticeUnreadable": {
+    en: "That share link couldn't be read — it may have been cut short on the way here.",
+    de: "Dieser Link konnte nicht gelesen werden — er wurde unterwegs vielleicht abgeschnitten.",
+  },
+  "share.noticeDismiss": { en: "Dismiss", de: "Ausblenden" },
   "gallery.designsLabel": { en: "Designs", de: "Designs" },
   "gallery.framesLabel": { en: "Frames", de: "Rahmen" },
+  "gallery.curatedDesignsLabel": {
+    en: "Curated starting points",
+    de: "Ausgewählte Ausgangspunkte",
+  },
   "tabs.label": { en: "Editor sections", de: "Editor-Bereiche" },
   "tabs.design": { en: "Design", de: "Design" },
   "tabs.frame": { en: "Frame", de: "Rahmen" },
@@ -77,6 +177,54 @@ export const dictionary = {
     de: "Mein Monogramm ansehen",
   },
   "onboarding.skip": { en: "Just browsing", de: "Nur stöbern" },
+  // Easy/Full workspace mode (impeccable shape brief, 2026-08-08): a
+  // persistent toggle, not a one-time step — see docs/DECISIONS.md.
+  "workspaceMode.label": {
+    en: "Workspace mode",
+    de: "Arbeitsmodus",
+  },
+  "workspaceMode.easy": { en: "Easy", de: "Einfach" },
+  "workspaceMode.full": { en: "Full", de: "Vollständig" },
+  // Curated Designs (same brief; formerly the one-time "jump-off gallery",
+  // 2026-08-07) — Easy mode's persistent Design step.
+  "curatedDesign.caption.plain": {
+    en: "A plain Design — no Frame needed.",
+    de: "Ein schlichtes Design – ganz ohne Rahmen.",
+  },
+  "curatedDesign.caption.gradientFrame": {
+    en: "A Frame with its own gradient.",
+    de: "Ein Rahmen mit eigenem Verlauf.",
+  },
+  "curatedDesign.caption.dottedFrame": {
+    en: "A dotted Frame.",
+    de: "Ein gepunkteter Rahmen.",
+  },
+  "curatedDesign.caption.filledFrameCutout": {
+    en: "A filled Frame, cut out by the letters.",
+    de: "Ein gefüllter Rahmen, von den Buchstaben ausgespart.",
+  },
+  "curatedDesign.caption.dashedFrame": {
+    en: "A dashed Frame.",
+    de: "Ein gestrichelter Rahmen.",
+  },
+  "curatedDesign.caption.squareFrame": {
+    en: "A square Frame.",
+    de: "Ein quadratischer Rahmen.",
+  },
+  // Curated color presets (same brief) — Easy mode's Colors step.
+  "colorPreset.label": { en: "Color presets", de: "Farbvorlagen" },
+  "colorPreset.ink": { en: "Ink", de: "Tinte" },
+  "colorPreset.rosewood": { en: "Rosewood", de: "Rosenholz" },
+  "colorPreset.ivory": { en: "Ivory", de: "Elfenbein" },
+  "colorPreset.ocean": { en: "Ocean", de: "Ozean" },
+  "colorPreset.charcoalCream": { en: "Charcoal & Cream", de: "Kohle & Creme" },
+  "colorPreset.blush": { en: "Blush", de: "Zartrosa" },
+  "colorPreset.sunset": { en: "Sunset", de: "Sonnenuntergang" },
+  "colorPreset.dusk": { en: "Dusk", de: "Dämmerung" },
+  "colorPreset.citrus": { en: "Citrus", de: "Zitrus" },
+  "colorPreset.twilight": { en: "Twilight", de: "Zwielicht" },
+  "colorPreset.aurora": { en: "Aurora", de: "Aurora" },
+  "colorPreset.berry": { en: "Berry", de: "Beere" },
   "locale.switchLabel": { en: "Language", de: "Sprache" },
   "whatsnew.buttonLabel": { en: "What's new", de: "Neuigkeiten" },
   "whatsnew.unseenIndicator": { en: "(new)", de: "(neu)" },

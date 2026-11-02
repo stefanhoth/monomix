@@ -1,8 +1,14 @@
 <script lang="ts">
   import type { Font } from "opentype.js";
   import { fly } from "svelte/transition";
-  import { DESIGNS, composeMonogram } from "../engine";
-  import type { Project } from "../lib/project";
+  import { DESIGNS, composeMonogram, paintSolidColor } from "../engine";
+  import {
+    resolveProjectBackground,
+    resolveProjectFrameFill,
+    resolveProjectFramePaint,
+    resolveProjectLettersPaint,
+    type Project,
+  } from "../lib/project";
   import { backdropTone, BACKDROP_COLORS } from "../lib/preview-backdrop";
   import { t } from "../lib/i18n/store.svelte";
 
@@ -117,7 +123,14 @@
         {#each projects as project (project.id)}
           {@const design = DESIGNS.find((d) => d.id === project.designId)}
           {@const font = design && fonts.get(design.fontId)}
-          {@const board = BACKDROP_COLORS[backdropTone(project.lettersColor)]}
+          <!-- Tone follows the letters' *effective* paint (issue #46): with
+               a gradient (issue #122) the solid `lettersColor` field isn't
+               what's on screen, so the board would pick the wrong contrast. -->
+          {@const letterTone = paintSolidColor(
+            resolveProjectLettersPaint(project),
+            "#111111",
+          )}
+          {@const board = BACKDROP_COLORS[backdropTone(letterTone)]}
           <li class="remix-item">
             {#if editingId === project.id}
               <input
@@ -142,12 +155,12 @@
                     frame: {
                       id: project.frameId,
                       gap: project.frameGap,
-                      color: project.frameColor,
+                      color: resolveProjectFramePaint(project),
+                      fill: resolveProjectFrameFill(project),
                     },
-                    lettersColor: project.lettersColor,
-                    background: project.transparentBackground
-                      ? "transparent"
-                      : project.backgroundColor,
+                    lettersColor: resolveProjectLettersPaint(project),
+                    lettersOpacity: project.lettersOpacity,
+                    background: resolveProjectBackground(project),
                   })}
                 {/if}
               </span>
@@ -243,7 +256,7 @@
   }
 
   .start-blank:hover {
-    border-color: light-dark(#0b57d0, #a8c7fa);
+    border-color: var(--accent);
   }
 
   .plus {
@@ -307,8 +320,8 @@
     padding: 0.3rem;
     border: none;
     border-radius: 0.35rem;
-    background: light-dark(#0b57d0, #a8c7fa);
-    color: light-dark(#fff, #1c1c1e);
+    background: var(--accent);
+    color: var(--accent-contrast);
     cursor: pointer;
   }
 

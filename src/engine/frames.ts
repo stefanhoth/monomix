@@ -1,6 +1,7 @@
 import { VIEWBOX_SIZE } from "./layout";
-import { sanitizeColor } from "./color";
 import { DIAMOND_ASPECT } from "./shape";
+import { fnv1aId } from "./hash";
+import { resolvePaint, type Paint } from "./paint";
 
 /**
  * Frames are independent decorative rings around the letters (CONTEXT.md),
@@ -50,9 +51,62 @@ export const DEFAULT_STROKE_WIDTH = 20;
 export const DEFAULT_GAP = 40;
 const CENTER = VIEWBOX_SIZE / 2;
 
+/**
+ * The bare geometry for `shape` at half-extent `r`, with `attrs` (fill/
+ * stroke/dash) applied — shared between the stroked ring and the optional
+ * interior fill so both draw from the same shape math. The three dash
+ * variants (dotted/dashed-circle) all share plain "circle" geometry here;
+ * their dash pattern is purely a stroke attribute applied by the caller.
+ */
+function shapeGeometry(
+  shape: FrameShapeKind,
+  r: number,
+  attrs: string,
+): string {
+  switch (shape) {
+    case "circle":
+    case "dotted-circle":
+    case "dashed-circle":
+      return `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs}/>`;
+    case "square":
+      return `<rect x="${CENTER - r}" y="${CENTER - r}" width="${r * 2}" height="${r * 2}" ${attrs}/>`;
+    case "diamond": {
+      const d = `M${CENTER} ${CENTER - r} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - r} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+    case "diamond-narrow": {
+      const rx = r * DIAMOND_ASPECT;
+      const d = `M${CENTER} ${CENTER - r} L${CENTER + rx} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - rx} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+    case "diamond-wide": {
+      const ry = r * DIAMOND_ASPECT;
+      const d = `M${CENTER} ${CENTER - ry} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + ry} L${CENTER - r} ${CENTER} Z`;
+      return `<path d="${d}" ${attrs}/>`;
+    }
+  }
+}
+
 export interface FrameOptions {
-  color?: string;
+  /** Stroke paint: a color string, or a Gradient (issue #122). */
+  color?: Paint;
   strokeWidth?: number;
+  /** Interior fill — a color string or a Gradient (issue #122) — out to the
+   * Frame's outer boundary (issue #65 follow-up: without *some* filled area,
+   * reduced Letter Opacity has nothing to cut a visible hole in — a bare
+   * stroked ring plus a transparent background just disappears). Omitted (or
+   * "transparent") keeps the original unfilled-ring look. */
+  fill?: Paint;
+  /** Raw SVG markup (the letters' own `<path>` elements) to permanently
+   * subtract from `fill` via an SVG mask (issue #65 second follow-up: fading
+   * the letters' own opacity toward the fill's flat color looked identical
+   * to not drawing them at all — there was nothing *underneath* the fill to
+   * reveal). The letters are still drawn as their own layer on top exactly
+   * as before; this only punches a same-shaped hole through the fill itself
+   * so whatever's beneath it (a Background, or the transparent canvas) is
+   * what actually shows through as the letters fade out, not the fill's own
+   * uniform color. Ignored unless `fill` is also set. */
+  cutout?: string;
 }
 
 /** `frameId`'s Shape, or null for "No Frame" — used by the fit stage to pick
@@ -74,8 +128,10 @@ export function frameInnerExtent(
 }
 
 /**
- * Renders `frameId`'s shape as an SVG fragment (a stroked, unfilled ring),
- * or "" for "No Frame" / an id with no shape. Pure function — no DOM.
+ * Renders `frameId`'s shape as an SVG fragment — a stroked ring, optionally
+ * preceded by a solid interior fill (`options.fill`, itself optionally
+ * masked by `options.cutout`) — or "" for "No Frame" / an id with no shape.
+ * Pure function — no DOM.
  */
 export function composeFrame(
   frameId: string,
@@ -90,42 +146,68 @@ export function composeFrame(
   }
 
   const strokeWidth = options.strokeWidth ?? DEFAULT_STROKE_WIDTH;
-  const color = sanitizeColor(options.color, "currentColor");
+  // Distinct id scopes for stroke vs. fill so painting both with the same
+  // Gradient can't emit two colliding <defs id>s (see paint.ts). Both are
+  // "" for a solid color, keeping existing Frames byte-identical.
+  const stroke = resolvePaint(
+    options.color,
+    "currentColor",
+    "mm-frame-gradient",
+  );
 
   // Radius/half-extent of the stroke centerline, at its fixed position.
   // Clamped so a pathological custom strokeWidth never produces a negative
   // (invalid) radius.
   const r = Math.max(CENTER - FRAME_MARGIN - strokeWidth / 2, 0);
-  const attrs = `fill="none" stroke="${color}" stroke-width="${strokeWidth}"`;
-  const circle = (extra = "") =>
-    `<circle cx="${CENTER}" cy="${CENTER}" r="${r}" ${attrs}${extra}/>`;
 
-  switch (frame.shape) {
-    case "circle":
-      return circle();
-    case "square":
-      return `<rect x="${CENTER - r}" y="${CENTER - r}" width="${r * 2}" height="${r * 2}" ${attrs}/>`;
-    case "diamond": {
-      const d = `M${CENTER} ${CENTER - r} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - r} ${CENTER} Z`;
-      return `<path d="${d}" ${attrs}/>`;
+  const dash =
+    frame.shape === "dotted-circle"
+      ? ' stroke-dasharray="2 14" stroke-linecap="round"'
+      : frame.shape === "dashed-circle"
+        ? ' stroke-dasharray="50 24"'
+        : "";
+  const strokeMarkup = shapeGeometry(
+    frame.shape,
+    r,
+    `fill="none" stroke="${stroke.value}" stroke-width="${strokeWidth}"${dash}`,
+  );
+
+  // Fill draws first, at the outer boundary (FRAME_MARGIN, independent of
+  // strokeWidth) rather than the stroke's inner edge — so the stroke sits
+  // on top of the fill as a border rather than leaving an unfilled gap
+  // between them. Omitted entirely (not just "" fill) when unset/
+  // transparent, so every existing Frame's output stays byte-identical.
+  const fill = resolvePaint(
+    options.fill,
+    "transparent",
+    "mm-frame-fill-gradient",
+  );
+  const fillColor = fill.value;
+  const outerR = Math.max(CENTER - FRAME_MARGIN, 0);
+  let fillMarkup = "";
+  if (fillColor !== "transparent") {
+    if (options.cutout) {
+      // A <mask> is luminance-based: white keeps, black hides. The fill
+      // shape drawn white, with the letters drawn black on top of it,
+      // subtracts their exact silhouette — a real hole, not a color blend.
+      const maskId = fnv1aId(
+        "mm-frame-cutout",
+        `${frameId}|${fillColor}|${options.cutout}`,
+      );
+      const maskedShape = shapeGeometry(frame.shape, outerR, 'fill="white"');
+      const mask = `<mask id="${maskId}">${maskedShape}<g fill="black">${options.cutout}</g></mask>`;
+      const fillShape = shapeGeometry(
+        frame.shape,
+        outerR,
+        `fill="${fillColor}" mask="url(#${maskId})"`,
+      );
+      fillMarkup = mask + fillShape;
+    } else {
+      fillMarkup = shapeGeometry(frame.shape, outerR, `fill="${fillColor}"`);
     }
-    case "diamond-narrow": {
-      // Tall: the vertical vertices reach the full radius, the horizontal
-      // ones are compressed to DIAMOND_ASPECT of it.
-      const rx = r * DIAMOND_ASPECT;
-      const d = `M${CENTER} ${CENTER - r} L${CENTER + rx} ${CENTER} L${CENTER} ${CENTER + r} L${CENTER - rx} ${CENTER} Z`;
-      return `<path d="${d}" ${attrs}/>`;
-    }
-    case "diamond-wide": {
-      // Broad: the horizontal vertices reach the full radius, the vertical
-      // ones are compressed to DIAMOND_ASPECT of it.
-      const ry = r * DIAMOND_ASPECT;
-      const d = `M${CENTER} ${CENTER - ry} L${CENTER + r} ${CENTER} L${CENTER} ${CENTER + ry} L${CENTER - r} ${CENTER} Z`;
-      return `<path d="${d}" ${attrs}/>`;
-    }
-    case "dotted-circle":
-      return circle(' stroke-dasharray="2 14" stroke-linecap="round"');
-    case "dashed-circle":
-      return circle(' stroke-dasharray="50 24"');
   }
+
+  // Defs first, then fill, then stroke on top — same order as before, with
+  // the paint servers hoisted ahead of everything that references them.
+  return stroke.defs + fill.defs + fillMarkup + strokeMarkup;
 }

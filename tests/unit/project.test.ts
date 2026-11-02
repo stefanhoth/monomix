@@ -5,8 +5,11 @@ import {
   normalizeProject,
   projectSettingsEqual,
   remixProject,
+  resolveProjectBackground,
+  resolveProjectFrameFill,
   serializeProject,
   toProjectSettings,
+  DEFAULT_GRADIENT,
   DEFAULT_PROJECT_SETTINGS,
   type Project,
   type ProjectSettings,
@@ -17,13 +20,25 @@ function project(overrides: Partial<Project> = {}): Project {
     id: "p1",
     name: "MX",
     letters: "MX",
+    letterCase: "upper",
     designId: "cinzel-classic",
     frameId: "circle",
     frameGap: 40,
     lettersColor: "#111111",
+    lettersColorKind: "color",
+    lettersGradient: DEFAULT_GRADIENT,
+    lettersOpacity: 1,
     frameColor: "#111111",
-    transparentBackground: true,
+    frameColorKind: "color",
+    frameGradient: DEFAULT_GRADIENT,
+    frameFilled: false,
+    backgroundKind: "transparent",
     backgroundColor: "#ffffff",
+    backgroundImage: null,
+    backgroundImageZoom: 1,
+    backgroundImageOffsetX: 0,
+    backgroundImageOffsetY: 0,
+    backgroundGradient: DEFAULT_PROJECT_SETTINGS.backgroundGradient,
     createdAt: 1000,
     lastEditedAt: 2000,
     ...overrides,
@@ -52,9 +67,7 @@ describe("normalizeProject", () => {
     expect(result.designId).toBe(DEFAULT_PROJECT_SETTINGS.designId);
     expect(result.frameId).toBe(DEFAULT_PROJECT_SETTINGS.frameId);
     expect(result.frameGap).toBe(DEFAULT_PROJECT_SETTINGS.frameGap);
-    expect(result.transparentBackground).toBe(
-      DEFAULT_PROJECT_SETTINGS.transparentBackground,
-    );
+    expect(result.backgroundKind).toBe(DEFAULT_PROJECT_SETTINGS.backgroundKind);
   });
 
   it("generates an id and name when missing or malformed, rather than throwing", () => {
@@ -68,12 +81,70 @@ describe("normalizeProject", () => {
     const result = normalizeProject({
       letters: 123,
       frameGap: "not a number",
-      transparentBackground: "yes",
+      backgroundKind: "not-a-kind",
     });
     expect(result.letters).toBe(DEFAULT_PROJECT_SETTINGS.letters);
     expect(result.frameGap).toBe(DEFAULT_PROJECT_SETTINGS.frameGap);
-    expect(result.transparentBackground).toBe(
-      DEFAULT_PROJECT_SETTINGS.transparentBackground,
+    expect(result.backgroundKind).toBe(DEFAULT_PROJECT_SETTINGS.backgroundKind);
+  });
+
+  it("derives backgroundKind from the pre-#63 transparentBackground boolean when backgroundKind is absent", () => {
+    expect(
+      normalizeProject({ transparentBackground: true }).backgroundKind,
+    ).toBe("transparent");
+    expect(
+      normalizeProject({ transparentBackground: false }).backgroundKind,
+    ).toBe("color");
+  });
+
+  it("accepts a valid lettersOpacity and rejects an out-of-range or non-numeric one (issue #65)", () => {
+    expect(normalizeProject({ lettersOpacity: 0.4 }).lettersOpacity).toBe(0.4);
+    expect(normalizeProject({ lettersOpacity: 0 }).lettersOpacity).toBe(0);
+    expect(normalizeProject({ lettersOpacity: 1 }).lettersOpacity).toBe(1);
+    expect(normalizeProject({ lettersOpacity: 1.5 }).lettersOpacity).toBe(
+      DEFAULT_PROJECT_SETTINGS.lettersOpacity,
+    );
+    expect(normalizeProject({ lettersOpacity: -0.1 }).lettersOpacity).toBe(
+      DEFAULT_PROJECT_SETTINGS.lettersOpacity,
+    );
+    expect(normalizeProject({ lettersOpacity: "0.5" }).lettersOpacity).toBe(
+      DEFAULT_PROJECT_SETTINGS.lettersOpacity,
+    );
+  });
+
+  it("narrows an out-of-range image zoom/offset rather than only rejecting NaN (issue #123)", () => {
+    // A share link or hand-edited record can carry anything. The engine
+    // clamps again before rendering, but an out-of-range value reaching the
+    // editor's own state would show a nonsense slider and skew the drag gain.
+    expect(
+      normalizeProject({ backgroundImageZoom: 99 }).backgroundImageZoom,
+    ).toBe(4);
+    expect(
+      normalizeProject({ backgroundImageZoom: 0.1 }).backgroundImageZoom,
+    ).toBe(1);
+    expect(
+      normalizeProject({ backgroundImageOffsetX: 50 }).backgroundImageOffsetX,
+    ).toBe(1);
+    expect(
+      normalizeProject({ backgroundImageOffsetY: -50 }).backgroundImageOffsetY,
+    ).toBe(-1);
+    // In-range values pass through untouched.
+    expect(
+      normalizeProject({ backgroundImageZoom: 2.5 }).backgroundImageZoom,
+    ).toBe(2.5);
+    expect(
+      normalizeProject({ backgroundImageZoom: "2" }).backgroundImageZoom,
+    ).toBe(DEFAULT_PROJECT_SETTINGS.backgroundImageZoom);
+  });
+
+  it("accepts a boolean frameFilled and rejects a non-boolean one (issue #65 follow-up)", () => {
+    expect(normalizeProject({ frameFilled: true }).frameFilled).toBe(true);
+    expect(normalizeProject({ frameFilled: false }).frameFilled).toBe(false);
+    expect(normalizeProject({ frameFilled: "true" }).frameFilled).toBe(
+      DEFAULT_PROJECT_SETTINGS.frameFilled,
+    );
+    expect(normalizeProject({}).frameFilled).toBe(
+      DEFAULT_PROJECT_SETTINGS.frameFilled,
     );
   });
 
@@ -100,13 +171,25 @@ describe("createProject", () => {
   it("inherits every settings field from the given settings, not hardcoded defaults", () => {
     const settings: ProjectSettings = {
       letters: "ABC",
+      letterCase: "preserve",
       designId: "playfair-stacked",
       frameId: "diamond",
       frameGap: 120,
       lettersColor: "#ff0000",
+      lettersColorKind: "gradient",
+      lettersGradient: DEFAULT_GRADIENT,
+      lettersOpacity: 0.5,
       frameColor: "#00ff00",
-      transparentBackground: false,
+      frameColorKind: "color",
+      frameGradient: DEFAULT_GRADIENT,
+      frameFilled: true,
+      backgroundKind: "color",
       backgroundColor: "#3355ff",
+      backgroundImage: null,
+      backgroundImageZoom: 2.5,
+      backgroundImageOffsetX: -0.5,
+      backgroundImageOffsetY: 0.25,
+      backgroundGradient: DEFAULT_PROJECT_SETTINGS.backgroundGradient,
     };
     const created = createProject(settings);
     expect(created).toMatchObject(settings);
@@ -148,8 +231,14 @@ describe("remixProject", () => {
       frameId: "diamond",
       frameGap: 80,
       lettersColor: "#ff0000",
+      lettersColorKind: "gradient",
+      lettersGradient: DEFAULT_GRADIENT,
+      lettersOpacity: 0.5,
       frameColor: "#00ff00",
-      transparentBackground: false,
+      frameColorKind: "color",
+      frameGradient: DEFAULT_GRADIENT,
+      frameFilled: true,
+      backgroundKind: "color",
       backgroundColor: "#0000ff",
     });
     const remix = remixProject(source);
@@ -184,13 +273,25 @@ describe("toProjectSettings", () => {
     const settings = toProjectSettings(full);
     expect(settings).toEqual({
       letters: full.letters,
+      letterCase: full.letterCase,
       designId: full.designId,
       frameId: full.frameId,
       frameGap: full.frameGap,
       lettersColor: full.lettersColor,
+      lettersColorKind: full.lettersColorKind,
+      lettersGradient: full.lettersGradient,
+      lettersOpacity: full.lettersOpacity,
       frameColor: full.frameColor,
-      transparentBackground: full.transparentBackground,
+      frameColorKind: full.frameColorKind,
+      frameGradient: full.frameGradient,
+      frameFilled: full.frameFilled,
+      backgroundKind: full.backgroundKind,
       backgroundColor: full.backgroundColor,
+      backgroundImage: full.backgroundImage,
+      backgroundImageZoom: full.backgroundImageZoom,
+      backgroundImageOffsetX: full.backgroundImageOffsetX,
+      backgroundImageOffsetY: full.backgroundImageOffsetY,
+      backgroundGradient: full.backgroundGradient,
     });
     expect(settings).not.toHaveProperty("id");
     expect(settings).not.toHaveProperty("name");
@@ -208,5 +309,104 @@ describe("projectSettingsEqual", () => {
     const a = toProjectSettings(project());
     const b = toProjectSettings(project({ letters: "ABC" }));
     expect(projectSettingsEqual(a, b)).toBe(false);
+  });
+});
+
+describe("resolveProjectBackground (issue #63/#64)", () => {
+  const gradient = DEFAULT_PROJECT_SETTINGS.backgroundGradient;
+  // Issue #123's zoom/pan fields; at their defaults they're a no-op, so
+  // every case below reads as it did before they existed.
+  const noTransform = {
+    backgroundImageZoom: DEFAULT_PROJECT_SETTINGS.backgroundImageZoom,
+    backgroundImageOffsetX: DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetX,
+    backgroundImageOffsetY: DEFAULT_PROJECT_SETTINGS.backgroundImageOffsetY,
+  };
+
+  it("resolves 'transparent' to the plain transparent string", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "transparent",
+        backgroundColor: "#3355ff",
+        backgroundImage: "data:image/png;base64,abc",
+        backgroundGradient: gradient,
+        ...noTransform,
+      }),
+    ).toBe("transparent");
+  });
+
+  it("resolves 'color' to the plain color string", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "color",
+        backgroundColor: "#3355ff",
+        backgroundImage: null,
+        backgroundGradient: gradient,
+        ...noTransform,
+      }),
+    ).toBe("#3355ff");
+  });
+
+  it("resolves 'image' with a picked image to a BackgroundFill object", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "image",
+        backgroundColor: "#3355ff",
+        backgroundImage: "data:image/png;base64,abc",
+        backgroundGradient: gradient,
+        ...noTransform,
+      }),
+    ).toEqual({
+      kind: "image",
+      dataUrl: "data:image/png;base64,abc",
+      transform: { zoom: 1, offsetX: 0, offsetY: 0 },
+    });
+  });
+
+  it("falls back to transparent for 'image' with nothing picked yet", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "image",
+        backgroundColor: "#3355ff",
+        backgroundImage: null,
+        backgroundGradient: gradient,
+        ...noTransform,
+      }),
+    ).toBe("transparent");
+  });
+
+  it("resolves 'gradient' to a BackgroundFill object carrying the Gradient", () => {
+    expect(
+      resolveProjectBackground({
+        backgroundKind: "gradient",
+        backgroundColor: "#3355ff",
+        backgroundImage: null,
+        backgroundGradient: gradient,
+        ...noTransform,
+      }),
+    ).toEqual({ kind: "gradient", gradient });
+  });
+});
+
+describe("resolveProjectFrameFill (issue #65 follow-up)", () => {
+  it("resolves to frameColor when frameFilled is true", () => {
+    expect(
+      resolveProjectFrameFill({
+        frameFilled: true,
+        frameColorKind: "color",
+        frameColor: "#ff00ff",
+        frameGradient: DEFAULT_GRADIENT,
+      }),
+    ).toBe("#ff00ff");
+  });
+
+  it("resolves to undefined (not a color string) when frameFilled is false", () => {
+    expect(
+      resolveProjectFrameFill({
+        frameFilled: false,
+        frameColorKind: "color",
+        frameColor: "#ff00ff",
+        frameGradient: DEFAULT_GRADIENT,
+      }),
+    ).toBeUndefined();
   });
 });
