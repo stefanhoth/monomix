@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { VitePWA } from "vite-plugin-pwa";
@@ -53,6 +54,13 @@ export default defineConfig({
   ],
   build: {
     rollupOptions: {
+      // Multi-page build (ADR 0002: no SvelteKit/routing) — about.html is a
+      // standalone marketing page, plain HTML/CSS with no Svelte, built as
+      // a second Vite entry alongside the app shell.
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        about: fileURLToPath(new URL("./about.html", import.meta.url)),
+      },
       output: {
         manualChunks(id) {
           // Trailing slash: matches only the package itself, not a
