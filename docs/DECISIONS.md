@@ -11,6 +11,11 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-11-03
+
+- **SEO/agent discovery (#56) hardcodes `https://monomix.stefanhoth.com` in `index.html`, `about.html`, `robots.txt`, `sitemap.xml` and `llms.txt`.** Canonical, `og:image`, sitemap and robots `Sitemap:` must be absolute, and the domain is already the Custom Domain in `wrangler.jsonc`; if it changes, grep for it. PR previews will carry the production canonical on purpose (previews shouldn't be indexed as separate sites).
+- **`llms.txt` follows llmstxt.org; `agents.md` is a different thing and is not added.** agents.md is an instruction file for coding agents working _in a repo_ (this repo's `CLAUDE.md` plays that role); it describes no website. `public/llms.txt` is the site-facing equivalent. `.txt`/`.xml` files sit outside the Workbox `globPatterns`, so they aren't precached (verified: not in `dist/sw.js`).
+
 ## 2026-08-20
 
 - **Attaching the `monomix.stefanhoth.com` Custom Domain (`wrangler.jsonc`) needs `preview_urls: true` set explicitly, not left to default.** Cloudflare infers `workers_dev = false` the moment a `routes` entry exists, and `preview_urls` defaults to whatever `workers_dev` is — so without the explicit flag, the next production deploy would silently kill the `pr-N-monomix.stefanhoth-de.workers.dev` preview aliases that `preview-deploy.yml`'s E2E job depends on. Confirmed against current Cloudflare docs (routing/custom-domains, versions-and-deployments/preview-urls), not assumed.
