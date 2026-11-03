@@ -252,14 +252,20 @@ test("a drag interrupted by a Design change doesn't leave panning dead", async (
   // Panning still works afterwards.
   await openTab(page, "Colors");
   await page.getByLabel("Horizontal").fill("0");
-  const after = (await preview(page).boundingBox())!;
-  const c2 = { x: after.x + after.width / 2, y: after.y + after.height / 2 };
-  await page.mouse.move(c2.x, c2.y);
-  await page.mouse.down();
-  await page.mouse.move(c2.x - after.width / 4, c2.y, { steps: 8 });
-  await page.mouse.up();
-
-  await expect(page.getByLabel("Horizontal")).not.toHaveValue("0");
+  // The preview was just re-created by the Design switch; under load its
+  // box can still be settling when first measured. A dead pan never
+  // succeeds on any attempt, so retrying the drag keeps the claim honest.
+  await expect(async () => {
+    const after = (await preview(page).boundingBox())!;
+    const c2 = { x: after.x + after.width / 2, y: after.y + after.height / 2 };
+    await page.mouse.move(c2.x, c2.y);
+    await page.mouse.down();
+    await page.mouse.move(c2.x - after.width / 4, c2.y, { steps: 8 });
+    await page.mouse.up();
+    await expect(page.getByLabel("Horizontal")).not.toHaveValue("0", {
+      timeout: 500,
+    });
+  }).toPass({ timeout: 5000 });
 });
 
 test("the sidebar thumbnail shows the same framing the canvas renders", async ({

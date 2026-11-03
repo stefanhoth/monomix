@@ -16,13 +16,24 @@ describe("exportPdf", () => {
     expect(header).toBe("%PDF-");
   });
 
-  it("produces a non-trivial single-page PDF containing the monogram", async () => {
+  it("draws the monogram's paths into the page content stream, not just an empty page", async () => {
     const svg = composeMonogram("MX", font, { frame: { id: "circle" } });
-    const blob = await exportPdf(svg);
-    const text = await blob.text();
-    // A real content stream, not just an empty page — proves the SVG's
-    // paths actually made it into the PDF, not just a blank document.
-    expect(text).toContain("/Type /Page");
-    expect(text.length).toBeGreaterThan(500);
+    const text = await (await exportPdf(svg)).text();
+    // jsPDF's fixed font table alone makes an empty page ~3KB, so a size
+    // check proves nothing. Count real path-construction operators in the
+    // (uncompressed) content stream: moveto + curveto/lineto segments.
+    const stream = text.slice(
+      text.indexOf("stream"),
+      text.indexOf("endstream"),
+    );
+    expect(stream.match(/ m\n/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+    expect(stream.match(/ (c|l)\n/g)?.length ?? 0).toBeGreaterThan(20);
+
+    const empty = await (
+      await exportPdf(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"></svg>',
+      )
+    ).text();
+    expect(empty.match(/ m\n/g)).toBeNull();
   });
 });
