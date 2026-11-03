@@ -194,6 +194,12 @@ test("a zoomed, repositioned background round-trips into SVG and PNG exports", a
   expect(svg).toContain('width="2000"');
   // The outermost <svg> clips the overhang rather than growing the canvas.
   expect(svg).toContain('viewBox="0 0 1000 1000"');
+  // ...and a non-browser renderer (vector editor) only clips if the markup
+  // says so: the <image> must sit inside a nested viewport the size of the
+  // canvas (issue #129).
+  expect(svg).toMatch(
+    /<svg x="0" y="0" width="1000" height="1000" overflow="hidden"><image [^>]*x="-1000"[^>]*width="2000"[^>]*\/><\/svg>/,
+  );
 
   const [png] = await Promise.all([
     page.waitForEvent("download"),
@@ -204,6 +210,33 @@ test("a zoomed, repositioned background round-trips into SVG and PNG exports", a
     bytes += (chunk as Buffer).length;
   }
   expect(bytes).toBeGreaterThan(1000);
+});
+
+test("a zoomed background still exports a valid single-page PDF (nested <svg> via svg2pdf)", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await pickImage(page);
+  await page.getByLabel("Zoom").fill("2");
+  await page.getByLabel("Horizontal").fill("-1");
+
+  await openTab(page, "Export");
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const [pdf] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Export PDF" }).click(),
+  ]);
+  const chunks: Buffer[] = [];
+  for await (const chunk of await pdf.createReadStream()) {
+    chunks.push(chunk as Buffer);
+  }
+  const text = Buffer.concat(chunks).toString("latin1");
+  expect(text.startsWith("%PDF-")).toBe(true);
+  // The image made it in, and the page is still exactly the viewBox.
+  expect(text).toContain("/Subtype /Image");
+  expect(text).toMatch(/\/MediaBox \[0 0 1000\.?0* 1000\.?0*\]/);
+  expect(errors).toEqual([]);
 });
 
 test("removing the image resets the framing too", async ({ page }) => {
