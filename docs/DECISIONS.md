@@ -11,6 +11,10 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-11-03
+
+- **Simplicity review (issue #57) found the codebase already tight; only unused public surface was trimmed.** `src/engine/index.ts` no longer re-exports `layoutLetters`/`VIEWBOX_SIZE`/`Layout`/`LayoutOptions`/`PositionedLetter` (nothing outside the engine imports them via the barrel; tests import `engine/layout` directly), and `FRAME_MARGIN`, `DEFAULT_STROKE_WIDTH`, `SHARE_HASH_KEY` are module-private. Deliberately kept: `serializeProject`/`deserializeProject` (documented test-plan helpers), `createMemoryProjectStore` (the unit-test fake), the flat `ProjectSettings` fields and the per-field assignments in `App.svelte` (see BACKLOG Data Clump notes), and the duplicated `round`/`round3` helpers (one lives in `background.ts`, which was out of scope for this pass).
+
 ## 2026-08-20
 
 - **Attaching the `monomix.stefanhoth.com` Custom Domain (`wrangler.jsonc`) needs `preview_urls: true` set explicitly, not left to default.** Cloudflare infers `workers_dev = false` the moment a `routes` entry exists, and `preview_urls` defaults to whatever `workers_dev` is — so without the explicit flag, the next production deploy would silently kill the `pr-N-monomix.stefanhoth-de.workers.dev` preview aliases that `preview-deploy.yml`'s E2E job depends on. Confirmed against current Cloudflare docs (routing/custom-domains, versions-and-deployments/preview-urls), not assumed.
