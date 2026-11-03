@@ -168,7 +168,7 @@ export function composeBackgroundLayer(
       defs: "",
       markup:
         placed.size > size
-          ? `<svg x="0" y="0" width="${size}" height="${size}">${image}</svg>`
+          ? `<svg x="0" y="0" width="${size}" height="${size}" overflow="hidden">${image}</svg>`
           : image,
     };
   }

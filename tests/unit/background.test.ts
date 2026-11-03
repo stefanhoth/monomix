@@ -79,7 +79,7 @@ describe("composeBackgroundLayer", () => {
     );
     expect(layer.defs).toBe("");
     expect(layer.markup).toMatch(
-      /^<svg x="0" y="0" width="1000" height="1000"><image [^>]*x="-1500" y="-1500" width="4000" height="4000"[^>]*\/><\/svg>$/,
+      /^<svg x="0" y="0" width="1000" height="1000" overflow="hidden"><image [^>]*x="-1500" y="-1500" width="4000" height="4000"[^>]*\/><\/svg>$/,
     );
     // No id: a <clipPath> would reintroduce the duplicate-id hazard.
     expect(layer.markup).not.toContain("id=");

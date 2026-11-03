@@ -198,7 +198,7 @@ test("a zoomed, repositioned background round-trips into SVG and PNG exports", a
   // says so: the <image> must sit inside a nested viewport the size of the
   // canvas (issue #129).
   expect(svg).toMatch(
-    /<svg x="0" y="0" width="1000" height="1000"><image [^>]*x="-1000"[^>]*width="2000"[^>]*\/><\/svg>/,
+    /<svg x="0" y="0" width="1000" height="1000" overflow="hidden"><image [^>]*x="-1000"[^>]*width="2000"[^>]*\/><\/svg>/,
   );
 
   const [png] = await Promise.all([
