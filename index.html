@@ -3,10 +3,73 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MonoMix</title>
+    <title>MonoMix — Free browser monogram maker</title>
+    <meta
+      name="description"
+      content="Make a monogram from 1–3 letters in your browser. Pick a design and frame, set colors and gradients, export SVG, PNG, JPG or PDF. Free, no account, nothing uploaded."
+    />
+    <meta name="theme-color" content="#0b0b0c" />
+    <link rel="canonical" href="https://monomix.stefanhoth.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="MonoMix" />
+    <meta property="og:url" content="https://monomix.stefanhoth.com/" />
+    <meta property="og:title" content="MonoMix — Free browser monogram maker" />
+    <meta
+      property="og:description"
+      content="Type 1–3 letters, pick a design, export SVG, PNG, JPG or PDF. Runs entirely in your browser: no account, no upload."
+    />
+    <meta
+      property="og:image"
+      content="https://monomix.stefanhoth.com/icon-512.png"
+    />
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="MonoMix — Free browser monogram maker"
+    />
+    <meta
+      name="twitter:description"
+      content="Type 1–3 letters, pick a design, export SVG, PNG, JPG or PDF. Runs entirely in your browser."
+    />
+    <meta
+      name="twitter:image"
+      content="https://monomix.stefanhoth.com/icon-512.png"
+    />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "MonoMix",
+        "url": "https://monomix.stefanhoth.com/",
+        "description": "Browser-local monogram maker: turn 1–3 letters into a styled monogram and export it as SVG, PNG, JPG or PDF. No account, no server, nothing uploaded.",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Any (modern web browser)",
+        "browserRequirements": "Requires JavaScript",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "image": "https://monomix.stefanhoth.com/icon-512.png",
+        "featureList": [
+          "1–3 letter monograms",
+          "Algorithmic designs and frames using open-licensed fonts",
+          "Solid and gradient colors, background images",
+          "Export as SVG, PNG, JPG or PDF",
+          "Works offline as an installable web app"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>
+      <h1>MonoMix</h1>
+      <p>
+        MonoMix is a free monogram maker that runs entirely in your browser and
+        needs JavaScript. Type one to three letters, pick a design and frame,
+        choose colors, and export SVG, PNG, JPG or PDF. See the
+        <a href="/about">about page</a> or <a href="/llms.txt">llms.txt</a>.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

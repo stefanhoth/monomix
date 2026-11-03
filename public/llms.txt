@@ -1,0 +1,18 @@
+# MonoMix
+
+> MonoMix is a free, browser-local monogram maker. A person types 1-3 letters, picks a Design (font + arrangement + shape) and optionally a Frame, sets colors, and exports the result as SVG, PNG, JPG or PDF. Everything runs client-side: no account, no server, nothing uploaded.
+
+MonoMix is an interactive single-page web app (JavaScript required); it has no public API and no server-rendered content. Designs are composed algorithmically from ordinary open-licensed letterforms (SIL OFL / CC0 / Apache-2.0 fonts only), so exported files are free to use. Projects are stored in the visitor's own browser; the only data that can leave the browser is an opt-in "Copy link" share URL.
+
+## Pages
+
+- [MonoMix app](https://monomix.stefanhoth.com/): the editor - type letters, choose Design, Frame and colors, export
+- [About](https://monomix.stefanhoth.com/about): what MonoMix is, with example monograms
+
+## Source and docs
+
+- [Source repository](https://github.com/stefanhoth/monomix): code, architecture decisions (docs/adr), domain glossary (CONTEXT.md)
+
+## Optional
+
+- [Changelog](https://github.com/stefanhoth/monomix/blob/main/CHANGELOG.md): user-visible changes
