@@ -45,8 +45,8 @@ export const FRAMES: Frame[] = [
  * units. Fixed (issue #36) — unlike v1, a Frame no longer moves when Frame
  * Gap changes; only the lettering scales inside it (see src/engine/fit.ts).
  */
-export const FRAME_MARGIN = 40;
-export const DEFAULT_STROKE_WIDTH = 20;
+const FRAME_MARGIN = 40;
+const DEFAULT_STROKE_WIDTH = 20;
 /** Default Frame Gap (CONTEXT.md): the inner breathing room, not a canvas margin. */
 export const DEFAULT_GAP = 40;
 const CENTER = VIEWBOX_SIZE / 2;
