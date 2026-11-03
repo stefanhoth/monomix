@@ -46,6 +46,45 @@ describe("composeBackgroundLayer", () => {
     expect(layer.markup).toContain('preserveAspectRatio="xMidYMid slice"');
   });
 
+  it("leaves the image unwrapped at the default framing (byte-identical)", () => {
+    const bare = composeBackgroundLayer(
+      { kind: "image", dataUrl: VALID_PNG_DATA_URL },
+      1000,
+    );
+    const defaults = composeBackgroundLayer(
+      {
+        kind: "image",
+        dataUrl: VALID_PNG_DATA_URL,
+        transform: { zoom: 1, offsetX: 1, offsetY: -1 },
+      },
+      1000,
+    );
+    expect(bare.markup).toBe(
+      `<image href="${VALID_PNG_DATA_URL}" x="0" y="0" width="1000" height="1000" preserveAspectRatio="xMidYMid slice"/>`,
+    );
+    expect(defaults).toEqual(bare);
+  });
+
+  it("wraps a zoomed image in a nested <svg> viewport so the overhang is clipped (issue #129)", () => {
+    // A nested <svg> clips by itself in any renderer; bare off-canvas
+    // coordinates are only cropped by the consumer (browser/canvas/MediaBox),
+    // not by a vector editor opening the downloaded .svg.
+    const layer = composeBackgroundLayer(
+      {
+        kind: "image",
+        dataUrl: VALID_PNG_DATA_URL,
+        transform: { zoom: 4, offsetX: 0, offsetY: 0 },
+      },
+      1000,
+    );
+    expect(layer.defs).toBe("");
+    expect(layer.markup).toMatch(
+      /^<svg x="0" y="0" width="1000" height="1000"><image [^>]*x="-1500" y="-1500" width="4000" height="4000"[^>]*\/><\/svg>$/,
+    );
+    // No id: a <clipPath> would reintroduce the duplicate-id hazard.
+    expect(layer.markup).not.toContain("id=");
+  });
+
   it("rejects a non-data-URL / non-image value instead of injecting it", () => {
     for (const unsafe of [
       "javascript:alert(1)",
