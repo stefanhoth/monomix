@@ -6,6 +6,10 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ## [Unreleased]
 
+### Changed
+
+- New app icon and favicon (a serif "M" in a ring on the app's wine accent) replace the placeholder, with a maskable Android icon, an iOS home-screen icon, and a matching install splash color.
+
 ### Added
 
 - A `/about` marketing page introduces MonoMix to people who haven't opened the app yet — separate from the in-app About panel, which is a quick reference for people already using it. Its examples are real monograms rendered by the editor itself, showing gradients, a stencil cut-out frame, mixed case, and a picture background.
