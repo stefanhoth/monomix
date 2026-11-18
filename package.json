@@ -18,7 +18,7 @@
   },
   "lint-staged": {
     "*.{ts,js,svelte}": [
-      "oxlint --fix",
+      "oxlint --fix --no-error-on-unmatched-pattern",
       "prettier --write"
     ],
     "*.{json,css,md}": [
