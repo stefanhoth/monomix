@@ -157,9 +157,19 @@ export function composeBackgroundLayer(
     // #123) move and grow that rect; the outermost <svg> clips whatever
     // spills past the viewBox.
     const placed = imagePlacement(background.transform, size);
+    const image = `<image href="${background.dataUrl}" x="${placed.x}" y="${placed.y}" width="${placed.size}" height="${placed.size}" preserveAspectRatio="xMidYMid slice"/>`;
+    // Zoomed in, the rect overhangs the viewBox. Browsers, raster and PDF
+    // export all crop that implicitly, but a standalone .svg opened in a
+    // vector editor would show the whole uncropped image as off-artboard
+    // artwork (issue #129). A nested <svg> is a new viewport and clips on
+    // its own — no id, so no duplicate-id hazard (docs/DECISIONS.md). Only
+    // wrapped when there is overhang, so default framing stays byte-identical.
     return {
       defs: "",
-      markup: `<image href="${background.dataUrl}" x="${placed.x}" y="${placed.y}" width="${placed.size}" height="${placed.size}" preserveAspectRatio="xMidYMid slice"/>`,
+      markup:
+        placed.size > size
+          ? `<svg x="0" y="0" width="${size}" height="${size}" overflow="hidden">${image}</svg>`
+          : image,
     };
   }
 

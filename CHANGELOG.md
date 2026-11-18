@@ -48,4 +48,5 @@ Only user-visible changes belong here — pure dependency/infra PRs are omitted.
 
 ### Fixed
 
+- A zoomed background image is now cropped to the canvas inside the downloaded SVG. Previously the whole uncropped photo hung off the artboard when the file was opened in Illustrator, Inkscape or Figma.
 - The transparency checkerboard behind the preview now adapts to your letters color instead of the light/dark theme — dark letters were nearly invisible against the dark-mode checkerboard, and white letters (say, for dark fabric) now get a dark board to stand out against. Exported files are unaffected.
