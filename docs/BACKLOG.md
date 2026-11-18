@@ -1,9 +1,5 @@
 # Backlog (deferred, not in v1)
 
-## Scaffolding placeholders to replace
-
-- **App icons/favicon** — `public/favicon.svg`, `icon-192.png`, `icon-512.png` are a plain "MX" placeholder generated for the initial scaffold, not real branding.
-
 ## Rejected (do not re-propose)
 
 - **Path morphing between designs** — deliberately rejected, not deferred: letter-to-letter path interpolation reads as distracting mush, not magic. Preview transitions are crossfade + subtle scale (~200 ms).
