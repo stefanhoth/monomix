@@ -11,6 +11,10 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-11-18
+
+- **Required checks are no longer strict (`strict_required_status_checks_policy: false`).** With several green PRs open, only the first to merge won and every other PR had to be updated and run CI again. PR CI already tests the merge ref, and CI on every push to `main` catches the rare case where two PRs only break together; a scheduled Claude task fixes a red `main`, failing PRs and merge conflicts.
+
 ## 2026-08-20
 
 - **Attaching the `monomix.stefanhoth.com` Custom Domain (`wrangler.jsonc`) needs `preview_urls: true` set explicitly, not left to default.** Cloudflare infers `workers_dev = false` the moment a `routes` entry exists, and `preview_urls` defaults to whatever `workers_dev` is — so without the explicit flag, the next production deploy would silently kill the `pr-N-monomix.stefanhoth-de.workers.dev` preview aliases that `preview-deploy.yml`'s E2E job depends on. Confirmed against current Cloudflare docs (routing/custom-domains, versions-and-deployments/preview-urls), not assumed.
