@@ -37,6 +37,42 @@ for (const { button, extension } of FORMATS) {
     const bytes = await readFile(path!);
     expect(bytes.length).toBeGreaterThan(0);
 
+    // Magic bytes only prove the container; a blank raster has them too.
+    // Decode the real file in the browser and require visible ink: more
+    // than one distinct (quantised) colour, i.e. monogram vs. background.
+    if (extension === "png" || extension === "jpg") {
+      const distinct = await page.evaluate(
+        async ({ b64, mime }) => {
+          const img = new Image();
+          img.src = `data:${mime};base64,${b64}`;
+          await img.decode();
+          const c = document.createElement("canvas");
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          const ctx = c.getContext("2d")!;
+          ctx.drawImage(img, 0, 0);
+          const d = ctx.getImageData(0, 0, c.width, c.height).data;
+          const seen = new Set<number>();
+          for (let i = 0; i < d.length; i += 4) {
+            // Quantise so JPEG noise on a flat background doesn't count.
+            seen.add(
+              ((d[i] >> 5) << 12) |
+                ((d[i + 1] >> 5) << 8) |
+                ((d[i + 2] >> 5) << 4) |
+                (d[i + 3] >> 5),
+            );
+            if (seen.size > 1) break;
+          }
+          return seen.size;
+        },
+        {
+          b64: bytes.toString("base64"),
+          mime: extension === "png" ? "image/png" : "image/jpeg",
+        },
+      );
+      expect(distinct).toBeGreaterThan(1);
+    }
+
     switch (extension) {
       case "svg":
         expect(bytes.toString("utf-8")).toContain("<svg");

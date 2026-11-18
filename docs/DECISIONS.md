@@ -11,6 +11,10 @@ or product but don't warrant a full [ADR](adr/).
 - **Format:** newest first. One short entry per decision — the call, and a
   one-line why. Add the entry in the same PR that makes the decision.
 
+## 2026-11-03
+
+- **Test-suite review (#58): size and magic bytes are proxies for "the export has the monogram".** The PDF unit test asserted `length > 500`, but an empty jsPDF page is already ~3 KB (measured), so it would pass on a blank document; it now counts path operators in the (uncompressed) content stream and compares against an empty SVG. The e2e PNG/JPG downloads checked only magic bytes; they now decode the real file in the browser and require more than one quantised colour. The "drag interrupted by a Design change" e2e flaked under parallel load (measured the preview box mid re-mount); it now retries the drag via `toPass` — a dead pan can never pass on any attempt, so the claim is intact. Persistence specs were already fine: every reload waits on `readPersistedField` polling, none relies on the 400 ms debounce.
+
 ## 2026-08-20
 
 - **Attaching the `monomix.stefanhoth.com` Custom Domain (`wrangler.jsonc`) needs `preview_urls: true` set explicitly, not left to default.** Cloudflare infers `workers_dev = false` the moment a `routes` entry exists, and `preview_urls` defaults to whatever `workers_dev` is — so without the explicit flag, the next production deploy would silently kill the `pr-N-monomix.stefanhoth-de.workers.dev` preview aliases that `preview-deploy.yml`'s E2E job depends on. Confirmed against current Cloudflare docs (routing/custom-domains, versions-and-deployments/preview-urls), not assumed.
