@@ -44,7 +44,7 @@ export const SHARE_VERSION = 1;
  * from the bare `#about` hash so the two can never be confused for each
  * other, and short because it's the one part of the link that isn't data.
  */
-export const SHARE_HASH_KEY = "m";
+const SHARE_HASH_KEY = "m";
 
 /**
  * Whether sharing these settings loses a background image — the one thing a

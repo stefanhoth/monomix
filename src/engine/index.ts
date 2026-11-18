@@ -21,14 +21,7 @@ export {
   type GradientStyle,
   type Paint,
 } from "./paint";
-export {
-  layoutLetters,
-  VIEWBOX_SIZE,
-  type Arrangement,
-  type Layout,
-  type LayoutOptions,
-  type PositionedLetter,
-} from "./layout";
+export { type Arrangement } from "./layout";
 export { DESIGNS, type Design, type LetterCount } from "./designs";
 export { FONTS, type FontEntry, type FontStyle } from "./fonts";
 export { type Shape } from "./shape";
