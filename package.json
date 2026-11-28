@@ -36,7 +36,7 @@
     "lint-staged": "17.6.2",
     "oxlint": "1.95.0",
     "prettier": "3.10.1",
-    "prettier-plugin-svelte": "4.1.1",
+    "prettier-plugin-svelte": "4.2.0",
     "sharp": "0.35.5",
     "subset-font": "2.9.0",
     "svelte": "5.59.2",
